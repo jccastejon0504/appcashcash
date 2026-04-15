@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@import 'uniwind';
+@import 'heroui-native/styles';
+
+@source './node_modules/heroui-native/lib';
+
+@layer theme {
+  :root {
+    @variant light {
+      --radius: 0.5rem;
+    }
+
+    @variant dark {
+      --radius: 0.5rem;
+    }
+  }
+}
