@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable, TextInput,
@@ -6,7 +6,8 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, FontSize } from '@/constants/theme';
+import { Spacing, Radius, FontSize } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getItem, setItem } from '@/services/storage';
 
 type ItemMercado = {
@@ -32,6 +33,8 @@ const COMPARACION_KEY = 'comparacion_data';
 const BCV_CACHE_KEY   = 'bcv_cache';
 
 export default function ListadoMercadoScreen() {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
   const [items,          setItems]          = useState<ItemMercado[]>([]);
   const [comercios,      setComercios]      = useState<Comercio[]>([]);
@@ -231,7 +234,7 @@ export default function ListadoMercadoScreen() {
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.navigate('/')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Compras / Presupuesto</Text>
@@ -636,7 +639,7 @@ export default function ListadoMercadoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return StyleSheet.create({
   safe:        { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -651,7 +654,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: FontSize.xs, fontWeight: '800', color: '#fff' },
 
-  body: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 110 },
+  body: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 80 },
 
   addRow: { flexDirection: 'row', gap: Spacing.sm },
   addInput: {
@@ -866,7 +869,7 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: Spacing.md, paddingBottom: 60, backgroundColor: Colors.background,
+    padding: Spacing.md, paddingBottom: Spacing.md, backgroundColor: Colors.background,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
   footerRow: { flexDirection: 'row', gap: Spacing.sm },
@@ -940,4 +943,4 @@ const styles = StyleSheet.create({
   },
   sugerenciaBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   sugerenciaText:   { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
-});
+}); }

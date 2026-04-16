@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Colors, Spacing, Radius, FontSize } from '@/constants/theme';
+import { Spacing, Radius, FontSize } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getItem, setItem } from '@/services/storage';
 
 type Producto = { id: string; nombre: string; precio: string };
@@ -16,6 +17,8 @@ const CACHE_KEY     = 'comparacion_data';
 const BCV_CACHE_KEY = 'bcv_cache';
 
 export default function ComparacionScreen() {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
   const { vista: vistaParam } = useLocalSearchParams<{ vista?: Vista }>();
   const [comercios,      setComercios]      = useState<Comercio[]>([]);
@@ -115,7 +118,7 @@ export default function ComparacionScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.navigate('/')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Comparación de Precios</Text>
@@ -392,7 +395,7 @@ export default function ComparacionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return StyleSheet.create({
   safe:   { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -531,4 +534,4 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.sm,
   },
   modalCerrarText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
-});
+}); }

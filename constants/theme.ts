@@ -1,19 +1,19 @@
 export const Colors = {
-  background: '#0A1628',
-  card: '#112240',
-  cardAlt: '#0D1B35',
+  background: '#F5F7FA',
+  card: '#FFFFFF',
+  cardAlt: '#EEF1F6',
   blue: '#4AADE8',
   blueLight: '#7EC8F0',
   blueDark: '#2E8BC0',
-  text: '#FFFFFF',
-  textSecondary: '#8BAABF',
-  textMuted: '#4A6180',
-  border: '#1E3A5F',
+  text: '#0D1B35',
+  textSecondary: '#4A6180',
+  textMuted: '#9AAFC4',
+  border: '#DDE4EF',
   success: '#4CAF50',
   warning: '#FFA726',
   error: '#EF5350',
-  tabBar: '#0D1B35',
-  tabBarBorder: '#1E3A5F',
+  tabBar: '#FFFFFF',
+  tabBarBorder: '#DDE4EF',
 };
 
 export const Spacing = {

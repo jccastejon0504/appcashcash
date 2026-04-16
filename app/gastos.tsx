@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
   StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, FontSize } from '@/constants/theme';
+import { Spacing, Radius, FontSize } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getItem, setItem } from '@/services/storage';
 
 type Periodo = 'semana' | 'mes' | 'año';
@@ -57,6 +58,8 @@ const labelPeriodo = (periodo: Periodo, hoy: Date) => {
 };
 
 export default function GastosScreen() {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [periodo,     setPeriodo]     = useState<Periodo>('mes');
@@ -204,7 +207,7 @@ export default function GastosScreen() {
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.navigate('/')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Ingresos y Gastos</Text>
@@ -219,6 +222,11 @@ export default function GastosScreen() {
           <Text style={[styles.balanceMonto, { color: balance >= 0 ? Colors.success : Colors.error }]}>
             {balance >= 0 ? '+' : ''}${balance.toFixed(2)}
           </Text>
+          {tasaBCV && tasaBCV > 0 && (
+            <Text style={[styles.balanceBs, { color: balance >= 0 ? Colors.success : Colors.error }]}>
+              {balance >= 0 ? '' : '-'}{usdABs(Math.abs(balance))}
+            </Text>
+          )}
           <Text style={styles.balanceLabel}>Balance disponible</Text>
 
           {/* Barra de progreso gasto vs ingreso */}
@@ -238,11 +246,21 @@ export default function GastosScreen() {
           <View style={styles.chipsRow}>
             <View style={[styles.chip, { borderColor: Colors.success + '55' }]}>
               <Ionicons name="arrow-down-circle" size={14} color={Colors.success} />
-              <Text style={[styles.chipLabel, { color: Colors.success }]}>+${totalIng.toFixed(2)}</Text>
+              <View>
+                <Text style={[styles.chipLabel, { color: Colors.success }]}>+${totalIng.toFixed(2)}</Text>
+                {tasaBCV && tasaBCV > 0 && (
+                  <Text style={[styles.chipBs, { color: Colors.success }]}>{usdABs(totalIng)}</Text>
+                )}
+              </View>
             </View>
             <View style={[styles.chip, { borderColor: Colors.error + '55' }]}>
               <Ionicons name="arrow-up-circle" size={14} color={Colors.error} />
-              <Text style={[styles.chipLabel, { color: Colors.error }]}>-${totalGasto.toFixed(2)}</Text>
+              <View>
+                <Text style={[styles.chipLabel, { color: Colors.error }]}>-${totalGasto.toFixed(2)}</Text>
+                {tasaBCV && tasaBCV > 0 && (
+                  <Text style={[styles.chipBs, { color: Colors.error }]}>-{usdABs(totalGasto)}</Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -277,7 +295,12 @@ export default function GastosScreen() {
               ))}
               <View style={styles.subtotalFila}>
                 <Text style={styles.subtotalLabel}>Total ingresos</Text>
-                <Text style={[styles.subtotalMonto, { color: Colors.success }]}>${totalIng.toFixed(2)}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.subtotalMonto, { color: Colors.success }]}>${totalIng.toFixed(2)}</Text>
+                  {tasaBCV && tasaBCV > 0 && (
+                    <Text style={[styles.balanceBs, { color: Colors.success }]}>{usdABs(totalIng)}</Text>
+                  )}
+                </View>
               </View>
             </View>
           )}
@@ -313,7 +336,12 @@ export default function GastosScreen() {
               ))}
               <View style={styles.subtotalFila}>
                 <Text style={styles.subtotalLabel}>Total gastos</Text>
-                <Text style={[styles.subtotalMonto, { color: Colors.error }]}>${totalGasto.toFixed(2)}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.subtotalMonto, { color: Colors.error }]}>${totalGasto.toFixed(2)}</Text>
+                  {tasaBCV && tasaBCV > 0 && (
+                    <Text style={[styles.balanceBs, { color: Colors.error }]}>-{usdABs(totalGasto)}</Text>
+                  )}
+                </View>
               </View>
             </View>
           )}
@@ -324,18 +352,35 @@ export default function GastosScreen() {
           <View style={[styles.balanceFinalCard, { borderColor: balance >= 0 ? Colors.success + '44' : Colors.error + '44' }]}>
             <View style={styles.balanceFinalRow}>
               <Text style={styles.balanceFinalLabel}>Ingresos</Text>
-              <Text style={[styles.balanceFinalValor, { color: Colors.success }]}>+${totalIng.toFixed(2)}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.balanceFinalValor, { color: Colors.success }]}>+${totalIng.toFixed(2)}</Text>
+                {tasaBCV && tasaBCV > 0 && (
+                  <Text style={[styles.balanceBs, { color: Colors.success }]}>{usdABs(totalIng)}</Text>
+                )}
+              </View>
             </View>
             <View style={styles.balanceFinalRow}>
               <Text style={styles.balanceFinalLabel}>Gastos</Text>
-              <Text style={[styles.balanceFinalValor, { color: Colors.error }]}>-${totalGasto.toFixed(2)}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.balanceFinalValor, { color: Colors.error }]}>-${totalGasto.toFixed(2)}</Text>
+                {tasaBCV && tasaBCV > 0 && (
+                  <Text style={[styles.balanceBs, { color: Colors.error }]}>-{usdABs(totalGasto)}</Text>
+                )}
+              </View>
             </View>
             <View style={styles.balanceFinalDivider} />
             <View style={styles.balanceFinalRow}>
               <Text style={styles.balanceFinalTotalLabel}>Balance</Text>
-              <Text style={[styles.balanceFinalTotal, { color: balance >= 0 ? Colors.success : Colors.error }]}>
-                {balance >= 0 ? '+' : ''}${balance.toFixed(2)}
-              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.balanceFinalTotal, { color: balance >= 0 ? Colors.success : Colors.error }]}>
+                  {balance >= 0 ? '+' : ''}${balance.toFixed(2)}
+                </Text>
+                {tasaBCV && tasaBCV > 0 && (
+                  <Text style={[styles.balanceBs, { color: balance >= 0 ? Colors.success : Colors.error }]}>
+                    {balance >= 0 ? '' : '-'}{usdABs(Math.abs(balance))}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         )}
@@ -370,9 +415,16 @@ export default function GastosScreen() {
                         <Text style={styles.histCount}>{mes.lista.length} mov.</Text>
                       </View>
                       <View style={styles.histCardRight}>
-                        <Text style={[styles.histBalance, { color: balColor }]}>
-                          {mes.balance >= 0 ? '+' : ''}${mes.balance.toFixed(2)}
-                        </Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.histBalance, { color: balColor }]}>
+                            {mes.balance >= 0 ? '+' : ''}${mes.balance.toFixed(2)}
+                          </Text>
+                          {tasaBCV && tasaBCV > 0 && (
+                            <Text style={[styles.balanceBs, { color: balColor }]}>
+                              {mes.balance >= 0 ? '' : '-'}{usdABs(Math.abs(mes.balance))}
+                            </Text>
+                          )}
+                        </View>
                         <Ionicons
                           name={expandido ? 'chevron-up' : 'chevron-down'}
                           size={16} color={Colors.textMuted}
@@ -387,13 +439,27 @@ export default function GastosScreen() {
                           <View style={[styles.histBarraRelleno, { width: `${pct * 100}%` }]} />
                         </View>
                         <View style={styles.histBarraLabels}>
-                          <View style={styles.histBarraChip}>
-                            <Ionicons name="arrow-down-circle" size={11} color={Colors.success} />
-                            <Text style={[styles.histBarraText, { color: Colors.success }]}>+${mes.totalIng.toFixed(2)}</Text>
+                          <View style={{ gap: 1 }}>
+                            <View style={styles.histBarraChip}>
+                              <Ionicons name="arrow-down-circle" size={11} color={Colors.success} />
+                              <Text style={[styles.histBarraText, { color: Colors.success }]}>+${mes.totalIng.toFixed(2)}</Text>
+                            </View>
+                            {tasaBCV && tasaBCV > 0 && (
+                              <Text style={[styles.histBarraText, { color: Colors.success, opacity: 0.7, paddingLeft: 14 }]}>
+                                +{usdABs(mes.totalIng)}
+                              </Text>
+                            )}
                           </View>
-                          <View style={styles.histBarraChip}>
-                            <Ionicons name="arrow-up-circle" size={11} color={Colors.error} />
-                            <Text style={[styles.histBarraText, { color: Colors.error }]}>-${mes.totalGasto.toFixed(2)}</Text>
+                          <View style={{ gap: 1, alignItems: 'flex-end' }}>
+                            <View style={styles.histBarraChip}>
+                              <Ionicons name="arrow-up-circle" size={11} color={Colors.error} />
+                              <Text style={[styles.histBarraText, { color: Colors.error }]}>-${mes.totalGasto.toFixed(2)}</Text>
+                            </View>
+                            {tasaBCV && tasaBCV > 0 && (
+                              <Text style={[styles.histBarraText, { color: Colors.error, opacity: 0.7 }]}>
+                                -{usdABs(mes.totalGasto)}
+                              </Text>
+                            )}
                           </View>
                         </View>
                       </View>
@@ -498,7 +564,7 @@ export default function GastosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return StyleSheet.create({
   safe:        { flex: 1, backgroundColor: Colors.background },
 
   header: {
@@ -533,6 +599,7 @@ const styles = StyleSheet.create({
   },
   balancePeriodo: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600' },
   balanceMonto:   { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
+  balanceBs:      { fontSize: FontSize.md, fontWeight: '700', opacity: 0.75 },
   balanceLabel:   { fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 4 },
 
   barraWrap:   { width: '100%', gap: 6 },
@@ -553,6 +620,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardAlt,
   },
   chipLabel: { fontSize: FontSize.sm, fontWeight: '700' },
+  chipBs:    { fontSize: FontSize.xs, fontWeight: '600', opacity: 0.75 },
 
   // Bloques
   bloque: { gap: Spacing.sm },
@@ -688,4 +756,4 @@ const styles = StyleSheet.create({
   },
   monedaToggleText: { fontSize: FontSize.md, color: '#fff', fontWeight: '800' },
   equivalente:      { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'right', marginTop: -4 },
-});
+}); }

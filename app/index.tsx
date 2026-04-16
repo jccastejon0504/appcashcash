@@ -7,11 +7,44 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize } from '@/constants/theme';
+import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { getItem, setItem } from '@/services/storage';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const CACHE_KEY    = 'bcv_cache';
 const CUATRO_HORAS = 4 * 60 * 60 * 1000;
+
+// Paleta oscura estilo Rial con acento amarillo
+const C = {
+  bg:           '#F5F7FA',
+  card:         '#FFFFFF',
+  cardAlt:      '#EEF1F6',
+  border:       '#DDE4EF',
+  accent:       '#4AADE8',
+  accentDark:   '#2E8BC0',
+  accentMuted:  '#4AADE822',
+  text:         '#0D1B35',
+  textSec:      '#4A6180',
+  textMuted:    '#9AAFC4',
+  blue:         '#4AADE8',
+  success:      '#4CAF50',
+};
+
+// Oscurece un color hex por un factor (0–1)
+const shadeHex = (hex: string, factor: number) => {
+  const r = Math.min(255, Math.round(parseInt(hex.slice(1, 3), 16) * factor));
+  const g = Math.min(255, Math.round(parseInt(hex.slice(3, 5), 16) * factor));
+  const b = Math.min(255, Math.round(parseInt(hex.slice(5, 7), 16) * factor));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
+// Color complementario (opuesto en el círculo cromático)
+const complementHex = (hex: string) => {
+  const r = 255 - parseInt(hex.slice(1, 3), 16);
+  const g = 255 - parseInt(hex.slice(3, 5), 16);
+  const b = 255 - parseInt(hex.slice(5, 7), 16);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
 
 type Moneda = 'usd' | 'eur';
 type Fuente = 'bcv' | 'usdt';
@@ -31,8 +64,10 @@ export default function CalculadoraBCVScreen() {
   const [loading,     setLoading]     = useState(false);
   const [loadingBin,  setLoadingBin]  = useState(false);
   const [error,       setError]       = useState('');
-  const [copiado,     setCopiado]     = useState<'divisa' | 'bs' | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [copiado,       setCopiado]       = useState<'divisa' | 'bs' | null>(null);
+  const [menuVisible,   setMenuVisible]   = useState(false);
+  const [configVisible, setConfigVisible] = useState(false);
+  const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
   const router = useRouter();
 
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
@@ -89,9 +124,7 @@ export default function CalculadoraBCVScreen() {
         fechaStr   = d?.time_last_update_utc ?? '';
       }
       const eurPorUsd = parseFloat(d?.rates?.EUR) || 0;
-      if (tasaUsdVal && eurPorUsd > 0) {
-        tasaEurVal = tasaUsdVal / eurPorUsd;
-      }
+      if (tasaUsdVal && eurPorUsd > 0) tasaEurVal = tasaUsdVal / eurPorUsd;
     } catch { }
 
     if (tasaUsdVal) {
@@ -102,7 +135,7 @@ export default function CalculadoraBCVScreen() {
     } else {
       if (cache) {
         setTasaUSD(cache.usd); setTasaEUR(cache.eur || null); setFecha(cache.fecha);
-        setError('Sin conexión. Tasa guardada.');
+        setError('Sin conexión. Usando tasa guardada.');
       } else {
         setError('No se pudo obtener la tasa BCV.');
       }
@@ -120,7 +153,6 @@ export default function CalculadoraBCVScreen() {
     let tasaVal: number | null = null;
     let fechaStr = new Date().toISOString();
 
-    // 1. pydolarve.org — agrega múltiples fuentes P2P venezolanas
     try {
       const r = await fetchConTimeout('https://pydolarve.org/api/v1/dollar?page=binance');
       const d = await r.json();
@@ -131,7 +163,6 @@ export default function CalculadoraBCVScreen() {
       }
     } catch { }
 
-    // 2. ve.dolarapi.com — API venezolana oficial de tasas
     if (!tasaVal) {
       try {
         const r = await fetchConTimeout('https://ve.dolarapi.com/v1/dolares');
@@ -147,7 +178,6 @@ export default function CalculadoraBCVScreen() {
       } catch { }
     }
 
-    // 3. Binance P2P directo — último recurso
     if (!tasaVal) {
       try {
         const res = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
@@ -176,10 +206,7 @@ export default function CalculadoraBCVScreen() {
     setLoadingBin(false);
   };
 
-  const recargarTodo = (forzar = true) => {
-    fetchTasa(forzar);
-    fetchUSDT(forzar);
-  };
+  const recargarTodo = (forzar = true) => { fetchTasa(forzar); fetchUSDT(forzar); };
 
   const onChangeDivisa = (val: string) => {
     editando.current = 'divisa';
@@ -220,325 +247,573 @@ export default function CalculadoraBCVScreen() {
     await Share.share({ message: msg });
   };
 
-  const colorFuente  = fuente === 'bcv' ? Colors.success : '#F59E0B';
-  const colorDivisa  = fuente === 'usdt' ? '#F59E0B' : (moneda === 'usd' ? Colors.success : '#6366F1');
-  const colorBadge   = fuente === 'bcv' ? (moneda === 'usd' ? '#F59E0B' : '#6366F1') : '#F59E0B';
+  const isLoadingAny = loading || loadingBin;
   const simbolo      = moneda === 'usd' ? '$' : '€';
   const codigoIso    = moneda === 'usd' ? 'USD' : 'EUR';
   const quickMontos  = moneda === 'usd' ? [5, 10, 15, 20, 25, 30] : [5, 10, 20, 50, 100, 200];
-  const isLoadingAny = loading || loadingBin;
-
-  const labelTasa = fuente === 'bcv'
-    ? (moneda === 'usd' ? 'Dólar BCV' : 'Euro ref. BCV')
-    : 'USDT P2P';
   const fechaMostrar = fuente === 'bcv' ? fecha : fechaBinance;
 
+  // Paleta de colores disponibles
+  const PALETA = [
+    { nombre: 'Azul',    color: '#4AADE8' },
+    { nombre: 'Índigo',  color: '#6366F1' },
+    { nombre: 'Violeta', color: '#A78BFA' },
+    { nombre: 'Morado',  color: '#9333EA' },
+    { nombre: 'Rosa',    color: '#EC4899' },
+    { nombre: 'Rojo',    color: '#EF5350' },
+    { nombre: 'Naranja', color: '#F97316' },
+    { nombre: 'Ámbar',   color: '#F59E0B' },
+    { nombre: 'Lima',    color: '#84CC16' },
+    { nombre: 'Verde',   color: '#22C55E' },
+    { nombre: 'Esme',    color: '#10B981' },
+    { nombre: 'Teal',    color: '#14B8A6' },
+    { nombre: 'Cian',    color: '#06B6D4' },
+    { nombre: 'Celeste', color: '#38BDF8' },
+  ];
+
+  // Paleta de colores de texto
+  const PALETA_TEXTO = temaOscuro ? [
+    { nombre: 'Auto',    color: '' },
+    { nombre: 'Blanco',  color: '#FFFFFF' },
+    { nombre: 'Crema',   color: '#F5F0E8' },
+    { nombre: 'Gris cla',color: '#D1D9E6' },
+    { nombre: 'Plata',   color: '#B0BEC5' },
+    { nombre: 'Azul cla',color: '#A8C8E8' },
+    { nombre: 'Cian',    color: '#80DEEA' },
+    { nombre: 'Verde cla',color: '#A5D6A7' },
+    { nombre: 'Lima',    color: '#CDDC39' },
+    { nombre: 'Dorado',  color: '#F5C842' },
+    { nombre: 'Naranja', color: '#FFAB76' },
+    { nombre: 'Rosa',    color: '#F48FB1' },
+    { nombre: 'Violeta', color: '#CE93D8' },
+    { nombre: 'Salmón',  color: '#EF9A9A' },
+  ] : [
+    { nombre: 'Auto',    color: '' },
+    { nombre: 'Negro',   color: '#0D1B35' },
+    { nombre: 'Gris osc',color: '#2D3748' },
+    { nombre: 'Slate',   color: '#4A5568' },
+    { nombre: 'Grafito', color: '#37474F' },
+    { nombre: 'Índigo',  color: '#3730A3' },
+    { nombre: 'Azul',    color: '#1565C0' },
+    { nombre: 'Verde',   color: '#2E7D32' },
+    { nombre: 'Teal',    color: '#00695C' },
+    { nombre: 'Marrón',  color: '#78350F' },
+    { nombre: 'Rojo',    color: '#B71C1C' },
+    { nombre: 'Morado',  color: '#6A1B9A' },
+    { nombre: 'Rosa osc',color: '#880E4F' },
+    { nombre: 'Naranja', color: '#E65100' },
+  ];
+
+  const eurColor  = shadeHex(T.accent, 0.72);
+  const usdtColor = shadeHex(T.accent, 0.50);
+  const bsColor   = colorBs || complementHex(T.accent);
+  const fuenteColor  = fuente === 'usdt' ? usdtColor : (moneda === 'eur' ? eurColor : T.accent);
+  const monedaColor  = fuente === 'usdt' ? usdtColor : (moneda === 'eur' ? eurColor : T.accent);
+
+  const formatFecha = (f: string) => {
+    try { return new Date(f).toLocaleDateString('es-VE', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    catch { return f; }
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Calculadora BCV</Text>
-        <TouchableOpacity onPress={() => recargarTodo(true)} style={styles.iconBtn} disabled={isLoadingAny}>
+    <SafeAreaView style={[s.safe, { backgroundColor: T.background }]}>
+
+      {/* ── Header ── */}
+      <View style={[s.header, { backgroundColor: T.background }]}>
+        <Text style={[s.headerTitle, { color: T.text }]}>Cash Cash</Text>
+        <TouchableOpacity onPress={() => recargarTodo(true)} style={[s.iconBtn, { backgroundColor: T.card, borderColor: T.border }]} disabled={isLoadingAny}>
           {isLoadingAny
-            ? <ActivityIndicator size="small" color="#F59E0B" />
-            : <Ionicons name="refresh-outline" size={20} color="#F59E0B" />}
+            ? <ActivityIndicator size="small" color={T.accent} />
+            : <Ionicons name="refresh-outline" size={20} color={T.accent} />}
         </TouchableOpacity>
-        <TouchableOpacity onPress={compartir} style={styles.iconBtn}>
-          <Ionicons name="share-social-outline" size={20} color={Colors.blue} />
+        <TouchableOpacity onPress={compartir} style={[s.iconBtn, { backgroundColor: T.card, borderColor: T.border }]}>
+          <Ionicons name="share-social-outline" size={20} color={T.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn}>
-          <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
+        <TouchableOpacity onPress={() => setConfigVisible(true)} style={[s.iconBtn, { backgroundColor: T.card, borderColor: T.border }]}>
+          <Ionicons name="settings-outline" size={20} color={T.text} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setMenuVisible(true)} style={[s.iconBtn, { backgroundColor: T.card, borderColor: T.border }]}>
+          <Ionicons name="ellipsis-vertical" size={20} color={T.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Menú desplegable */}
+      {/* ── Modal Configuración UI ── */}
+      <Modal transparent visible={configVisible} animationType="slide" onRequestClose={() => setConfigVisible(false)}>
+        <Pressable style={s.menuOverlay} onPress={() => setConfigVisible(false)}>
+          <Pressable style={[s.configSheet, { backgroundColor: T.card, borderColor: T.border }]} onPress={() => {}}>
+            <View style={[s.configHandle, { backgroundColor: T.border }]} />
+            <Text style={[s.configTitle, { color: T.text }]}>Apariencia</Text>
+
+            {/* Toggle claro / oscuro */}
+            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>TEMA</Text>
+            <View style={[s.temaRow, { backgroundColor: T.cardAlt, borderColor: T.border }]}>
+              <TouchableOpacity
+                style={[s.temaPill, !temaOscuro && { backgroundColor: T.accent }]}
+                onPress={() => guardarTema(false)}
+              >
+                <Ionicons name="sunny-outline" size={16} color={!temaOscuro ? '#fff' : T.textMuted} />
+                <Text style={[s.temaPillText, { color: !temaOscuro ? '#fff' : T.textMuted }]}>Claro</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.temaPill, temaOscuro && { backgroundColor: T.accent }]}
+                onPress={() => guardarTema(true)}
+              >
+                <Ionicons name="moon-outline" size={16} color={temaOscuro ? '#fff' : T.textMuted} />
+                <Text style={[s.temaPillText, { color: temaOscuro ? '#fff' : T.textMuted }]}>Oscuro</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Selector de color acento */}
+            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE ACENTO</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.paletaRow}>
+              {PALETA.map((p) => {
+                const seleccionado = colorAccent === p.color;
+                return (
+                  <TouchableOpacity
+                    key={p.color}
+                    style={s.swatchWrap}
+                    onPress={() => guardarColor(p.color)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[s.swatch, { backgroundColor: p.color }, seleccionado && s.swatchSelected]}>
+                      {seleccionado && <Ionicons name="checkmark" size={18} color="#fff" />}
+                    </View>
+                    <Text style={[s.swatchLabel, { color: seleccionado ? p.color : T.textMuted }]}>
+                      {p.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Selector de color de texto */}
+            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE TEXTO</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.paletaRow}>
+              {PALETA_TEXTO.map((p) => {
+                const activo = colorTexto === p.color;
+                const bgColor = p.color || (temaOscuro ? '#FFFFFF' : '#0D1B35');
+                return (
+                  <TouchableOpacity
+                    key={p.nombre}
+                    style={s.swatchWrap}
+                    onPress={() => guardarTexto(p.color)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[
+                      s.swatch,
+                      { backgroundColor: bgColor, borderWidth: 1, borderColor: T.border },
+                      activo && s.swatchSelected,
+                    ]}>
+                      {p.color === '' && (
+                        <Ionicons name="sync-outline" size={20} color={temaOscuro ? '#0A1628' : '#F5F7FA'} />
+                      )}
+                      {activo && p.color !== '' && <Ionicons name="checkmark" size={18} color={temaOscuro ? '#0A1628' : '#fff'} />}
+                    </View>
+                    <Text style={[s.swatchLabel, { color: activo ? T.accent : T.textMuted }]}>
+                      {p.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Selector de color Bs */}
+            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE Bs / BOLÍVARES</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.paletaRow}>
+              {[
+                { nombre: 'Auto',    color: '' },
+                { nombre: 'Azul',    color: '#4AADE8' },
+                { nombre: 'Índigo',  color: '#6366F1' },
+                { nombre: 'Violeta', color: '#A78BFA' },
+                { nombre: 'Morado',  color: '#9333EA' },
+                { nombre: 'Rosa',    color: '#EC4899' },
+                { nombre: 'Rojo',    color: '#EF5350' },
+                { nombre: 'Naranja', color: '#F97316' },
+                { nombre: 'Ámbar',   color: '#F59E0B' },
+                { nombre: 'Lima',    color: '#84CC16' },
+                { nombre: 'Verde',   color: '#22C55E' },
+                { nombre: 'Esme',    color: '#10B981' },
+                { nombre: 'Teal',    color: '#14B8A6' },
+                { nombre: 'Cian',    color: '#06B6D4' },
+                { nombre: 'Celeste', color: '#38BDF8' },
+              ].map((p) => {
+                const activo = colorBs === p.color;
+                const bgColor = p.color || bsColor;
+                return (
+                  <TouchableOpacity
+                    key={p.nombre}
+                    style={s.swatchWrap}
+                    onPress={() => guardarBs(p.color)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[
+                      s.swatch,
+                      { backgroundColor: bgColor },
+                      activo && s.swatchSelected,
+                    ]}>
+                      {p.color === '' && <Ionicons name="sync-outline" size={20} color="#fff" />}
+                      {activo && p.color !== '' && <Ionicons name="checkmark" size={18} color="#fff" />}
+                    </View>
+                    <Text style={[s.swatchLabel, { color: activo ? T.accent : T.textMuted }]}>
+                      {p.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[s.configCerrar, { backgroundColor: T.cardAlt, borderColor: T.border }]}
+              onPress={() => setConfigVisible(false)}
+            >
+              <Text style={[s.configCerrarText, { color: T.textSecondary }]}>Cerrar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Menú ── */}
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuCard}>
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); router.push('/listado'); }}>
-              <Ionicons name="cart-outline" size={18} color={Colors.success} />
-              <Text style={[styles.menuItemText, { color: Colors.success }]}>Compras / Presupuesto</Text>
+        <Pressable style={s.menuOverlay} onPress={() => setMenuVisible(false)}>
+          <View style={[s.menuCard, { backgroundColor: T.card, borderColor: T.border }]}>
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/listado'); }}>
+              <Ionicons name="cart-outline" size={18} color={T.success} />
+              <Text style={[s.menuItemText, { color: T.success }]}>Compras / Presupuesto</Text>
             </TouchableOpacity>
-            <View style={styles.menuDivider} />
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); router.push('/comparacion'); }}>
-              <Ionicons name="bar-chart-outline" size={18} color="#F59E0B" />
-              <Text style={[styles.menuItemText, { color: '#F59E0B' }]}>Comercio / Productos</Text>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/comparacion'); }}>
+              <Ionicons name="bar-chart-outline" size={18} color={T.accent} />
+              <Text style={[s.menuItemText, { color: T.accent }]}>Comercio / Productos</Text>
             </TouchableOpacity>
-            <View style={styles.menuDivider} />
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); router.push({ pathname: '/comparacion', params: { vista: 'comparar' } }); }}>
-              <Ionicons name="podium-outline" size={18} color={Colors.blue} />
-              <Text style={[styles.menuItemText, { color: Colors.blue }]}>Comparar precios</Text>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate({ pathname: '/comparacion', params: { vista: 'comparar' } }); }}>
+              <Ionicons name="podium-outline" size={18} color={T.blue} />
+              <Text style={[s.menuItemText, { color: T.blue }]}>Comparar precios</Text>
             </TouchableOpacity>
-            <View style={styles.menuDivider} />
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); router.push('/gastos'); }}>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/gastos'); }}>
               <Ionicons name="wallet-outline" size={18} color="#A78BFA" />
-              <Text style={[styles.menuItemText, { color: '#A78BFA' }]}>Ingresos y Gastos</Text>
+              <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Ingresos y Gastos</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        {/* Toggle Fuente: BCV / Binance */}
-        <View style={styles.fuenteRow}>
-          {(['bcv', 'usdt'] as Fuente[]).map((f) => {
-            const activo = fuente === f;
-            const color  = f === 'bcv' ? Colors.success : '#F59E0B';
-            return (
-              <TouchableOpacity
-                key={f}
-                style={[styles.fuenteBtn, { borderColor: activo ? color : Colors.border, backgroundColor: activo ? color + '22' : Colors.cardAlt }]}
-                onPress={() => { setFuente(f); if (f === 'usdt') setMoneda('usd'); reiniciar(); }}
-              >
-                <Ionicons
-                  name={f === 'bcv' ? 'business-outline' : 'logo-bitcoin'}
-                  size={16}
-                  color={activo ? color : Colors.textSecondary}
-                />
-                <Text style={[styles.fuenteLabel, { color: activo ? color : Colors.textSecondary }]}>
-                  {f === 'bcv' ? 'BCV' : 'USDT'}
-                </Text>
-                {activo && <View style={[styles.fuenteDot, { backgroundColor: color }]} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Toggle USD / EUR (solo para BCV) */}
-        {fuente === 'bcv' && (
-          <View style={styles.monedaRow}>
-            {(['usd', 'eur'] as Moneda[]).map((m) => {
-              const activo = moneda === m;
-              const color  = m === 'usd' ? Colors.success : '#6366F1';
-              return (
-                <TouchableOpacity
-                  key={m}
-                  style={[styles.monedaBtn, { borderColor: activo ? color : Colors.border, backgroundColor: activo ? color + '22' : Colors.cardAlt }]}
-                  onPress={() => { setMoneda(m); reiniciar(); }}
-                >
-                  <Text style={[styles.monedaSym, { color: activo ? color : Colors.textSecondary }]}>
-                    {m === 'usd' ? '$' : '€'}
-                  </Text>
-                  <Text style={[styles.monedaLabel, { color: activo ? color : Colors.textSecondary }]}>
-                    {m === 'usd' ? 'Dólar' : 'Euro'}
-                  </Text>
-                  {activo && <View style={[styles.monedaDot, { backgroundColor: color }]} />}
-                </TouchableOpacity>
-              );
-            })}
+        {/* ── Tarjeta de tasa principal ── */}
+        <View style={[s.rateCard, { backgroundColor: fuenteColor }]}>
+          <View style={s.rateCardTop}>
+            <Text style={s.rateCardLabel}>Tasa actual</Text>
+            {fechaMostrar ? <Text style={s.rateCardDate}>{formatFecha(fechaMostrar)}</Text> : null}
           </View>
-        )}
 
-        {/* Badge tasa */}
-        <View style={[styles.tasaBadge, { backgroundColor: colorBadge + '22', borderColor: colorBadge + '55' }]}>
-          <Ionicons name="swap-horizontal-outline" size={16} color={colorBadge} />
           {tasa ? (
-            <Text style={[styles.tasaText, { color: colorBadge }]}>
-              {labelTasa}  ·  Bs {tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <Text style={s.rateCardValue}>
+              Bs {tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
           ) : (
-            <Text style={[styles.tasaText, { color: colorBadge }]}>
-              {isLoadingAny ? 'Consultando tasa...' : `Tasa ${fuente === 'usdt' ? 'USDT' : codigoIso} no disponible`}
+            <Text style={s.rateCardValue}>
+              {isLoadingAny ? 'Cargando...' : '---'}
             </Text>
           )}
-        </View>
-        {fechaMostrar ? (
-          <Text style={styles.tasaFecha}>
-            {(() => {
-              try { return new Date(fechaMostrar).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
-              catch { return fechaMostrar; }
-            })()}
-          </Text>
-        ) : null}
-        {error ? (
-          <View style={styles.errorRow}>
-            <Ionicons name="warning-outline" size={13} color={Colors.warning} />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
 
-        {/* Campos conversión */}
-        <View style={styles.convCard}>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldLabel}>
-              <Text style={[styles.fieldSymbol, { color: colorDivisa }]}>{fuente === 'usdt' ? '₮' : simbolo}</Text>
-              <Text style={styles.fieldCurrency}>{fuente === 'usdt' ? 'USDT' : codigoIso}</Text>
+          {/* Toggle fuente + moneda */}
+          <View style={s.rateToggles}>
+            <TouchableOpacity
+              style={[s.togglePill, fuente === 'bcv' && moneda === 'usd' && s.togglePillActive]}
+              onPress={() => { setFuente('bcv'); setMoneda('usd'); reiniciar(); }}
+            >
+              <Text style={[s.togglePillText, fuente === 'bcv' && moneda === 'usd' && s.togglePillTextActive]}>$ USD</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.togglePill, fuente === 'bcv' && moneda === 'eur' && s.togglePillActive]}
+              onPress={() => { setFuente('bcv'); setMoneda('eur'); reiniciar(); }}
+            >
+              <Text style={[s.togglePillText, fuente === 'bcv' && moneda === 'eur' && s.togglePillTextActive]}>€ EUR</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.togglePill, fuente === 'usdt' && s.togglePillActive]}
+              onPress={() => { setFuente('usdt'); setMoneda('usd'); reiniciar(); }}
+            >
+              <Text style={[s.togglePillText, fuente === 'usdt' && s.togglePillTextActive]}>₮ USDT</Text>
+            </TouchableOpacity>
+          </View>
+
+          {error ? (
+            <View style={s.errorRow}>
+              <Ionicons name="warning-outline" size={12} color="#000" />
+              <Text style={s.errorText}>{error}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* ── Tarjeta de conversión ── */}
+        <View style={[s.convCard, { backgroundColor: T.card, borderColor: T.border }]}>
+
+          {/* Campo divisa */}
+          <View style={s.fieldRow}>
+            <View style={s.fieldLabelWrap}>
+              <Text style={[s.fieldSym, { color: monedaColor }]}>{fuente === 'usdt' ? '₮' : simbolo}</Text>
+              <Text style={[s.fieldCode, { color: T.textMuted }]}>{fuente === 'usdt' ? 'USDT' : codigoIso}</Text>
             </View>
             <TextInput
-              style={[styles.fieldInput, { color: colorDivisa }]}
+              style={[s.fieldInput, { color: monedaColor }]}
               value={valor} onChangeText={onChangeDivisa}
               keyboardType="decimal-pad" placeholder="0.00"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={T.textMuted}
             />
-            <TouchableOpacity style={[styles.copyBtn, copiado === 'divisa' && styles.copyBtnDone]} onPress={() => copiar(valor, 'divisa')} disabled={!valor}>
-              <Ionicons name={copiado === 'divisa' ? 'checkmark-outline' : 'copy-outline'} size={18} color={copiado === 'divisa' ? Colors.success : valor ? Colors.textSecondary : Colors.border} />
+            <TouchableOpacity
+              style={[s.copyBtn, { backgroundColor: T.cardAlt, borderColor: T.border }, copiado === 'divisa' && s.copyBtnDone]}
+              onPress={() => copiar(valor, 'divisa')} disabled={!valor}
+            >
+              <Ionicons
+                name={copiado === 'divisa' ? 'checkmark-outline' : 'copy-outline'}
+                size={16}
+                color={copiado === 'divisa' ? T.success : valor ? T.textSecondary : T.textMuted}
+              />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.fieldDivider}>
-            <View style={styles.fieldDividerLine} />
-            <View style={[styles.swapIcon, { backgroundColor: colorBadge + '22', borderColor: colorBadge + '44' }]}>
-              <Ionicons name="swap-vertical" size={16} color={colorBadge} />
+          {/* Divisor swap */}
+          <View style={s.swapRow}>
+            <View style={[s.swapLine, { backgroundColor: T.border }]} />
+            <View style={[s.swapCircle, { borderColor: fuenteColor + '55', backgroundColor: T.cardAlt }]}>
+              <Ionicons name="swap-vertical" size={15} color={fuenteColor} />
             </View>
-            <View style={styles.fieldDividerLine} />
+            <View style={[s.swapLine, { backgroundColor: T.border }]} />
           </View>
 
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldLabel}>
-              <Text style={[styles.fieldSymbol, { color: Colors.blue }]}>Bs</Text>
-              <Text style={styles.fieldCurrency}>VES</Text>
+          {/* Campo Bs */}
+          <View style={s.fieldRow}>
+            <View style={s.fieldLabelWrap}>
+              <Text style={[s.fieldSym, { color: bsColor }]}>Bs</Text>
+              <Text style={[s.fieldCode, { color: T.textMuted }]}>VES</Text>
             </View>
             <TextInput
-              style={[styles.fieldInput, { color: Colors.blue }]}
+              style={[s.fieldInput, { color: bsColor }]}
               value={bs} onChangeText={onChangeBs}
               keyboardType="decimal-pad" placeholder="0.00"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={T.textMuted}
             />
-            <TouchableOpacity style={[styles.copyBtn, copiado === 'bs' && styles.copyBtnDone]} onPress={() => copiar(bs, 'bs')} disabled={!bs}>
-              <Ionicons name={copiado === 'bs' ? 'checkmark-outline' : 'copy-outline'} size={18} color={copiado === 'bs' ? Colors.success : bs ? Colors.textSecondary : Colors.border} />
+            <TouchableOpacity
+              style={[s.copyBtn, { backgroundColor: T.cardAlt, borderColor: T.border }, copiado === 'bs' && s.copyBtnDone]}
+              onPress={() => copiar(bs, 'bs')} disabled={!bs}
+            >
+              <Ionicons
+                name={copiado === 'bs' ? 'checkmark-outline' : 'copy-outline'}
+                size={16}
+                color={copiado === 'bs' ? T.success : bs ? T.textSecondary : T.textMuted}
+              />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Botones */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.btnReiniciar} onPress={reiniciar}>
-            <Ionicons name="refresh-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.btnReiniciarText}>Reiniciar</Text>
+        {/* ── Botones acción ── */}
+        <View style={s.actionsRow}>
+          <TouchableOpacity style={[s.btnSecondary, { backgroundColor: T.card, borderColor: T.border }]} onPress={reiniciar}>
+            <Ionicons name="refresh-outline" size={17} color={T.textSecondary} />
+            <Text style={[s.btnSecondaryText, { color: T.textSecondary }]}>Reiniciar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnCompartir} onPress={compartir}>
-            <Ionicons name="share-social-outline" size={18} color="#fff" />
-            <Text style={styles.btnCompartirText}>Compartir</Text>
+          <TouchableOpacity style={[s.btnPrimary, { backgroundColor: fuenteColor }]} onPress={compartir}>
+            <Ionicons name="share-social-outline" size={17} color="#fff" />
+            <Text style={s.btnPrimaryText}>Compartir</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Rápidos divisa */}
-        <View style={[styles.quickCard, { borderColor: colorBadge + '44' }]}>
-          <Text style={[styles.quickTitle, { color: colorBadge }]}>
+        {/* ── Rápidos divisa ── */}
+        <View style={s.section}>
+          <Text style={[s.sectionTitle, { color: fuenteColor }]}>
             Rápidos en {fuente === 'usdt' ? '₮ USDT' : simbolo}
           </Text>
-          <View style={styles.quickGrid}>
+          <View style={s.quickGrid}>
             {quickMontos.map((v) => (
-              <TouchableOpacity key={v} style={[styles.quickBtn, { borderColor: colorBadge + '33' }]} onPress={() => onChangeDivisa(v.toString())}>
-                <Text style={styles.quickBtnMain}>{fuente === 'usdt' ? '₮' : simbolo}{v}</Text>
-                {tasa ? <Text style={[styles.quickBtnSub, { color: colorBadge }]}>Bs {(v * tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</Text> : null}
+              <TouchableOpacity key={v} style={[s.quickBtn, { backgroundColor: T.card, borderColor: T.border }]} onPress={() => onChangeDivisa(v.toString())}>
+                <Text style={[s.quickMain, { color: T.text }]}>{fuente === 'usdt' ? '₮' : simbolo}{v}</Text>
+                {tasa ? (
+                  <Text style={[s.quickSub, { color: fuenteColor }]}>
+                    {(v * tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
+                  </Text>
+                ) : null}
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Rápidos Bs */}
-        <View style={[styles.quickCard, { borderColor: Colors.blue + '44' }]}>
-          <Text style={[styles.quickTitle, { color: Colors.blue }]}>Rápidos en Bs</Text>
-          <View style={styles.quickGrid}>
+        {/* ── Rápidos Bs ── */}
+        <View style={s.section}>
+          <Text style={[s.sectionTitle, { color: bsColor }]}>Rápidos en Bs</Text>
+          <View style={s.quickGrid}>
             {[500, 1000, 2000, 5000, 10000, 20000].map((v) => (
-              <TouchableOpacity key={v} style={[styles.quickBtn, { borderColor: Colors.blue + '44' }]} onPress={() => onChangeBs(v.toString())}>
-                <Text style={styles.quickBtnMain}>{v.toLocaleString('es-VE')} Bs</Text>
-                {tasa ? <Text style={[styles.quickBtnSub, { color: Colors.blue }]}>{fuente === 'usdt' ? '₮' : simbolo}{(v / tasa).toFixed(2)}</Text> : null}
+              <TouchableOpacity key={v} style={[s.quickBtn, { backgroundColor: T.card, borderColor: T.border }]} onPress={() => onChangeBs(v.toString())}>
+                <Text style={[s.quickMain, { color: T.text }]}>{v.toLocaleString('es-VE')} Bs</Text>
+                {tasa ? (
+                  <Text style={[s.quickSub, { color: bsColor }]}>
+                    {fuente === 'usdt' ? '₮' : simbolo}{(v / tasa).toFixed(2)}
+                  </Text>
+                ) : null}
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.background },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+
+  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     paddingHorizontal: Spacing.lg, paddingTop: Spacing.xxl, paddingBottom: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.card,
+    backgroundColor: C.bg,
   },
-  headerTitle: { flex: 1, fontSize: FontSize.xl, fontWeight: '800', color: Colors.text },
+  headerTitle: { flex: 1, fontSize: FontSize.xl, fontWeight: '800', color: C.text },
   iconBtn: {
-    backgroundColor: Colors.cardAlt, borderRadius: Radius.sm,
-    padding: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
+    padding: 8, borderRadius: Radius.md,
+    backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
   },
-  body: { padding: Spacing.lg, gap: Spacing.md },
-  fuenteRow: { flexDirection: 'row', gap: Spacing.sm },
-  fuenteBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1.5, gap: 6,
+
+  // Menú
+  menuOverlay: { flex: 1 },
+  menuCard: {
+    position: 'absolute', top: 90, right: Spacing.lg,
+    borderRadius: Radius.md, borderWidth: 1,
+    minWidth: 210, elevation: 12,
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
   },
-  fuenteLabel: { fontSize: FontSize.sm, fontWeight: '800' },
-  fuenteDot:   { width: 6, height: 6, borderRadius: 3, marginLeft: 2 },
-  monedaRow: { flexDirection: 'row', gap: Spacing.sm },
-  monedaBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 6, borderRadius: Radius.md, borderWidth: 1.5, gap: 2,
+
+  // Config sheet
+  configSheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, padding: Spacing.lg, paddingBottom: 40, gap: Spacing.md,
   },
-  monedaSym:   { fontSize: 18, fontWeight: '800' },
-  monedaLabel: { fontSize: FontSize.xs, fontWeight: '700' },
-  monedaDot:   { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
-  tasaBadge: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10,
-    borderWidth: 1, alignSelf: 'stretch',
+  configHandle:      { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
+  configTitle:       { fontSize: FontSize.xl, fontWeight: '800' },
+  configSectionLabel:{ fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
+
+  // Toggle tema
+  temaRow: {
+    flexDirection: 'row', borderRadius: Radius.lg,
+    borderWidth: 1, padding: 4, gap: 4,
   },
-  tasaText:  { fontSize: FontSize.md, fontWeight: '800' },
-  tasaFecha: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: -6, textAlign: 'center' },
-  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  errorText: { fontSize: FontSize.xs, color: Colors.warning },
+  temaPill: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: Radius.md,
+  },
+  temaPillText: { fontSize: FontSize.sm, fontWeight: '700' },
+
+  // Swatches
+  paletaRow:   { paddingVertical: 4, gap: 12, paddingHorizontal: 2 },
+  swatchWrap:  { alignItems: 'center', gap: 6 },
+  swatch: {
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  swatchSelected: {
+    borderWidth: 3, borderColor: '#fff',
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  swatchLabel: { fontSize: FontSize.xs, fontWeight: '700' },
+
+  // Preview
+  previewBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 12,
+  },
+  previewText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
+
+  configCerrar: {
+    borderRadius: Radius.lg, paddingVertical: 14,
+    alignItems: 'center', borderWidth: 1,
+  },
+  configCerrarText: { fontSize: FontSize.md, fontWeight: '700' },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: Spacing.lg, paddingVertical: 14,
+  },
+  menuItemText: { fontSize: FontSize.md, fontWeight: '600' },
+  menuDivider:  { height: 1, backgroundColor: C.border },
+
+  // Body
+  body: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.md },
+
+  // Tarjeta tasa
+  rateCard: {
+    borderRadius: Radius.xl, padding: Spacing.lg, gap: 6,
+  },
+  rateCardTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rateCardLabel:{ fontSize: FontSize.sm, fontWeight: '700', color: '#ffffff99' },
+  rateCardDate: { fontSize: FontSize.xs, fontWeight: '600', color: '#ffffff77' },
+  rateCardValue:{ fontSize: 38, fontWeight: '900', color: '#fff', letterSpacing: -1 },
+  rateToggles:  { flexDirection: 'row', gap: 8, marginTop: 8 },
+  togglePill: {
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: Radius.full,
+    backgroundColor: '#ffffff18',
+  },
+  togglePillActive: { backgroundColor: '#ffffffDD' },
+  togglePillText:   { fontSize: FontSize.sm, fontWeight: '700', color: '#ffffff99' },
+  togglePillTextActive: { color: '#000' },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  errorText: { fontSize: FontSize.xs, color: '#fff', fontWeight: '600' },
+
+  // Conversión
   convCard: {
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    backgroundColor: C.card, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: C.border, overflow: 'hidden',
   },
   fieldRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md,
   },
-  fieldLabel:    { alignItems: 'center', width: 44 },
-  fieldSymbol:   { fontSize: FontSize.xxl, fontWeight: '800' },
-  fieldCurrency: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
-  fieldInput:    { flex: 1, fontSize: 28, fontWeight: '800', textAlign: 'right' },
-  copyBtn:       { padding: 8, borderRadius: Radius.sm, backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border },
-  copyBtnDone:   { backgroundColor: Colors.success + '22', borderColor: Colors.success + '55' },
-  fieldDivider:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg },
-  fieldDividerLine:  { flex: 1, height: 1, backgroundColor: Colors.border },
-  swapIcon: { borderRadius: Radius.full, padding: 6, marginHorizontal: Spacing.sm, borderWidth: 1 },
+  fieldLabelWrap: { alignItems: 'center', width: 46 },
+  fieldSym:  { fontSize: FontSize.xxl, fontWeight: '900' },
+  fieldCode: { fontSize: FontSize.xs, color: C.textMuted, fontWeight: '600' },
+  fieldInput:{ flex: 1, fontSize: 30, fontWeight: '800', textAlign: 'right', color: C.text },
+  copyBtn: {
+    padding: 8, borderRadius: Radius.sm,
+    backgroundColor: C.cardAlt, borderWidth: 1, borderColor: C.border,
+  },
+  copyBtnDone: { backgroundColor: C.success + '22', borderColor: C.success + '55' },
+  swapRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg },
+  swapLine:  { flex: 1, height: 1, backgroundColor: C.border },
+  swapCircle:{
+    borderRadius: Radius.full, padding: 6,
+    marginHorizontal: 8, borderWidth: 1,
+    backgroundColor: C.cardAlt,
+  },
+
+  // Acciones
   actionsRow: { flexDirection: 'row', gap: Spacing.sm },
-  btnReiniciar: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: Colors.card, borderRadius: Radius.md,
-    paddingVertical: 13, borderWidth: 1, borderColor: Colors.border,
+  btnSecondary: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    backgroundColor: C.card, borderRadius: Radius.lg,
+    paddingVertical: 14, borderWidth: 1, borderColor: C.border,
   },
-  btnReiniciarText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
-  btnCompartir: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: Colors.blue, borderRadius: Radius.md, paddingVertical: 13,
+  btnSecondaryText: { fontSize: FontSize.md, fontWeight: '700', color: C.textSec },
+  btnPrimary: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: Radius.lg, paddingVertical: 14,
   },
-  btnCompartirText: { fontSize: FontSize.md, fontWeight: '700', color: '#fff' },
-  quickCard: {
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    padding: Spacing.md, borderWidth: 1, gap: Spacing.sm,
-  },
-  quickTitle: { fontSize: FontSize.sm, fontWeight: '800' },
-  quickGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  btnPrimaryText: { fontSize: FontSize.md, fontWeight: '800', color: '#fff' },
+
+  // Rápidos
+  section: { gap: 10 },
+  sectionTitle: { fontSize: FontSize.sm, fontWeight: '800' },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   quickBtn: {
-    flex: 1, minWidth: '28%', backgroundColor: Colors.cardAlt,
-    borderRadius: Radius.md, borderWidth: 1,
-    paddingVertical: Spacing.sm, alignItems: 'center', gap: 2,
+    flex: 1, minWidth: '28%',
+    backgroundColor: C.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: C.border,
+    paddingVertical: 10, alignItems: 'center', gap: 3,
   },
-  quickBtnMain: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
-  quickBtnSub:  { fontSize: FontSize.xs, fontWeight: '600' },
-  menuOverlay:  { flex: 1 },
-  menuCard: {
-    position: 'absolute', top: 90, right: Spacing.lg,
-    backgroundColor: Colors.card, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.border,
-    minWidth: 200, elevation: 8,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
-  },
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: Spacing.lg, paddingVertical: 14,
-  },
-  menuItemText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
-  menuDivider:  { height: 1, backgroundColor: Colors.border },
+  quickMain: { fontSize: FontSize.md, fontWeight: '800', color: C.text },
+  quickSub:  { fontSize: FontSize.xs, fontWeight: '600' },
 });
