@@ -54,7 +54,8 @@ export default function CalculadoraBCVScreen() {
   const [fuente,   setFuente]   = useState<Fuente>('bcv');
   const [valor,    setValor]    = useState('');
   const [bs,       setBs]       = useState('');
-  const editando = useRef<'divisa' | 'bs' | null>(null);
+  const editando     = useRef<'divisa' | 'bs' | null>(null);
+  const configScroll = useRef<ScrollView>(null);
 
   const [tasaUSD,     setTasaUSD]     = useState<number | null>(null);
   const [tasaEUR,     setTasaEUR]     = useState<number | null>(null);
@@ -339,10 +340,12 @@ export default function CalculadoraBCVScreen() {
 
       {/* ── Modal Configuración UI ── */}
       <Modal transparent visible={configVisible} animationType="slide" onRequestClose={() => setConfigVisible(false)}>
-        <Pressable style={s.menuOverlay} onPress={() => setConfigVisible(false)}>
-          <Pressable style={[s.configSheet, { backgroundColor: T.card, borderColor: T.border }]} onPress={() => {}}>
+        <View style={s.menuOverlay}>
+          <Pressable style={{ flex: 1 }} onPress={() => setConfigVisible(false)} />
+          <View style={[s.configSheet, { backgroundColor: T.card, borderColor: T.border }]}>
             <View style={[s.configHandle, { backgroundColor: T.border }]} />
             <Text style={[s.configTitle, { color: T.text }]}>Apariencia</Text>
+            <ScrollView ref={configScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md }}>
 
             {/* Toggle claro / oscuro */}
             <Text style={[s.configSectionLabel, { color: T.textMuted }]}>TEMA</Text>
@@ -363,8 +366,8 @@ export default function CalculadoraBCVScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Selector de color acento */}
-            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE ACENTO</Text>
+            {/* Selector de color tema */}
+            <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE TEMA</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.paletaRow}>
               {PALETA.map((p) => {
                 const seleccionado = colorAccent === p.color;
@@ -462,14 +465,52 @@ export default function CalculadoraBCVScreen() {
               })}
             </ScrollView>
 
+            {/* Guía de módulos */}
+            <View style={[s.guiaCard, { backgroundColor: T.cardAlt, borderColor: T.border }]}>
+              <Text style={[s.guiaTitulo, { color: T.text }]}>¿Cómo funciona cada módulo?</Text>
+
+              <View style={s.guiaItem}>
+                <Ionicons name="calculator-outline" size={18} color={T.accent} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Inicio — Calculadora</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>Convierte entre dólares y bolívares usando la tasa BCV o USDT P2P en tiempo real. También convierte euros.</Text>
+                </View>
+              </View>
+
+              <View style={s.guiaItem}>
+                <Ionicons name="cart-outline" size={18} color={T.success} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Compras — Lista de mercado</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>Arma tu lista de compras, ve el precio más económico por producto y cuánto gastarías en cada local. Puedes agendar listas por fecha.</Text>
+                </View>
+              </View>
+
+              <View style={s.guiaItem}>
+                <Ionicons name="storefront-outline" size={18} color={T.accent} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Comercio — Comparación de precios</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>Registra productos con su precio en cada local. Compara quién vende más barato y comparte los datos con tu familia.</Text>
+                </View>
+              </View>
+
+              <View style={s.guiaItem}>
+                <Ionicons name="wallet-outline" size={18} color={T.blue} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Cartera — Ingresos y gastos</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>Registra tus ingresos y gastos en dólares o bolívares. Consulta el balance por semana, mes o año.</Text>
+                </View>
+              </View>
+            </View>
+
             <TouchableOpacity
               style={[s.configCerrar, { backgroundColor: T.cardAlt, borderColor: T.border }]}
               onPress={() => setConfigVisible(false)}
             >
               <Text style={[s.configCerrarText, { color: T.textSecondary }]}>Cerrar</Text>
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* ── Menú ── */}
@@ -478,12 +519,12 @@ export default function CalculadoraBCVScreen() {
           <View style={[s.menuCard, { backgroundColor: T.card, borderColor: T.border }]}>
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/listado'); }}>
               <Ionicons name="cart-outline" size={18} color={T.success} />
-              <Text style={[s.menuItemText, { color: T.success }]}>Compras / Presupuesto</Text>
+              <Text style={[s.menuItemText, { color: T.success }]}>Comprar / Presupuesto</Text>
             </TouchableOpacity>
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/comparacion'); }}>
               <Ionicons name="bar-chart-outline" size={18} color={T.accent} />
-              <Text style={[s.menuItemText, { color: T.accent }]}>Comercio / Productos</Text>
+              <Text style={[s.menuItemText, { color: T.accent }]}>Locales / Productos</Text>
             </TouchableOpacity>
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate({ pathname: '/comparacion', params: { vista: 'comparar' } }); }}>
@@ -493,7 +534,7 @@ export default function CalculadoraBCVScreen() {
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/gastos'); }}>
               <Ionicons name="wallet-outline" size={18} color="#A78BFA" />
-              <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Cartera</Text>
+              <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Mi Cartera</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -689,12 +730,17 @@ const s = StyleSheet.create({
 
   // Config sheet
   configSheet: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    borderTopWidth: 1, padding: Spacing.lg, paddingBottom: 40, gap: Spacing.md,
+    borderTopWidth: 1, padding: Spacing.lg, paddingBottom: 40,
+    maxHeight: '90%',
   },
-  configHandle:      { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
-  configTitle:       { fontSize: FontSize.xl, fontWeight: '800' },
+  configHandle:    { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
+  configTitleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  configTitle:     { fontSize: FontSize.xl, fontWeight: '800' },
+  guiaArrow: {
+    borderRadius: Radius.sm, borderWidth: 1,
+    padding: 6, alignItems: 'center', justifyContent: 'center',
+  },
   configSectionLabel:{ fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
 
   // Toggle tema
@@ -728,6 +774,16 @@ const s = StyleSheet.create({
     borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 12,
   },
   previewText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
+
+  guiaCard: {
+    borderRadius: Radius.lg, borderWidth: 1,
+    padding: Spacing.md, gap: Spacing.md,
+  },
+  guiaTitulo:  { fontSize: FontSize.sm, fontWeight: '800', marginBottom: 4 },
+  guiaItem:    { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  guiaTextos:  { flex: 1, gap: 2 },
+  guiaNombre:  { fontSize: FontSize.sm, fontWeight: '700' },
+  guiaDesc:    { fontSize: FontSize.xs, lineHeight: 18 },
 
   configCerrar: {
     borderRadius: Radius.lg, paddingVertical: 14,

@@ -36,7 +36,7 @@ function AppTabs() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: 'Cash',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calculator-outline" size={size} color={color} />
           ),
@@ -45,7 +45,7 @@ function AppTabs() {
       <Tabs.Screen
         name="listado"
         options={{
-          title: 'Compras',
+          title: 'Comprar',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
@@ -54,7 +54,7 @@ function AppTabs() {
       <Tabs.Screen
         name="comparacion"
         options={{
-          title: 'Comercio',
+          title: 'Locales',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart-outline" size={size} color={color} />
           ),
@@ -63,15 +63,14 @@ function AppTabs() {
       <Tabs.Screen
         name="gastos"
         options={{
-          title: 'Cartera',
+          title: 'Mi Cartera',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
         }}
       />
       {/* Ocultar rutas que no son tabs */}
-      <Tabs.Screen name="(tabs)"  options={{ href: null }} />
-      <Tabs.Screen name="modal"   options={{ href: null }} />
+      <Tabs.Screen name="(tabs)" options={{ href: null }} />
     </Tabs>
   );
 }

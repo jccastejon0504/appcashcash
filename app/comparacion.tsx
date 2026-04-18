@@ -9,6 +9,9 @@ import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getItem, setItem } from '@/services/storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 
 type Producto = { id: string; nombre: string; codigo?: string; precio: string; imagen?: string };
 type Comercio = { id: string; nombre: string; productos: Producto[] };
@@ -63,6 +66,69 @@ export default function ComparacionScreen() {
   const guardar = async (data: Comercio[]) => {
     setComercios(data);
     await setItem(CACHE_KEY, data);
+  };
+
+  const exportarDatos = async () => {
+    if (comercios.length === 0) {
+      Alert.alert('Sin datos', 'No hay comercios para exportar.');
+      return;
+    }
+    try {
+      const json = JSON.stringify(comercios, null, 2);
+      const uri  = FileSystem.cacheDirectory + 'comparacion_export.json';
+      await FileSystem.writeAsStringAsync(uri, json, { encoding: 'utf8' });
+      const disponible = await Sharing.isAvailableAsync();
+      if (!disponible) {
+        Alert.alert('No disponible', 'Tu dispositivo no soporta compartir archivos.');
+        return;
+      }
+      await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Compartir datos de comercios' });
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo exportar los datos.');
+    }
+  };
+
+  const importarDatos = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const uri  = result.assets[0].uri;
+      const texto = await FileSystem.readAsStringAsync(uri, { encoding: 'utf8' });
+      const datos: Comercio[] = JSON.parse(texto);
+      if (!Array.isArray(datos)) throw new Error();
+      Alert.alert(
+        'Confirmar importación',
+        `Se encontraron ${datos.length} comercio(s). ¿Combinar con los existentes o reemplazar todo?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Combinar',
+            onPress: () => {
+              const combinados = [...comercios];
+              for (const c of datos) {
+                const existe = combinados.find(e => e.nombre.toLowerCase() === c.nombre.toLowerCase());
+                if (!existe) combinados.push(c);
+              }
+              guardar(combinados);
+              Alert.alert('Listo', 'Datos importados y combinados.');
+            },
+          },
+          {
+            text: 'Reemplazar',
+            style: 'destructive',
+            onPress: () => {
+              guardar(datos);
+              Alert.alert('Listo', 'Datos reemplazados.');
+            },
+          },
+        ]
+      );
+    } catch {
+      Alert.alert('Error', 'No se pudo leer el archivo. Asegúrate de seleccionar el JSON exportado.');
+    }
   };
 
   const agregarComercio = () => {
@@ -225,6 +291,22 @@ export default function ComparacionScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <View style={styles.transferInfo}>
+            <Ionicons name="people-outline" size={15} color={Colors.textMuted} />
+            <Text style={styles.transferInfoText}>Comparte los datos con tu familia</Text>
+          </View>
+
+          <View style={styles.transferRow}>
+            <TouchableOpacity style={styles.transferBtn} onPress={exportarDatos}>
+              <Ionicons name="share-outline" size={17} color={Colors.accent} />
+              <Text style={styles.transferBtnText}>Exportar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.transferBtn} onPress={importarDatos}>
+              <Ionicons name="download-outline" size={17} color={Colors.accent} />
+              <Text style={styles.transferBtnText}>Importar</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.addRow}>
             <TextInput
               style={styles.addInput}
@@ -274,6 +356,7 @@ export default function ComparacionScreen() {
           )}
 
         </ScrollView>
+
       </SafeAreaView>
     );
   }
@@ -705,7 +788,17 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     paddingHorizontal: Spacing.lg, paddingTop: Spacing.xxl, paddingBottom: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.card,
   },
-  backBtn:     { padding: 4 },
+  backBtn: { padding: 4 },
+  transferInfo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  transferInfoText: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
+  transferRow: { flexDirection: 'row', gap: Spacing.sm },
+  transferBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.accent + '18', borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.accent + '44',
+    paddingVertical: 11,
+  },
+  transferBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.accent },
   headerTitle: { flex: 1, fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   compareBtn:  {
     flexDirection: 'row', alignItems: 'center', gap: 6,

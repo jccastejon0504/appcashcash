@@ -40,7 +40,12 @@
       "Bash(export ANDROID_HOME=\"/c/Users/yohanna/AppData/Local/Android/Sdk\")",
       "Bash(export PATH=\"$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH\")",
       "Bash(export PATH=\"$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools:$PATH\")",
-      "Bash(./gradlew assembleRelease)"
+      "Bash(./gradlew assembleRelease)",
+      "Bash(rm -rf \"app/\\(tabs\\)\")",
+      "Bash(rm -f components/parallax-scroll-view.tsx components/themed-text.tsx components/themed-view.tsx components/ui/collapsible.tsx hooks/use-theme-color.ts)",
+      "Bash(rm -f components/external-link.tsx components/haptic-tab.tsx components/hello-wave.tsx components/ui/icon-symbol.ios.tsx components/ui/icon-symbol.tsx)",
+      "Bash(rmdir components/ui)",
+      "Bash(rmdir components *)"
     ]
   }
 }
