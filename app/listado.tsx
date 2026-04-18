@@ -495,7 +495,7 @@ export default function ListadoMercadoScreen() {
           <Pressable style={styles.mpDismiss} onPress={() => setModalProductos(false)} />
           <View style={styles.mpCard}>
             <View style={styles.mpHandle} />
-            <Text style={styles.mpTitulo}>Productos en comercios</Text>
+            <Text style={styles.mpTitulo}>Productos</Text>
 
             {/* Buscador */}
             <View style={styles.mpSearchRow}>

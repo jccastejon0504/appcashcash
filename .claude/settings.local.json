@@ -45,7 +45,10 @@
       "Bash(rm -f components/parallax-scroll-view.tsx components/themed-text.tsx components/themed-view.tsx components/ui/collapsible.tsx hooks/use-theme-color.ts)",
       "Bash(rm -f components/external-link.tsx components/haptic-tab.tsx components/hello-wave.tsx components/ui/icon-symbol.ios.tsx components/ui/icon-symbol.tsx)",
       "Bash(rmdir components/ui)",
-      "Bash(rmdir components *)"
+      "Bash(rmdir components *)",
+      "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/icon.png\")",
+      "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/splash-icon.png\")",
+      "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/android-icon-foreground.png\")"
     ]
   }
 }
