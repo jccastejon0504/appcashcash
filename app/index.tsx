@@ -493,7 +493,7 @@ export default function CalculadoraBCVScreen() {
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/gastos'); }}>
               <Ionicons name="wallet-outline" size={18} color="#A78BFA" />
-              <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Ingresos y Gastos</Text>
+              <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Cartera</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

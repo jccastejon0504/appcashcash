@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,12 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getItem, setItem } from '@/services/storage';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
-type Producto = { id: string; nombre: string; precio: string };
+type Producto = { id: string; nombre: string; codigo?: string; precio: string; imagen?: string };
 type Comercio = { id: string; nombre: string; productos: Producto[] };
 type Vista    = 'lista' | 'comercio' | 'comparar';
+type EditState = { comercioId: string; productoId: string; nombre: string; codigo: string; precio: string; moneda: 'usd' | 'bs'; imagen?: string } | null;
 
 const CACHE_KEY     = 'comparacion_data';
 const BCV_CACHE_KEY = 'bcv_cache';
@@ -26,12 +28,23 @@ export default function ComparacionScreen() {
   const [comercioActivo, setComercioActivo] = useState<string | null>(null);
   const [nuevoComercio,  setNuevoComercio]  = useState('');
   const [nuevoNombre,    setNuevoNombre]    = useState('');
+  const [nuevoCodigo,    setNuevoCodigo]    = useState('');
   const [nuevoPrecio,    setNuevoPrecio]    = useState('');
   const [monedaInput,    setMonedaInput]    = useState<'usd' | 'bs'>('usd');
+  const [editState,      setEditState]      = useState<EditState>(null);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scannerTarget, setScannerTarget]   = useState<'codigo' | 'busqueda'>('codigo');
+  const [scanned,        setScanned]        = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [busqueda,       setBusqueda]       = useState('');
   const [modalVisible,   setModalVisible]   = useState(false);
   const [productoModal,  setProductoModal]  = useState('');
   const [tasaBCV,        setTasaBCV]        = useState<number | null>(null);
+  const [photoVisible,   setPhotoVisible]   = useState(false);
+  const [photoTarget,    setPhotoTarget]    = useState<'nuevo' | 'edit'>('nuevo');
+  const [nuevoImagen,    setNuevoImagen]    = useState<string | undefined>(undefined);
+  const [fotoAmpliada,   setFotoAmpliada]   = useState<string | undefined>(undefined);
+  const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
     (async () => {
@@ -77,10 +90,78 @@ export default function ComparacionScreen() {
       : valorRaw;
     const updated = comercios.map(c => c.id !== comercioActivo ? c : {
       ...c,
-      productos: [...c.productos, { id: Date.now().toString(), nombre: nuevoNombre.trim(), precio: precioUSD.toString() }],
+      productos: [...c.productos, { id: Date.now().toString(), nombre: nuevoNombre.trim(), codigo: nuevoCodigo.trim() || undefined, precio: precioUSD.toString(), imagen: nuevoImagen }],
     });
     guardar(updated);
-    setNuevoNombre(''); setNuevoPrecio('');
+    setNuevoNombre(''); setNuevoCodigo(''); setNuevoPrecio(''); setNuevoImagen(undefined);
+  };
+
+  const abrirCamara = async (target: 'nuevo' | 'edit') => {
+    if (!cameraPermission?.granted) {
+      const { granted } = await requestCameraPermission();
+      if (!granted) {
+        Alert.alert('Permiso denegado', 'Necesitas permitir el acceso a la cámara.');
+        return;
+      }
+    }
+    setPhotoTarget(target);
+    setPhotoVisible(true);
+  };
+
+  const tomarFoto = async () => {
+    if (!cameraRef.current) return;
+    const foto = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+    setPhotoVisible(false);
+    if (photoTarget === 'nuevo') {
+      setNuevoImagen(foto.uri);
+    } else {
+      setEditState(s => s ? { ...s, imagen: foto.uri } : s);
+    }
+  };
+
+  const abrirScanner = async (target: 'codigo' | 'busqueda') => {
+    if (!cameraPermission?.granted) {
+      const { granted } = await requestCameraPermission();
+      if (!granted) {
+        Alert.alert('Permiso denegado', 'Necesitas permitir el acceso a la cámara para escanear códigos.');
+        return;
+      }
+    }
+    setScannerTarget(target);
+    setScanned(false);
+    setScannerVisible(true);
+  };
+
+  const onBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+    setScannerVisible(false);
+    if (scannerTarget === 'codigo') {
+      setNuevoCodigo(data);
+    } else {
+      setBusqueda(data);
+      buscarProducto(data);
+    }
+  };
+
+  const abrirEdicion = (comercioId: string, p: Producto) => {
+    setEditState({ comercioId, productoId: p.id, nombre: p.nombre, codigo: p.codigo ?? '', precio: parseFloat(p.precio).toFixed(2), moneda: 'usd', imagen: p.imagen });
+  };
+
+  const guardarEdicion = () => {
+    if (!editState || !editState.nombre.trim() || !editState.precio.trim()) return;
+    const valorRaw = parseFloat(editState.precio.replace(',', '.'));
+    if (isNaN(valorRaw) || valorRaw <= 0) return;
+    const precioUSD = editState.moneda === 'bs' && tasaBCV && tasaBCV > 0
+      ? valorRaw / tasaBCV
+      : valorRaw;
+    guardar(comercios.map(c => c.id !== editState.comercioId ? c : {
+      ...c,
+      productos: c.productos.map(p => p.id !== editState.productoId ? p : {
+        ...p, nombre: editState.nombre.trim(), codigo: editState.codigo.trim() || undefined, precio: precioUSD.toString(), imagen: editState.imagen,
+      }),
+    }));
+    setEditState(null);
   };
 
   const eliminarProducto = (comercioId: string, productoId: string) => {
@@ -97,18 +178,31 @@ export default function ComparacionScreen() {
     setModalVisible(true);
   };
 
-  // Sugerencias: productos únicos de todos los comercios que coincidan con la búsqueda
-  const sugerencias = busqueda.trim().length > 0
-    ? Array.from(new Set(
-        comercios.flatMap(c => c.productos.map(p => p.nombre))
-      )).filter(nombre => nombre.toLowerCase().includes(busqueda.toLowerCase().trim()))
+  // Sugerencias: busca por nombre O por código de barras
+  const sugerencias: { nombre: string; porCodigo: boolean }[] = busqueda.trim().length > 0
+    ? Array.from(
+        new Map(
+          comercios.flatMap(c => c.productos).reduce<[string, { nombre: string; porCodigo: boolean }][]>((acc, p) => {
+            const term = busqueda.toLowerCase().trim();
+            const porNombre = p.nombre.toLowerCase().includes(term);
+            const porCodigo = !!p.codigo && p.codigo.toLowerCase().includes(term);
+            if ((porNombre || porCodigo) && !acc.some(([k]) => k === p.nombre)) {
+              acc.push([p.nombre, { nombre: p.nombre, porCodigo: !porNombre && porCodigo }]);
+            }
+            return acc;
+          }, [])
+        ).values()
+      )
     : [];
 
-  // Precios del producto buscado en todos los comercios
+  // Precios del producto buscado en todos los comercios (por nombre o código)
   const resultadosBusqueda = () => {
     const term = productoModal.toLowerCase().trim();
     return comercios.map(c => {
-      const prod = c.productos.find(p => p.nombre.toLowerCase().includes(term));
+      const prod = c.productos.find(p =>
+        p.nombre.toLowerCase().includes(term) ||
+        (!!p.codigo && p.codigo.toLowerCase().includes(term))
+      );
       return { id: c.id, nombre: c.nombre, precio: prod ? parseFloat(prod.precio) : null, nombreProducto: prod?.nombre };
     }).filter(r => r.precio !== null);
   };
@@ -197,16 +291,42 @@ export default function ComparacionScreen() {
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           <View style={styles.addProductCol}>
-            {/* Fila 1: Nombre */}
-            <TextInput
-              style={styles.addInput}
-              value={nuevoNombre}
-              onChangeText={setNuevoNombre}
-              placeholder="Nombre del producto…"
-              placeholderTextColor={Colors.textMuted}
-              returnKeyType="next"
-            />
-            {/* Fila 2: Precio + toggle */}
+            {/* Fila 1: Código de barras + escáner */}
+            <View style={styles.addRow}>
+              <TextInput
+                style={styles.addInput}
+                value={nuevoCodigo}
+                onChangeText={setNuevoCodigo}
+                placeholder="Código de barras (opcional)…"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                returnKeyType="next"
+              />
+              <TouchableOpacity style={styles.scanBtn} onPress={() => abrirScanner('codigo')}>
+                <Ionicons name="barcode-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            {/* Fila 2: Título producto + cámara */}
+            <View style={styles.addRow}>
+              <TextInput
+                style={styles.addInput}
+                value={nuevoNombre}
+                onChangeText={setNuevoNombre}
+                placeholder="Título del producto…"
+                placeholderTextColor={Colors.textMuted}
+                returnKeyType="next"
+              />
+              <TouchableOpacity
+                style={[styles.scanBtn, nuevoImagen && styles.iconBtnSuccess]}
+                onPress={() => nuevoImagen ? setFotoAmpliada(nuevoImagen) : abrirCamara('nuevo')}
+              >
+                {nuevoImagen
+                  ? <Image source={{ uri: nuevoImagen }} style={styles.iconBtnThumb} />
+                  : <Ionicons name="camera-outline" size={22} color="#fff" />
+                }
+              </TouchableOpacity>
+            </View>
+            {/* Fila 3: Valor + $/Bs + agregar */}
             <View style={styles.addProductRow}>
               <TextInput
                 style={[styles.addInput, { flex: 1 }]}
@@ -225,12 +345,10 @@ export default function ComparacionScreen() {
                   {monedaInput === 'usd' ? '$' : 'Bs'}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.addProductBtn} onPress={agregarProducto}>
+                <Ionicons name="add" size={22} color="#fff" />
+              </TouchableOpacity>
             </View>
-            {/* Fila 3: Botón agregar */}
-            <TouchableOpacity style={styles.addProductBtn} onPress={agregarProducto}>
-              <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={styles.addProductBtnText}>Agregar producto</Text>
-            </TouchableOpacity>
           </View>
 
           {comercio.productos.length === 0 ? (
@@ -246,13 +364,25 @@ export default function ComparacionScreen() {
                 const bs = usdABs(usdNum);
                 return (
                   <View key={p.id} style={styles.productoRow}>
-                    <Text style={styles.productoNombre} numberOfLines={1}>{p.nombre}</Text>
+                    {p.imagen && (
+                      <TouchableOpacity onPress={() => setFotoAmpliada(p.imagen)}>
+                        <Image source={{ uri: p.imagen }} style={styles.productoThumb} />
+                      </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.productoNombre} numberOfLines={1}>{p.nombre}</Text>
+                      {p.codigo ? <Text style={styles.productoCodigo} numberOfLines={1}>{p.codigo}</Text> : null}
+                    </View>
                     <View style={styles.precioStack}>
                       <Text style={styles.productoPrecio}>
                         ${usdNum.toFixed(2)}
                       </Text>
                       {bs && <Text style={styles.precioUsd}>{bs}</Text>}
                     </View>
+                    <TouchableOpacity onPress={() => abrirEdicion(comercio.id, p)} style={styles.editInlineBtn}>
+                      <Ionicons name="pencil-outline" size={15} color={Colors.blue} />
+                      <Text style={styles.editInlineBtnText}>Edit</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => eliminarProducto(comercio.id, p.id)} hitSlop={12}>
                       <Ionicons name="trash-outline" size={18} color={Colors.error} />
                     </TouchableOpacity>
@@ -262,6 +392,143 @@ export default function ComparacionScreen() {
             </>
           )}
         </ScrollView>
+
+        {/* Modal escáner — vista comercio */}
+        <Modal visible={scannerVisible} animationType="slide" onRequestClose={() => setScannerVisible(false)}>
+          <View style={styles.scannerContainer}>
+            <CameraView
+              style={StyleSheet.absoluteFillObject}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'] }}
+              onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
+            />
+            <View style={styles.scannerOverlay}>
+              <View style={styles.scannerTopArea} />
+              <View style={styles.scannerMiddle}>
+                <View style={styles.scannerSide} />
+                <View style={styles.scannerFrame}>
+                  <View style={[styles.scannerCorner, styles.scannerCornerTL]} />
+                  <View style={[styles.scannerCorner, styles.scannerCornerTR]} />
+                  <View style={[styles.scannerCorner, styles.scannerCornerBL]} />
+                  <View style={[styles.scannerCorner, styles.scannerCornerBR]} />
+                </View>
+                <View style={styles.scannerSide} />
+              </View>
+              <View style={styles.scannerBottomArea}>
+                <Text style={styles.scannerHint}>Apunta al código de barras del producto</Text>
+                <TouchableOpacity style={styles.scannerCancelBtn} onPress={() => setScannerVisible(false)}>
+                  <Text style={styles.scannerCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal cámara para foto */}
+        <Modal visible={photoVisible} animationType="slide" onRequestClose={() => setPhotoVisible(false)}>
+          <View style={styles.scannerContainer}>
+            <CameraView ref={cameraRef} style={StyleSheet.absoluteFillObject} facing="back" />
+            <View style={styles.scannerOverlay}>
+              <View style={{ flex: 1 }} />
+              <View style={styles.photoBottomArea}>
+                <TouchableOpacity style={styles.photoShutterBtn} onPress={tomarFoto}>
+                  <View style={styles.photoShutterInner} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.scannerCancelBtn} onPress={() => setPhotoVisible(false)}>
+                  <Text style={styles.scannerCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal editar producto */}
+        <Modal transparent visible={editState !== null} animationType="slide" onRequestClose={() => setEditState(null)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setEditState(null)}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitulo}>Editar producto</Text>
+
+              <TextInput
+                style={[styles.addInput, { flex: 0 }]}
+                value={editState?.codigo ?? ''}
+                onChangeText={v => setEditState(s => s ? { ...s, codigo: v } : s)}
+                placeholder="Código de barras (opcional)…"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                returnKeyType="next"
+              />
+              <TextInput
+                style={[styles.addInput, { flex: 0 }]}
+                value={editState?.nombre ?? ''}
+                onChangeText={v => setEditState(s => s ? { ...s, nombre: v } : s)}
+                placeholder="Título del producto…"
+                placeholderTextColor={Colors.textMuted}
+                returnKeyType="next"
+              />
+
+              {/* Foto edición */}
+              <View style={styles.addRow}>
+                <TouchableOpacity style={styles.fotoBtn} onPress={() => abrirCamara('edit')}>
+                  <Ionicons name="camera-outline" size={20} color={editState?.imagen ? Colors.success : Colors.blue} />
+                  <Text style={[styles.fotoBtnText, editState?.imagen ? { color: Colors.success } : {}]}>
+                    {editState?.imagen ? 'Cambiar foto' : 'Tomar foto'}
+                  </Text>
+                </TouchableOpacity>
+                {editState?.imagen && (
+                  <TouchableOpacity onPress={() => setFotoAmpliada(editState?.imagen)}>
+                    <Image source={{ uri: editState.imagen }} style={styles.fotoThumb} />
+                  </TouchableOpacity>
+                )}
+                {editState?.imagen && (
+                  <TouchableOpacity onPress={() => setEditState(s => s ? { ...s, imagen: undefined } : s)} hitSlop={12}>
+                    <Ionicons name="close-circle" size={20} color={Colors.error} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.addProductRow}>
+                <TextInput
+                  style={[styles.addInput, { flex: 1 }]}
+                  value={editState?.precio ?? ''}
+                  onChangeText={v => setEditState(s => s ? { ...s, precio: v } : s)}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad"
+                  onSubmitEditing={guardarEdicion}
+                />
+                <TouchableOpacity
+                  style={[styles.monedaToggle, (editState?.moneda ?? 'usd') === 'usd' ? styles.monedaToggleUSD : styles.monedaToggleBS]}
+                  onPress={() => setEditState(s => s ? { ...s, moneda: s.moneda === 'usd' ? 'bs' : 'usd', precio: '' } : s)}
+                >
+                  <Text style={[styles.monedaToggleText, (editState?.moneda ?? 'usd') === 'usd' ? styles.monedaToggleTextUSD : styles.monedaToggleTextBS]}>
+                    {(editState?.moneda ?? 'usd') === 'usd' ? '$' : 'Bs'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.editBtns}>
+                <TouchableOpacity style={[styles.editBtn, styles.editBtnCancel]} onPress={() => setEditState(null)}>
+                  <Text style={styles.editBtnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.editBtn, styles.editBtnSave]} onPress={guardarEdicion}>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.editBtnSaveText}>Guardar</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Modal foto ampliada */}
+        <Modal visible={!!fotoAmpliada} animationType="fade" transparent onRequestClose={() => setFotoAmpliada(undefined)}>
+          <Pressable style={styles.fotoOverlay} onPress={() => setFotoAmpliada(undefined)}>
+            <Image source={{ uri: fotoAmpliada }} style={styles.fotoAmpliada} resizeMode="contain" />
+            <TouchableOpacity style={styles.fotoCerrarBtn} onPress={() => setFotoAmpliada(undefined)}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </Pressable>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -299,17 +566,21 @@ export default function ComparacionScreen() {
             <TouchableOpacity style={styles.addBtn} onPress={() => buscarProducto()}>
               <Ionicons name="search" size={20} color="#fff" />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.scanBtn} onPress={() => abrirScanner('busqueda')}>
+              <Ionicons name="barcode-outline" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
           {sugerencias.length > 0 && (
             <View style={styles.sugerenciasCard}>
               {sugerencias.map((s, i) => (
                 <TouchableOpacity
-                  key={s}
+                  key={s.nombre}
                   style={[styles.sugerenciaItem, i < sugerencias.length - 1 && styles.sugerenciaBorder]}
-                  onPress={() => buscarProducto(s)}
+                  onPress={() => buscarProducto(s.nombre)}
                 >
-                  <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.sugerenciaText}>{s}</Text>
+                  <Ionicons name={s.porCodigo ? 'barcode-outline' : 'search-outline'} size={14} color={Colors.textMuted} />
+                  <Text style={styles.sugerenciaText}>{s.nombre}</Text>
+                  {s.porCodigo && <Text style={styles.sugerenciaCodigo}>por código</Text>}
                 </TouchableOpacity>
               ))}
             </View>
@@ -332,6 +603,38 @@ export default function ComparacionScreen() {
           <Text style={styles.emptyText}>Busca un producto para ver la comparación de precios</Text>
         </View>
       </ScrollView>
+
+      {/* Modal escáner de código de barras */}
+      <Modal visible={scannerVisible} animationType="slide" onRequestClose={() => setScannerVisible(false)}>
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'] }}
+            onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
+          />
+          {/* Overlay con marco */}
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerTopArea} />
+            <View style={styles.scannerMiddle}>
+              <View style={styles.scannerSide} />
+              <View style={styles.scannerFrame}>
+                <View style={[styles.scannerCorner, styles.scannerCornerTL]} />
+                <View style={[styles.scannerCorner, styles.scannerCornerTR]} />
+                <View style={[styles.scannerCorner, styles.scannerCornerBL]} />
+                <View style={[styles.scannerCorner, styles.scannerCornerBR]} />
+              </View>
+              <View style={styles.scannerSide} />
+            </View>
+            <View style={styles.scannerBottomArea}>
+              <Text style={styles.scannerHint}>Apunta al código de barras del producto</Text>
+              <TouchableOpacity style={styles.scannerCancelBtn} onPress={() => setScannerVisible(false)}>
+                <Text style={styles.scannerCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de resultado */}
       <Modal transparent visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
@@ -416,12 +719,21 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
 
   addRow:        { flexDirection: 'row', gap: Spacing.sm },
   addProductCol: { gap: Spacing.sm },
-  addProductRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
+  addProductRow: { flexDirection: 'row', gap: Spacing.sm },
   addProductBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: Colors.blue, borderRadius: Radius.md, paddingVertical: 13,
+    backgroundColor: Colors.blue, borderRadius: Radius.md,
+    paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center',
   },
   addProductBtnText: { fontSize: FontSize.md, fontWeight: '800', color: '#fff' },
+
+  iconBtn: {
+    borderRadius: Radius.md, width: 44, height: 44,
+    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+  },
+  iconBtnBlue:    { backgroundColor: Colors.blue },
+  iconBtnSuccess: { backgroundColor: Colors.success },
+  iconBtnError:   { backgroundColor: Colors.error, borderRadius: Radius.md, width: 36, height: 44, justifyContent: 'center', alignItems: 'center' },
+  iconBtnThumb:   { width: 44, height: 44, borderRadius: Radius.md },
 
   monedaToggle: {
     borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 10,
@@ -453,7 +765,8 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     paddingHorizontal: Spacing.md, paddingVertical: 12,
   },
   sugerenciaBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  sugerenciaText:   { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+  sugerenciaText:   { flex: 1, fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+  sugerenciaCodigo: { fontSize: FontSize.xs, color: Colors.blue, fontWeight: '600' },
 
   comerciosChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: {
@@ -496,7 +809,8 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     paddingHorizontal: Spacing.md, paddingVertical: 12,
     borderWidth: 1, borderColor: Colors.border, gap: 10,
   },
-  productoNombre: { flex: 1, fontSize: FontSize.md, color: Colors.text, fontWeight: '600' },
+  productoNombre: { fontSize: FontSize.md, color: Colors.text, fontWeight: '600' },
+  productoCodigo: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '500', marginTop: 2 },
   productoPrecio: { fontSize: FontSize.md, fontWeight: '800', color: Colors.blue },
   precioStack:    { alignItems: 'flex-end' },
   precioUsd:      { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, marginTop: 1 },
@@ -534,4 +848,81 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.sm,
   },
   modalCerrarText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
+
+  editInlineBtn:     { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.blue + '55', backgroundColor: Colors.blue + '11' },
+  editInlineBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.blue },
+
+  scanBtn: {
+    backgroundColor: Colors.blue, borderRadius: Radius.md,
+    paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Scanner
+  scannerContainer:   { flex: 1, backgroundColor: '#000' },
+  scannerOverlay:     { ...StyleSheet.absoluteFillObject as any, flexDirection: 'column' },
+  scannerTopArea:     { flex: 1, backgroundColor: '#00000088' },
+  scannerMiddle:      { flexDirection: 'row', height: 220 },
+  scannerSide:        { flex: 1, backgroundColor: '#00000088' },
+  scannerFrame: {
+    width: 260, height: 220,
+    borderWidth: 0, backgroundColor: 'transparent',
+  },
+  scannerCorner: {
+    position: 'absolute', width: 28, height: 28,
+    borderColor: '#fff', borderWidth: 3,
+  },
+  scannerCornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 6 },
+  scannerCornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 6 },
+  scannerCornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 6 },
+  scannerCornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 6 },
+  scannerBottomArea: {
+    flex: 1, backgroundColor: '#00000088',
+    alignItems: 'center', justifyContent: 'center', gap: 20, paddingTop: 24,
+  },
+  scannerHint:       { fontSize: FontSize.md, color: '#fff', fontWeight: '600', textAlign: 'center', paddingHorizontal: 32 },
+  scannerCancelBtn:  {
+    backgroundColor: '#ffffff22', borderRadius: Radius.md,
+    paddingHorizontal: 32, paddingVertical: 13,
+    borderWidth: 1, borderColor: '#ffffff44',
+  },
+  scannerCancelText: { fontSize: FontSize.md, fontWeight: '700', color: '#fff' },
+
+  fotoBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.blue + '18', borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.blue + '44',
+    paddingHorizontal: Spacing.md, paddingVertical: 11,
+  },
+  fotoBtnText:       { fontSize: FontSize.sm, fontWeight: '700', color: Colors.blue },
+  fotoThumb:         { width: 44, height: 44, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
+  productoThumb:     { width: 38, height: 38, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
+
+  fotoOverlay: {
+    flex: 1, backgroundColor: '#000000DD',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fotoAmpliada: { width: '100%', height: '80%' },
+  fotoCerrarBtn: {
+    position: 'absolute', top: 52, right: 20,
+    backgroundColor: '#ffffff22', borderRadius: 20,
+    padding: 8, borderWidth: 1, borderColor: '#ffffff44',
+  },
+
+  photoBottomArea: {
+    paddingBottom: 48, paddingTop: 24,
+    backgroundColor: '#00000088', alignItems: 'center', gap: 24,
+  },
+  photoShutterBtn: {
+    width: 72, height: 72, borderRadius: 36,
+    borderWidth: 4, borderColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  photoShutterInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff' },
+
+  editBtns:         { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  editBtn:          { flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  editBtnCancel:    { backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border },
+  editBtnCancelText:{ fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
+  editBtnSave:      { backgroundColor: Colors.blue },
+  editBtnSaveText:  { fontSize: FontSize.md, fontWeight: '800', color: '#fff' },
 }); }

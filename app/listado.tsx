@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity,
+  View, Text, TouchableOpacity, Image,
   StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable, TextInput,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -24,7 +24,7 @@ type ListaAgendada = {
   items: ItemMercado[];
 };
 
-type Producto = { id: string; nombre: string; precio: string };
+type Producto = { id: string; nombre: string; codigo?: string; precio: string; imagen?: string };
 type Comercio = { id: string; nombre: string; productos: Producto[] };
 
 const CACHE_KEY       = 'listado_mercado';
@@ -49,6 +49,8 @@ export default function ListadoMercadoScreen() {
   const [seccionVisible,    setSeccionVisible]    = useState(true);
   const [expandidaId,       setExpandidaId]       = useState<string | null>(null);
   const [modalComercios,    setModalComercios]    = useState(false);
+  const [modalProductos,    setModalProductos]    = useState(false);
+  const [busquedaModal,     setBusquedaModal]     = useState('');
 
   useEffect(() => {
     (async () => {
@@ -70,17 +72,9 @@ export default function ListadoMercadoScreen() {
     setTimeout(() => setGuardado(false), 1500);
   };
 
-  const agregar = () => {
-    const nombre = nuevo.trim();
+  const agregar = (nombreOverride?: string) => {
+    const nombre = (nombreOverride ?? nuevo).trim();
     if (!nombre) return;
-    const term = nombre.toLowerCase();
-    const existe = comercios.some(c =>
-      c.productos.some(p => p.nombre.toLowerCase().includes(term))
-    );
-    if (!existe) {
-      Alert.alert('Producto no existente', `"${nombre}" no está registrado en ningún comercio.`);
-      return;
-    }
     const cant = Math.max(1, parseInt(cantidad, 10) || 1);
     const nuevaLista = [...items, { id: Date.now().toString(), nombre, cantidad: cant, checked: false }];
     setItems(nuevaLista);
@@ -214,12 +208,23 @@ export default function ListadoMercadoScreen() {
     return resultados.reduce((min, r) => r.precio < min.precio ? r : min);
   };
 
+  const getImagenProducto = (nombre: string) => {
+    const term = nombre.toLowerCase().trim();
+    for (const c of comercios) {
+      const prod = c.productos.find(p => p.nombre.toLowerCase().includes(term) && p.imagen);
+      if (prod?.imagen) return prod.imagen;
+    }
+    return null;
+  };
+
   const pendientes = items.filter(i => !i.checked).length;
 
   const sugerencias = nuevo.trim().length > 0
-    ? Array.from(new Set(
-        comercios.flatMap(c => c.productos.map(p => p.nombre))
-      )).filter(nombre => nombre.toLowerCase().includes(nuevo.toLowerCase().trim()))
+    ? Array.from(new Set([
+        ...comercios.flatMap(c => c.productos.map(p => p.nombre)),
+        ...items.map(i => i.nombre),
+      ])).filter(nombre => nombre.toLowerCase().includes(nuevo.toLowerCase().trim()))
+        .slice(0, 6)
     : [];
 
   const formatFecha = (iso: string) => {
@@ -256,7 +261,7 @@ export default function ListadoMercadoScreen() {
               onChangeText={setNuevo}
               placeholder="Agregar producto…"
               placeholderTextColor={Colors.textMuted}
-              onSubmitEditing={agregar}
+              onSubmitEditing={() => agregar()}
               returnKeyType="done"
             />
             <TextInput
@@ -269,7 +274,10 @@ export default function ListadoMercadoScreen() {
               maxLength={3}
               returnKeyType="done"
             />
-            <TouchableOpacity style={styles.addBtn} onPress={agregar}>
+            <TouchableOpacity style={styles.browseBtn} onPress={() => { setBusquedaModal(''); setModalProductos(true); }}>
+              <Ionicons name="list" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addBtn} onPress={() => agregar()}>
               <Ionicons name="add" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -279,7 +287,7 @@ export default function ListadoMercadoScreen() {
                 <TouchableOpacity
                   key={s}
                   style={[styles.sugerenciaItem, i < sugerencias.length - 1 && styles.sugerenciaBorder]}
-                  onPress={() => { setNuevo(s); }}
+                  onPress={() => { agregar(s); }}
                 >
                   <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.sugerenciaText}>{s}</Text>
@@ -480,6 +488,90 @@ export default function ListadoMercadoScreen() {
           </View>
         </View>
       )}
+
+      {/* Modal: productos de comercios */}
+      <Modal visible={modalProductos} animationType="slide" transparent onRequestClose={() => setModalProductos(false)}>
+        <View style={styles.mpOverlay}>
+          <Pressable style={styles.mpDismiss} onPress={() => setModalProductos(false)} />
+          <View style={styles.mpCard}>
+            <View style={styles.mpHandle} />
+            <Text style={styles.mpTitulo}>Productos en comercios</Text>
+
+            {/* Buscador */}
+            <View style={styles.mpSearchRow}>
+              <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.mpSearchInput}
+                value={busquedaModal}
+                onChangeText={setBusquedaModal}
+                placeholder="Buscar producto…"
+                placeholderTextColor={Colors.textMuted}
+                autoFocus
+              />
+              {busquedaModal.length > 0 && (
+                <TouchableOpacity onPress={() => setBusquedaModal('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {comercios.length === 0 ? (
+                <View style={styles.mpEmpty}>
+                  <Ionicons name="storefront-outline" size={40} color={Colors.textMuted} />
+                  <Text style={styles.mpEmptyText}>Aún no hay productos en comercios</Text>
+                </View>
+              ) : (
+                comercios.map(c => {
+                  const productosFiltrados = c.productos.filter(p =>
+                    busquedaModal.trim() === '' ||
+                    p.nombre.toLowerCase().includes(busquedaModal.toLowerCase().trim())
+                  );
+                  if (productosFiltrados.length === 0) return null;
+                  return (
+                    <View key={c.id} style={styles.mpComercioBloque}>
+                      <View style={styles.mpComercioHeader}>
+                        <Ionicons name="storefront-outline" size={14} color={Colors.blue} />
+                        <Text style={styles.mpComercioNombre}>{c.nombre}</Text>
+                      </View>
+                      {productosFiltrados.map((p, i) => {
+                        const yaEnLista = items.some(item => item.nombre.toLowerCase() === p.nombre.toLowerCase());
+                        return (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={[styles.mpProductoFila, i < productosFiltrados.length - 1 && styles.mpProductoBorder]}
+                            onPress={() => {
+                              if (!yaEnLista) agregar(p.nombre);
+                              setModalProductos(false);
+                            }}
+                          >
+                            {p.imagen && (
+                              <Image source={{ uri: p.imagen }} style={styles.mpProductoThumb} />
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.mpProductoNombre}>{p.nombre}</Text>
+                              {p.codigo ? <Text style={styles.mpProductoCodigo}>{p.codigo}</Text> : null}
+                            </View>
+                            <Text style={styles.mpProductoPrecio}>${parseFloat(p.precio).toFixed(2)}</Text>
+                            {yaEnLista
+                              ? <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                              : <Ionicons name="add-circle-outline" size={20} color={Colors.blue} />
+                            }
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.mpBtnCerrar} onPress={() => setModalProductos(false)}>
+              <Text style={styles.mpBtnCerrarText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal: seleccionar fecha para agendar */}
       <Modal transparent visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
@@ -943,4 +1035,50 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   sugerenciaBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   sugerenciaText:   { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+
+  browseBtn: {
+    backgroundColor: Colors.blue + 'cc', borderRadius: Radius.md,
+    paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Modal productos de comercios
+  mpOverlay:  { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  mpDismiss:  { ...StyleSheet.absoluteFillObject },
+  mpCard: {
+    backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: 36,
+    borderTopWidth: 1, borderColor: Colors.border, height: '80%',
+  },
+  mpHandle:        { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: Spacing.md },
+  mpTitulo:        { fontSize: FontSize.xl, fontWeight: '800', color: Colors.text, marginBottom: Spacing.sm },
+  mpSearchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, paddingVertical: 10, marginBottom: Spacing.md,
+  },
+  mpSearchInput:   { flex: 1, fontSize: FontSize.md, color: Colors.text, padding: 0 },
+  mpComercioBloque:{ marginBottom: Spacing.md },
+  mpComercioHeader:{
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.border, marginBottom: 2,
+  },
+  mpComercioNombre:{ fontSize: FontSize.sm, fontWeight: '800', color: Colors.blue },
+  mpProductoFila:  {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  mpProductoBorder:{ borderBottomWidth: 1, borderBottomColor: Colors.border },
+  mpProductoThumb: { width: 38, height: 38, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
+  mpProductoNombre:{ fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
+  mpProductoCodigo:{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  mpProductoPrecio:{ fontSize: FontSize.sm, fontWeight: '700', color: Colors.success },
+  mpEmpty:         { alignItems: 'center', paddingVertical: Spacing.xl, gap: 10 },
+  mpEmptyText:     { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+  mpBtnCerrar: {
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    paddingVertical: 13, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.sm,
+  },
+  mpBtnCerrarText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
 }); }

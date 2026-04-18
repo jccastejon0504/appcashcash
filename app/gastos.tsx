@@ -210,9 +210,24 @@ export default function GastosScreen() {
         <TouchableOpacity onPress={() => router.navigate('/')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ingresos y Gastos</Text>
+        <Text style={styles.headerTitle}>Cartera</Text>
       </View>
 
+
+      {/* Selector de período */}
+      <View style={styles.periodoRow}>
+        {(['semana', 'mes', 'año'] as Periodo[]).map(p => (
+          <TouchableOpacity
+            key={p}
+            style={[styles.periodoBtn, periodo === p && styles.periodoBtnActive]}
+            onPress={() => setPeriodo(p)}
+          >
+            <Text style={[styles.periodoBtnText, periodo === p && styles.periodoBtnTextActive]}>
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
 

@@ -6,9 +6,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HeroUINativeProvider } from 'heroui-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function AppTabs() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
@@ -22,8 +24,8 @@ function AppTabs() {
           shadowOpacity: 0.1,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: -2 },
-          height: 62,
-          paddingBottom: 8,
+          height: 62 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
           paddingTop: 6,
         },
         tabBarActiveTintColor:   colors.accent,
@@ -61,7 +63,7 @@ function AppTabs() {
       <Tabs.Screen
         name="gastos"
         options={{
-          title: 'Gastos',
+          title: 'Cartera',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
