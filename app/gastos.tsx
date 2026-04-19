@@ -12,6 +12,12 @@ import { getItem, setItem } from '@/services/storage';
 type Periodo = 'semana' | 'mes' | 'año';
 type TipoMovimiento = 'ingreso' | 'gasto';
 
+type GastoFijo = {
+  id: string;
+  nombre: string;
+  monto: number;
+};
+
 type Movimiento = {
   id: string;
   descripcion: string;
@@ -20,8 +26,9 @@ type Movimiento = {
   fecha: string;
 };
 
-const STORAGE_KEY  = 'ingresos_gastos_data';
-const BCV_CACHE_KEY = 'bcv_cache';
+const STORAGE_KEY      = 'ingresos_gastos_data';
+const BCV_CACHE_KEY    = 'bcv_cache';
+const GASTOS_FIJOS_KEY = 'gastos_fijos_data';
 
 const MESES = [
   'enero','febrero','marzo','abril','mayo','junio',
@@ -70,12 +77,19 @@ export default function GastosScreen() {
   const [tasaBCV,     setTasaBCV]     = useState<number | null>(null);
   const [hoy]                         = useState(new Date());
 
+  // Gastos Fijos
+  const [gastosFijos,       setGastosFijos]       = useState<GastoFijo[]>([]);
+  const [modalGastosFijos,  setModalGastosFijos]  = useState(false);
+  const [editGastoFijo,     setEditGastoFijo]     = useState<{ id?: string; nombre: string; monto: string; moneda: 'usd' | 'bs' } | null>(null);
+
   useEffect(() => {
     (async () => {
-      const data     = await getItem<Movimiento[]>(STORAGE_KEY);
-      const bcvCache = await getItem<{ usd: number }>(BCV_CACHE_KEY);
+      const data      = await getItem<Movimiento[]>(STORAGE_KEY);
+      const bcvCache  = await getItem<{ usd: number }>(BCV_CACHE_KEY);
+      const fijos     = await getItem<GastoFijo[]>(GASTOS_FIJOS_KEY);
       if (data)     setMovimientos(data);
       if (bcvCache) setTasaBCV(bcvCache.usd);
+      if (fijos)    setGastosFijos(fijos);
     })();
   }, []);
 
@@ -123,6 +137,71 @@ export default function GastosScreen() {
       { text: 'Eliminar', style: 'destructive', onPress: () => guardar(movimientos.filter(m => m.id !== id)) },
     ]);
   };
+
+  // ── Gastos Fijos ──────────────────────────────────────────────────────────
+  const guardarFijos = async (data: GastoFijo[]) => {
+    setGastosFijos(data);
+    await setItem(GASTOS_FIJOS_KEY, data);
+  };
+
+  const abrirNuevoFijo = () => setEditGastoFijo({ nombre: '', monto: '', moneda: 'usd' });
+
+  const abrirEditFijo = (g: GastoFijo) =>
+    setEditGastoFijo({ id: g.id, nombre: g.nombre, monto: g.monto.toFixed(2), moneda: 'usd' });
+
+  const guardarFijo = async () => {
+    if (!editGastoFijo) return;
+    const nombre = editGastoFijo.nombre.trim();
+    const valor  = parseFloat(editGastoFijo.monto.replace(',', '.'));
+    if (!nombre)                       { Alert.alert('Falta nombre'); return; }
+    if (isNaN(valor) || valor <= 0)    { Alert.alert('Monto inválido'); return; }
+    let montoUSD = valor;
+    if (editGastoFijo.moneda === 'bs') {
+      if (!tasaBCV || tasaBCV <= 0)    { Alert.alert('Tasa BCV no disponible'); return; }
+      montoUSD = valor / tasaBCV;
+    }
+    if (editGastoFijo.id) {
+      await guardarFijos(gastosFijos.map(g =>
+        g.id === editGastoFijo.id ? { ...g, nombre, monto: montoUSD } : g
+      ));
+    } else {
+      await guardarFijos([...gastosFijos, { id: Date.now().toString(), nombre, monto: montoUSD }]);
+    }
+    setEditGastoFijo(null);
+  };
+
+  const agregarFijoACartera = (g: GastoFijo) => {
+    Alert.alert(
+      'Agregar a Mi Cartera',
+      `¿Registrar "${g.nombre}" como gasto?\n$${g.monto.toFixed(2)}${tasaBCV && tasaBCV > 0 ? `\n${usdABs(g.monto)}` : ''}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Agregar',
+          onPress: async () => {
+            const nuevo: Movimiento = {
+              id:          Date.now().toString(),
+              descripcion: g.nombre,
+              monto:       g.monto,
+              tipo:        'gasto',
+              fecha:       new Date().toISOString(),
+            };
+            await guardar([nuevo, ...movimientos]);
+            setModalGastosFijos(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const eliminarFijo = (id: string) => {
+    Alert.alert('Eliminar', '¿Quitar este gasto fijo?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => guardarFijos(gastosFijos.filter(g => g.id !== id)) },
+    ]);
+  };
+
+  const totalFijos = gastosFijos.reduce((a, g) => a + g.monto, 0);
 
   // ── Historial mensual ─────────────────────────────────────────────────────
   const [mesExpandido, setMesExpandido] = useState<string | null>(null);
@@ -211,6 +290,10 @@ export default function GastosScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Cartera</Text>
+        <TouchableOpacity style={styles.fijoHeaderBtn} onPress={() => setModalGastosFijos(true)}>
+          <Ionicons name="repeat-outline" size={15} color="#fff" />
+          <Text style={styles.fijoHeaderBtnText}>Gastos Fijos</Text>
+        </TouchableOpacity>
       </View>
 
 
@@ -500,6 +583,130 @@ export default function GastosScreen() {
 
       </ScrollView>
 
+      {/* Modal Gastos Fijos */}
+      <Modal transparent visible={modalGastosFijos} animationType="slide" onRequestClose={() => { setEditGastoFijo(null); setModalGastosFijos(false); }}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setEditGastoFijo(null); setModalGastosFijos(false); }}>
+          <Pressable style={[styles.modalCard, styles.fijoModal]} onPress={e => e.stopPropagation()}>
+
+            {/* Cabecera */}
+            <View style={styles.fijoModalHeader}>
+              <View style={styles.fijoModalTitleRow}>
+                <Ionicons name="repeat-outline" size={20} color={Colors.blue} />
+                <Text style={styles.fijoModalTitle}>Gastos Fijos</Text>
+              </View>
+              {gastosFijos.length > 0 && !editGastoFijo && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.fijoModalTotal}>Total ${totalFijos.toFixed(2)}</Text>
+                  {tasaBCV && tasaBCV > 0 && (
+                    <Text style={styles.fijoModalTotalBs}>{usdABs(totalFijos)}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {editGastoFijo ? (
+              /* ── Formulario edición ── */
+              <View style={styles.fijoForm}>
+                <Text style={styles.fijoFormTitle}>
+                  {editGastoFijo.id ? 'Editar gasto fijo' : 'Nuevo gasto fijo'}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={editGastoFijo.nombre}
+                  onChangeText={t => setEditGastoFijo(e => e && ({ ...e, nombre: t }))}
+                  placeholder="Nombre (ej: Alquiler, Luz…)"
+                  placeholderTextColor={Colors.textMuted}
+                  autoFocus
+                />
+                <View style={styles.montoRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={editGastoFijo.monto}
+                    onChangeText={t => setEditGastoFijo(e => e && ({ ...e, monto: t }))}
+                    placeholder={editGastoFijo.moneda === 'usd' ? 'Monto en $' : 'Monto en Bs'}
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="decimal-pad"
+                  />
+                  <TouchableOpacity
+                    style={[styles.monedaToggle, { backgroundColor: editGastoFijo.moneda === 'usd' ? Colors.success : Colors.blue }]}
+                    onPress={() => setEditGastoFijo(e => e && ({ ...e, moneda: e.moneda === 'usd' ? 'bs' : 'usd', monto: '' }))}
+                  >
+                    <Text style={styles.monedaToggleText}>{editGastoFijo.moneda === 'usd' ? '$' : 'Bs'}</Text>
+                  </TouchableOpacity>
+                </View>
+                {editGastoFijo.monto.length > 0 && tasaBCV && tasaBCV > 0 && (() => {
+                  const val = parseFloat(editGastoFijo.monto.replace(',', '.'));
+                  if (isNaN(val) || val <= 0) return null;
+                  if (editGastoFijo.moneda === 'usd') {
+                    return (
+                      <Text style={styles.equivalente}>
+                        ≈ Bs {(val * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    );
+                  }
+                  return <Text style={styles.equivalente}>≈ ${(val / tasaBCV).toFixed(2)}</Text>;
+                })()}
+                <View style={styles.modalBtns}>
+                  <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setEditGastoFijo(null)}>
+                    <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  {editGastoFijo.id && (
+                    <TouchableOpacity
+                      style={[styles.modalBtnCancel, { borderColor: Colors.error + '66' }]}
+                      onPress={() => { eliminarFijo(editGastoFijo.id!); setEditGastoFijo(null); }}
+                    >
+                      <Ionicons name="trash-outline" size={15} color={Colors.error} />
+                      <Text style={[styles.modalBtnCancelText, { color: Colors.error }]}>Borrar</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={[styles.modalBtnConfirm, { backgroundColor: Colors.blue }]} onPress={guardarFijo}>
+                    <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                    <Text style={styles.modalBtnConfirmText}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              /* ── Lista de tarjetas ── */
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {gastosFijos.length === 0 ? (
+                  <View style={styles.fijoEmpty}>
+                    <Ionicons name="repeat-outline" size={36} color={Colors.textMuted} />
+                    <Text style={styles.fijoEmptyText}>Sin gastos fijos aún</Text>
+                    <Text style={styles.fijoEmptyDesc}>Agrega tus gastos recurrentes para tenerlos a la vista</Text>
+                  </View>
+                ) : (
+                  <View style={styles.fijoGrid}>
+                    {gastosFijos.map(g => {
+                      const bs = usdABs(g.monto);
+                      return (
+                        <TouchableOpacity key={g.id} style={styles.fijoCard} onPress={() => agregarFijoACartera(g)} activeOpacity={0.75}>
+                          <View style={styles.fijoCardIconWrap}>
+                            <Ionicons name="add-circle-outline" size={16} color={Colors.success} />
+                          </View>
+                          <Text style={styles.fijoCardNombre} numberOfLines={2}>{g.nombre}</Text>
+                          <Text style={styles.fijoCardMonto}>${g.monto.toFixed(2)}</Text>
+                          {bs && <Text style={styles.fijoCardBs}>{bs}</Text>}
+                          <TouchableOpacity style={styles.fijoCardEdit} onPress={() => abrirEditFijo(g)} hitSlop={10}>
+                            <Ionicons name="pencil-outline" size={12} color={Colors.textMuted} />
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {!editGastoFijo && (
+              <TouchableOpacity style={[styles.fijoAgregarBtn, { backgroundColor: Colors.blue }]} onPress={abrirNuevoFijo}>
+                <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                <Text style={styles.fijoAgregarText}>Agregar gasto fijo</Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Modal agregar */}
       <Modal transparent visible={modalTipo !== null} animationType="fade" onRequestClose={() => setModalTipo(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setModalTipo(null)}>
@@ -771,4 +978,65 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   monedaToggleText: { fontSize: FontSize.md, color: '#fff', fontWeight: '800' },
   equivalente:      { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'right', marginTop: -4 },
+
+  // ── Gastos Fijos ──────────────────────────────────────────────────────────
+  fijoHeaderBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.blue, borderRadius: Radius.md,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  fijoHeaderBtnText: { fontSize: FontSize.xs, color: '#fff', fontWeight: '700' },
+
+  fijoModal:      { gap: Spacing.md, maxHeight: '85%' },
+  fijoModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  fijoModalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fijoModalTitle:  { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  fijoModalTotal:   { fontSize: FontSize.sm, fontWeight: '700', color: Colors.blue },
+  fijoModalTotalBs: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.blue, opacity: 0.75 },
+  fijoCerrarBtn: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  fijoForm:       { gap: Spacing.md },
+  fijoFormTitle:  { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
+
+  fijoEmpty: {
+    alignItems: 'center', gap: 8,
+    paddingVertical: Spacing.xl, paddingHorizontal: Spacing.lg,
+  },
+  fijoEmptyText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textMuted },
+  fijoEmptyDesc: { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center', opacity: 0.7 },
+
+  fijoGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm,
+    paddingBottom: Spacing.sm,
+  },
+  fijoCard: {
+    width: '47%', backgroundColor: Colors.cardAlt,
+    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.md, gap: 4, position: 'relative',
+  },
+  fijoCardIconWrap: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: Colors.blue + '1A',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 2,
+  },
+  fijoCardNombre: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
+  fijoCardMonto:  { fontSize: FontSize.md, fontWeight: '900', color: Colors.blue },
+  fijoCardBs:     { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
+  fijoCardEdit: {
+    position: 'absolute', top: 6, right: 8,
+    padding: 4,
+    backgroundColor: Colors.cardAlt,
+    borderRadius: Radius.full,
+  },
+
+  fijoAgregarBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 13, borderRadius: Radius.md,
+  },
+  fijoAgregarText: { fontSize: FontSize.md, color: '#fff', fontWeight: '700' },
 }); }

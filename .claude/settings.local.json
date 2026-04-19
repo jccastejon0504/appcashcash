@@ -48,7 +48,12 @@
       "Bash(rmdir components *)",
       "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/icon.png\")",
       "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/splash-icon.png\")",
-      "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/android-icon-foreground.png\")"
+      "Bash(cp \"c:/Users/yohanna/Downloads/Gemini_Generated_Image_2wzlaw2wzlaw2wzl.png\" \"F:/Proyectos app/CalculadoraBCVApp/assets/images/android-icon-foreground.png\")",
+      "Bash(npx eas *)",
+      "Bash(where java *)",
+      "Bash(where eas *)",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH\")",
+      "Bash(./gradlew assembleDebug)"
     ]
   }
 }
