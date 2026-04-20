@@ -4,6 +4,8 @@ import {
   ScrollView, Linking, ActivityIndicator, RefreshControl, Image,
   TextInput, Keyboard, Modal,
 } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
@@ -22,6 +24,7 @@ export default function SociosScreen() {
   const [busqueda,      setBusqueda]      = useState('');
   const [mostrarSug,    setMostrarSug]    = useState(false);
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
+  const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   const cargar = useCallback(async (esRefresh = false) => {
@@ -85,52 +88,32 @@ export default function SociosScreen() {
     Linking.openURL(`tel:${n}`).catch(() => {});
   };
 
-  const renderCard = (s: SocioComercial) => (
-    <View key={s.id} style={styles.card}>
+  const renderMiniCard = (s: SocioComercial) => (
+    <TouchableOpacity
+      key={s.id}
+      style={[styles.miniCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}
+      onPress={() => setSocioModal(s)}
+      activeOpacity={0.85}
+    >
       {s.imagen ? (
-        <Image source={{ uri: s.imagen }} style={styles.cardImagen} resizeMode="cover" />
+        <Image source={{ uri: s.imagen }} style={styles.miniCardImg} resizeMode="cover" />
       ) : (
-        <View style={[styles.cardImagenPlaceholder, { backgroundColor: Colors.accent + '18' }]}>
-          <Ionicons name="storefront-outline" size={32} color={Colors.accent + '88'} />
+        <View style={[styles.miniCardImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
         </View>
       )}
       {s.destacado && (
         <View style={[styles.badgeDestacado, { backgroundColor: Colors.accent }]}>
-          <Ionicons name="star" size={11} color="#fff" />
-          <Text style={styles.badgeDestacadoText}>Destacado</Text>
+          <Ionicons name="star" size={10} color="#fff" />
         </View>
       )}
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardNombre}>{s.nombre}</Text>
-      </View>
-      {s.direccion ? (
-        <TouchableOpacity style={styles.infoFila} onPress={() => abrirMapa(s.direccion)}>
-          <Ionicons name="location-outline" size={15} color={Colors.accent} />
-          <Text style={[styles.infoTexto, { color: Colors.accent, textDecorationLine: 'underline' }]}>{s.direccion}</Text>
-          <Ionicons name="navigate-outline" size={14} color={Colors.accent} />
-        </TouchableOpacity>
-      ) : null}
-      <View style={styles.botonesRow}>
-        {s.telefono ? (
-          <TouchableOpacity style={[styles.contactBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
-            <Ionicons name="call-outline" size={16} color={Colors.success} />
-            <Text style={[styles.contactBtnText, { color: Colors.success }]}>Llamar</Text>
-          </TouchableOpacity>
-        ) : null}
-        {s.whatsapp ? (
-          <TouchableOpacity style={[styles.contactBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
-            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-            <Text style={[styles.contactBtnText, { color: '#25D366' }]}>WhatsApp</Text>
-          </TouchableOpacity>
-        ) : null}
-        {s.web ? (
-          <TouchableOpacity style={[styles.contactBtn, { backgroundColor: Colors.blue + '1A', borderColor: Colors.blue + '44' }]} onPress={() => abrirEnlace(s.web)}>
-            <Ionicons name="globe-outline" size={16} color={Colors.blue} />
-            <Text style={[styles.contactBtnText, { color: Colors.blue }]}>Web</Text>
-          </TouchableOpacity>
+      <View style={styles.miniCardBody}>
+        <Text style={[styles.miniCardNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
+        {s.direccion ? (
+          <Text style={[styles.miniCardDir, { color: Colors.textMuted }]} numberOfLines={1}>{s.direccion}</Text>
         ) : null}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderModal = () => {
@@ -140,7 +123,7 @@ export default function SociosScreen() {
       <Modal visible animationType="slide" transparent onRequestClose={() => setSocioModal(null)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: Colors.card }]}>
-            <TouchableOpacity style={styles.modalCerrar} onPress={() => setSocioModal(null)}>
+            <TouchableOpacity style={[styles.modalCerrar, { backgroundColor: Colors.border }]} onPress={() => setSocioModal(null)}>
               <Ionicons name="close" size={22} color={Colors.text} />
             </TouchableOpacity>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -152,10 +135,12 @@ export default function SociosScreen() {
                 </View>
               )}
               <View style={styles.modalBody}>
-                <View style={[styles.badgeDestacado, { backgroundColor: Colors.accent, alignSelf: 'flex-start', position: 'relative', top: 0, right: 0, marginBottom: 8 }]}>
-                  <Ionicons name="star" size={11} color="#fff" />
-                  <Text style={styles.badgeDestacadoText}>Destacado</Text>
-                </View>
+                {s.destacado && (
+                  <View style={[styles.badgeDestacado, { backgroundColor: Colors.accent, alignSelf: 'flex-start', position: 'relative', top: 0, right: 0, marginBottom: 8 }]}>
+                    <Ionicons name="star" size={11} color="#fff" />
+                    <Text style={styles.badgeDestacadoText}>Destacado</Text>
+                  </View>
+                )}
                 <Text style={[styles.modalNombre, { color: Colors.text }]}>{s.nombre}</Text>
                 {s.direccion ? (
                   <TouchableOpacity style={[styles.infoFila, { paddingHorizontal: 0, marginTop: 8 }]} onPress={() => abrirMapa(s.direccion)}>
@@ -184,6 +169,25 @@ export default function SociosScreen() {
                     </TouchableOpacity>
                   ) : null}
                 </View>
+
+                {/* Galería de imágenes */}
+                <View style={{ marginTop: 16 }}>
+                  <Text style={[styles.galeriaTitulo, { color: Colors.textMuted }]}>Galería</Text>
+                  <View style={styles.galeriaGrid}>
+                    {[s.imagen, s.imagen2, s.imagen3, s.imagen4, s.imagen5, s.imagen6].map((img, i) => (
+                      img ? (
+                        <TouchableOpacity key={i} onPress={() => setImagenAmpliada(img)} activeOpacity={0.85}
+                          style={[styles.galeriaImg, { borderColor: Colors.border }]}>
+                          <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        </TouchableOpacity>
+                      ) : (
+                        <View key={i} style={[styles.galeriaImg, styles.galeriaImgVacia, { backgroundColor: Colors.border + '44', borderColor: Colors.border }]}>
+                          <Ionicons name="image-outline" size={20} color={Colors.textMuted} />
+                        </View>
+                      )
+                    ))}
+                  </View>
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -192,9 +196,87 @@ export default function SociosScreen() {
     );
   };
 
+  // Gestos para el visor de imagen
+  const escala      = useSharedValue(1);
+  const escalaBase  = useSharedValue(1);
+  const transX      = useSharedValue(0);
+  const transY      = useSharedValue(0);
+  const transXBase  = useSharedValue(0);
+  const transYBase  = useSharedValue(0);
+
+  const resetVisor = () => {
+    escala.value     = withTiming(1);
+    escalaBase.value = 1;
+    transX.value     = withTiming(0);
+    transY.value     = withTiming(0);
+    transXBase.value = 0;
+    transYBase.value = 0;
+  };
+
+  useEffect(() => { if (!imagenAmpliada) resetVisor(); }, [imagenAmpliada]);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate(e => { escala.value = Math.max(1, escalaBase.value * e.scale); })
+    .onEnd(() => { escalaBase.value = escala.value; });
+
+  const pan = Gesture.Pan()
+    .onUpdate(e => {
+      transX.value = transXBase.value + e.translationX;
+      transY.value = transYBase.value + e.translationY;
+    })
+    .onEnd(() => {
+      transXBase.value = transX.value;
+      transYBase.value = transY.value;
+    });
+
+  const doubleTap = Gesture.Tap().numberOfTaps(2).onEnd(() => {
+    escala.value     = withTiming(1);
+    escalaBase.value = 1;
+    transX.value     = withTiming(0);
+    transY.value     = withTiming(0);
+    transXBase.value = 0;
+    transYBase.value = 0;
+  });
+
+  const gestos = Gesture.Simultaneous(Gesture.Exclusive(doubleTap, pan), pinch);
+
+  const estiloAnimado = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: transX.value },
+      { translateY: transY.value },
+      { scale: escala.value },
+    ],
+  }));
+
+  const renderImagenAmpliada = () => (
+    <Modal visible={!!imagenAmpliada} transparent animationType="fade"
+      onRequestClose={() => { resetVisor(); setImagenAmpliada(null); }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: '#000000EE', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8 }}
+            onPress={() => { resetVisor(); setImagenAmpliada(null); }}>
+            <Ionicons name="close-circle" size={36} color="#fff" />
+          </TouchableOpacity>
+          <GestureDetector gesture={gestos}>
+            <Animated.View style={[{ width: '100%', height: '80%' }, estiloAnimado]}>
+              {imagenAmpliada && (
+                <Image source={{ uri: imagenAmpliada }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+              )}
+            </Animated.View>
+          </GestureDetector>
+          <Text style={{ color: '#ffffff55', fontSize: 11, position: 'absolute', bottom: 30 }}>
+            Pellizca para zoom · Doble toque para restablecer
+          </Text>
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
       {renderModal()}
+      {renderImagenAmpliada()}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -312,7 +394,9 @@ export default function SociosScreen() {
                 <Text style={styles.centeredText}>Sin resultados</Text>
               </View>
             ) : (
-              sociosFiltrados.map(s => renderCard(s))
+              <View style={styles.grilla}>
+                {sociosFiltrados.map(s => renderMiniCard(s))}
+              </View>
             )
           )}
         </ScrollView>
@@ -373,22 +457,24 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   cardDestacadoBtnText:  { fontSize: 11, fontWeight: '700' },
 
-  // Badge destacado en card normal
+  // Badge destacado
   badgeDestacado: {
-    position: 'absolute', top: 10, right: 10,
+    position: 'absolute', top: 8, right: 8,
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99,
   },
   badgeDestacadoText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
-  card: {
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', gap: Spacing.sm,
+  // Grilla 2 columnas
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  miniCard: {
+    width: '47%', borderRadius: Radius.lg, borderWidth: 1,
+    overflow: 'hidden',
   },
-  cardImagen:            { width: '100%', height: 160 },
-  cardImagenPlaceholder: { width: '100%', height: 120, alignItems: 'center', justifyContent: 'center' },
-  cardHeader:            { paddingHorizontal: Spacing.md, paddingTop: 4 },
-  cardNombre:            { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
+  miniCardImg:    { width: '100%', height: 110 },
+  miniCardBody:   { padding: Spacing.sm, gap: 2 },
+  miniCardNombre: { fontSize: FontSize.sm, fontWeight: '700' },
+  miniCardDir:    { fontSize: 11 },
 
   infoFila:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingHorizontal: Spacing.md },
   infoTexto: { flex: 1, fontSize: FontSize.sm, color: Colors.textMuted },
@@ -407,7 +493,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   modalContent: {
     borderTopLeftRadius: Radius.lg * 2, borderTopRightRadius: Radius.lg * 2,
-    maxHeight: '85%', overflow: 'hidden',
+    maxHeight: '75%', overflow: 'hidden',
   },
   modalCerrar: {
     position: 'absolute', top: 16, right: 16, zIndex: 10,
@@ -417,4 +503,12 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   modalImagenPlaceholder: { width: '100%', height: 160, alignItems: 'center', justifyContent: 'center' },
   modalBody:              { padding: Spacing.lg, paddingBottom: 40 },
   modalNombre:            { fontSize: FontSize.xl, fontWeight: '800' },
+
+  galeriaTitulo: { fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  galeriaGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  galeriaImg: {
+    width: '31%', aspectRatio: 1, borderRadius: Radius.md,
+    borderWidth: 1, overflow: 'hidden',
+  },
+  galeriaImgVacia: { alignItems: 'center', justifyContent: 'center' },
 }); }

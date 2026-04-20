@@ -51,6 +51,11 @@ export type SocioComercial = {
   web: string;
   direccion: string;
   imagen: string;
+  imagen2: string;
+  imagen3: string;
+  imagen4: string;
+  imagen5: string;
+  imagen6: string;
   orden: number;
   created_at: string;
   destacado: boolean;

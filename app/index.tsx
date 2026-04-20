@@ -321,7 +321,7 @@ export default function CalculadoraBCVScreen() {
 
       {/* ── Header ── */}
       <View style={[s.header, { backgroundColor: T.background }]}>
-        <Text style={[s.headerTitle, { color: T.text }]}>Cash Cash</Text>
+        <Text style={[s.headerTitle, { color: T.text }]}>CashCash</Text>
         <TouchableOpacity onPress={() => recargarTodo(true)} style={[s.iconBtn, { backgroundColor: T.card, borderColor: T.border }]} disabled={isLoadingAny}>
           {isLoadingAny
             ? <ActivityIndicator size="small" color={T.accent} />
@@ -535,6 +535,11 @@ export default function CalculadoraBCVScreen() {
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/gastos'); }}>
               <Ionicons name="wallet-outline" size={18} color="#A78BFA" />
               <Text style={[s.menuItemText, { color: '#A78BFA' }]}>Mi Cartera</Text>
+            </TouchableOpacity>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/socios'); }}>
+              <Ionicons name="storefront-outline" size={18} color={T.accent} />
+              <Text style={[s.menuItemText, { color: T.accent }]}>Socios Comerciales</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
