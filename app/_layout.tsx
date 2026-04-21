@@ -71,8 +71,10 @@ function AppTabs() {
       />
       {/* Ocultar rutas que no son tabs */}
       <Tabs.Screen name="(tabs)"      options={{ href: null }} />
-      <Tabs.Screen name="socios"      options={{ href: null }} />
-      <Tabs.Screen name="directorio"  options={{ href: null }} />
+      <Tabs.Screen name="socios"         options={{ href: null }} />
+      <Tabs.Screen name="directorio"    options={{ href: null }} />
+      <Tabs.Screen name="unirse-socio"      options={{ href: null }} />
+      <Tabs.Screen name="editar-mi-negocio" options={{ href: null }} />
     </Tabs>
   );
 }

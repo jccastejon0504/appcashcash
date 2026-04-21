@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SocioComercial } from '@/services/supabase';
 
 export default function SociosScreen() {
@@ -17,9 +18,11 @@ export default function SociosScreen() {
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
 
-  const [socios,      setSocios]      = useState<SocioComercial[]>([]);
-  const [cargando,    setCargando]    = useState(true);
-  const [refrescando, setRefrescando] = useState(false);
+  const [socios,           setSocios]           = useState<SocioComercial[]>([]);
+  const [cargando,         setCargando]         = useState(true);
+  const [refrescando,      setRefrescando]      = useState(false);
+  const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
+  const [miSocioId,        setMiSocioId]        = useState<string | null>(null);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,      setBusqueda]      = useState('');
   const [mostrarSug,    setMostrarSug]    = useState(false);
@@ -33,6 +36,7 @@ export default function SociosScreen() {
     const { data, error: err } = await supabase
       .from('socios_comerciales')
       .select('*')
+      .or('activo.is.null,activo.eq.true')
       .order('orden', { ascending: true });
     if (err) setError('No se pudo cargar la información');
     else setSocios(data ?? []);
@@ -40,6 +44,23 @@ export default function SociosScreen() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    const verificarSocio = async () => {
+      const enviada = await AsyncStorage.getItem('solicitud_socio_enviada');
+      if (enviada !== 'true') return;
+      setYaEnvioSolicitud(true);
+      const tel = await AsyncStorage.getItem('socio_telefono');
+      if (!tel) return;
+      const { data } = await supabase
+        .from('socios_comerciales')
+        .select('id')
+        .or(`telefono.eq.${tel},whatsapp.eq.${tel}`)
+        .maybeSingle();
+      if (data?.id) setMiSocioId(data.id);
+    };
+    verificarSocio();
+  }, []);
 
   const destacados = useMemo(() => socios.filter(s => s.destacado), [socios]);
 
@@ -292,6 +313,37 @@ export default function SociosScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Botón editar mi espacio */}
+      {miSocioId && (
+        <TouchableOpacity
+          style={[styles.bannerSocio, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '55' }]}
+          onPress={() => router.push({ pathname: '/editar-mi-negocio', params: { id: miSocioId } })}
+          activeOpacity={0.85}>
+          <View style={[styles.bannerSocioIcono, { backgroundColor: Colors.accent }]}>
+            <Ionicons name="create" size={18} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>Mi espacio de negocio</Text>
+            <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>Toca para editar tu perfil</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
+        </TouchableOpacity>
+      )}
+
+      {/* Banner unirse como socio */}
+      {!yaEnvioSolicitud && <TouchableOpacity
+        style={[styles.bannerSocio, { backgroundColor: Colors.accent + '12', borderColor: Colors.accent + '44' }]}
+        onPress={() => router.push('/unirse-socio')} activeOpacity={0.85}>
+        <View style={[styles.bannerSocioIcono, { backgroundColor: Colors.accent }]}>
+          <Ionicons name="storefront" size={18} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>¿Tienes un negocio?</Text>
+          <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>Únete como Socio Comercial</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
+      </TouchableOpacity>}
+
       {/* Buscador */}
       <View style={styles.searchWrap}>
         <View style={[styles.searchBox, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
@@ -503,6 +555,18 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   modalImagenPlaceholder: { width: '100%', height: 160, alignItems: 'center', justifyContent: 'center' },
   modalBody:              { padding: Spacing.lg, paddingBottom: 40 },
   modalNombre:            { fontSize: FontSize.xl, fontWeight: '800' },
+
+  bannerSocio: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: Spacing.lg, marginTop: Spacing.md,
+    borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md,
+  },
+  bannerSocioIcono: {
+    width: 40, height: 40, borderRadius: Radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bannerSocioTitulo: { fontSize: FontSize.sm, fontWeight: '800' },
+  bannerSocioSub:    { fontSize: FontSize.xs, marginTop: 1 },
 
   galeriaTitulo: { fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
   galeriaGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

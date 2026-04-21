@@ -59,4 +59,6 @@ export type SocioComercial = {
   orden: number;
   created_at: string;
   destacado: boolean;
+  activo: boolean | null;
+  fecha_vencimiento: string | null;
 };
