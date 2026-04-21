@@ -22,10 +22,18 @@ export default function SociosScreen() {
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
   const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
-  const [miSocioId,        setMiSocioId]        = useState<string | null>(null);
+  const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string }[]>([]);
+  const [submenu,          setSubmenu]          = useState(false);
+  const [modalVincular,    setModalVincular]    = useState(false);
+  const [busqVincular,     setBusqVincular]     = useState('');
+  const [resVincular,      setResVincular]      = useState<{ id: string; nombre: string }[]>([]);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,      setBusqueda]      = useState('');
   const [mostrarSug,    setMostrarSug]    = useState(false);
+  const [modalBuscar,   setModalBuscar]   = useState(false);
+  const [subcats,       setSubcats]       = useState<{ id: string; nombre: string }[]>([]);
+  const [subcatAbierto, setSubcatAbierto] = useState(false);
+  const [subcatFiltro,  setSubcatFiltro]  = useState<string | null>(null);
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -46,23 +54,61 @@ export default function SociosScreen() {
   useEffect(() => { cargar(); }, [cargar]);
 
   useEffect(() => {
-    const verificarSocio = async () => {
-      const enviada = await AsyncStorage.getItem('solicitud_socio_enviada');
-      if (enviada !== 'true') return;
-      setYaEnvioSolicitud(true);
-      const tel = await AsyncStorage.getItem('socio_telefono');
-      if (!tel) return;
-      const { data } = await supabase
-        .from('socios_comerciales')
-        .select('id')
-        .or(`telefono.eq.${tel},whatsapp.eq.${tel}`)
-        .maybeSingle();
-      if (data?.id) setMiSocioId(data.id);
-    };
-    verificarSocio();
+    supabase.from('subcategorias').select('id,nombre').order('nombre').then(({ data }) => {
+      if (data) setSubcats(data as { id: string; nombre: string }[]);
+    });
   }, []);
 
-  const destacados = useMemo(() => socios.filter(s => s.destacado), [socios]);
+  useEffect(() => {
+    const cargarMisSocios = async () => {
+      const enviada = await AsyncStorage.getItem('solicitud_socio_enviada');
+      if (enviada === 'true') setYaEnvioSolicitud(true);
+      const raw = await AsyncStorage.getItem('mis_socios_ids');
+      const ids: string[] = JSON.parse(raw || '[]');
+      if (ids.length === 0) return;
+      const { data } = await supabase
+        .from('socios_comerciales')
+        .select('id, nombre')
+        .in('id', ids)
+        .order('nombre', { ascending: true });
+      if (data && data.length > 0)
+        setMisSocios(data as { id: string; nombre: string }[]);
+    };
+    cargarMisSocios();
+  }, []);
+
+  const buscarVincular = async (texto: string) => {
+    setBusqVincular(texto);
+    if (texto.trim().length < 2) { setResVincular([]); return; }
+    const { data } = await supabase
+      .from('socios_comerciales')
+      .select('id, nombre')
+      .ilike('nombre', `%${texto.trim()}%`)
+      .limit(10);
+    setResVincular((data ?? []) as { id: string; nombre: string }[]);
+  };
+
+  const vincular = async (s: { id: string; nombre: string }) => {
+    const raw = await AsyncStorage.getItem('mis_socios_ids');
+    const ids: string[] = JSON.parse(raw || '[]');
+    if (!ids.includes(s.id)) {
+      await AsyncStorage.setItem('mis_socios_ids', JSON.stringify([...ids, s.id]));
+    }
+    await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
+    setYaEnvioSolicitud(true);
+    setMisSocios(prev =>
+      [...prev.filter(x => x.id !== s.id), s].sort((a, b) => a.nombre.localeCompare(b.nombre))
+    );
+    setModalVincular(false);
+    setBusqVincular('');
+    setResVincular([]);
+  };
+
+  const destacados = useMemo(() => {
+    let lista = socios.filter(s => s.destacado);
+    if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
+    return lista;
+  }, [socios, subcatFiltro]);
 
   const sugerencias = useMemo(() => {
     if (!busqueda.trim()) return [];
@@ -76,13 +122,15 @@ export default function SociosScreen() {
   }, [busqueda, socios]);
 
   const sociosFiltrados = useMemo(() => {
+    let lista = socios;
+    if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
     const q = busqueda.trim().toLowerCase();
-    if (!q) return socios;
-    return socios.filter(s =>
+    if (!q) return lista;
+    return lista.filter(s =>
       s.nombre?.toLowerCase().includes(q) ||
       s.direccion?.toLowerCase().includes(q)
     );
-  }, [socios, busqueda]);
+  }, [socios, busqueda, subcatFiltro]);
 
   const seleccionarSugerencia = (texto: string) => {
     setBusqueda(texto);
@@ -313,25 +361,96 @@ export default function SociosScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Botón editar mi espacio */}
-      {miSocioId && (
+      {/* Modal vincular negocio */}
+      <Modal visible={modalVincular} animationType="slide" transparent onRequestClose={() => setModalVincular(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: Colors.card }]}>
+            <TouchableOpacity style={[styles.modalCerrar, { backgroundColor: Colors.border }]} onPress={() => setModalVincular(false)}>
+              <Ionicons name="close" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <View style={{ padding: Spacing.lg, gap: Spacing.md }}>
+              <Text style={[styles.modalNombre, { color: Colors.text, fontSize: FontSize.md }]}>Vincular mi negocio</Text>
+              <View style={[styles.searchBox, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
+                <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+                <TextInput
+                  style={[styles.searchInput, { color: Colors.text }]}
+                  placeholder="Escribe el nombre de tu negocio…"
+                  placeholderTextColor={Colors.textMuted}
+                  value={busqVincular}
+                  onChangeText={buscarVincular}
+                  autoFocus
+                />
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>
+                {resVincular.map(s => (
+                  <TouchableOpacity key={s.id}
+                    onPress={() => vincular(s)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+                    <Ionicons name="storefront-outline" size={18} color={Colors.accent} />
+                    <Text style={{ flex: 1, color: Colors.text, fontSize: FontSize.sm, fontWeight: '600' }}>{s.nombre}</Text>
+                    <Ionicons name="link-outline" size={16} color={Colors.accent} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Mi espacio de negocio */}
+      <View style={[styles.bannerSocio, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '55', flexDirection: 'column', alignItems: 'stretch' }]}>
+        {/* Cabecera — siempre visible */}
         <TouchableOpacity
-          style={[styles.bannerSocio, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '55' }]}
-          onPress={() => router.push({ pathname: '/editar-mi-negocio', params: { id: miSocioId } })}
-          activeOpacity={0.85}>
+          onPress={() => setSubmenu(v => !v)}
+          activeOpacity={0.8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={[styles.bannerSocioIcono, { backgroundColor: Colors.accent }]}>
             <Ionicons name="create" size={18} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>Mi espacio de negocio</Text>
-            <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>Toca para editar tu perfil</Text>
+            <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>
+              {misSocios.length === 0 ? 'Toca para vincular tu negocio' : `${misSocios.length} negocio${misSocios.length > 1 ? 's' : ''} · toca para ver`}
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
+          <Ionicons name={submenu ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.accent} />
         </TouchableOpacity>
-      )}
+
+        {/* Submenú desplegable */}
+        {submenu && (
+          <View style={{ marginTop: Spacing.sm, gap: 6 }}>
+            <TouchableOpacity
+              onPress={() => { setSubmenu(false); router.push('/unirse-socio'); }}
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
+              <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
+              <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Agregar nuevo negocio</Text>
+            </TouchableOpacity>
+            {misSocios.map(s => (
+              <TouchableOpacity key={s.id}
+                onPress={() => { setSubmenu(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.card, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 11, borderWidth: 1, borderColor: Colors.border }}>
+                <Ionicons name="storefront-outline" size={16} color={Colors.accent} />
+                <Text style={{ flex: 1, color: Colors.text, fontSize: FontSize.sm, fontWeight: '700' }}>{s.nombre}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              onPress={() => { setSubmenu(false); setModalVincular(true); }}
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
+              <Ionicons name="link-outline" size={16} color={Colors.accent} />
+              <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>
+                {misSocios.length === 0 ? 'Vincular mi negocio' : 'Vincular nuevo negocio'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       {/* Banner unirse como socio */}
-      {!yaEnvioSolicitud && <TouchableOpacity
+      {!yaEnvioSolicitud && misSocios.length === 0 && <TouchableOpacity
         style={[styles.bannerSocio, { backgroundColor: Colors.accent + '12', borderColor: Colors.accent + '44' }]}
         onPress={() => router.push('/unirse-socio')} activeOpacity={0.85}>
         <View style={[styles.bannerSocioIcono, { backgroundColor: Colors.accent }]}>
@@ -344,45 +463,45 @@ export default function SociosScreen() {
         <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
       </TouchableOpacity>}
 
-      {/* Buscador */}
-      <View style={styles.searchWrap}>
-        <View style={[styles.searchBox, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-          <TextInput
-            ref={inputRef}
-            style={[styles.searchInput, { color: Colors.text }]}
-            placeholder="Buscar comercio…"
-            placeholderTextColor={Colors.textMuted}
-            value={busqueda}
-            onChangeText={t => { setBusqueda(t); setMostrarSug(true); }}
-            onFocus={() => setMostrarSug(true)}
-            onBlur={() => setTimeout(() => setMostrarSug(false), 150)}
-            returnKeyType="search"
-            onSubmitEditing={() => setMostrarSug(false)}
-          />
-          {busqueda ? (
-            <TouchableOpacity onPress={() => { setBusqueda(''); setMostrarSug(false); }}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        {/* Autocomplete */}
-        {mostrarSug && sugerencias.length > 0 && (
-          <View style={[styles.dropdown, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-            {sugerencias.map((sug, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.dropdownItem, i < sugerencias.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}
-                onPress={() => seleccionarSugerencia(sug)}
-              >
-                <Ionicons name="search-outline" size={14} color={Colors.textMuted} style={{ marginRight: 8 }} />
-                <Text style={[styles.dropdownText, { color: Colors.text }]}>{sug}</Text>
-              </TouchableOpacity>
-            ))}
+      {/* Modal buscador */}
+      <Modal visible={modalBuscar} animationType="fade" transparent onRequestClose={() => { setModalBuscar(false); setBusqueda(''); }}>
+        <View style={{ flex: 1, backgroundColor: '#00000066' }}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { setModalBuscar(false); setBusqueda(''); }} />
+          <View style={[styles.searchWrap, { position: 'absolute', top: 80, left: 0, right: 0, zIndex: 100 }]}>
+            <View style={[styles.searchBox, { backgroundColor: Colors.card, borderColor: Colors.border, borderRadius: Radius.lg, elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }]}>
+              <Ionicons name="search-outline" size={18} color={Colors.accent} />
+              <TextInput
+                ref={inputRef}
+                style={[styles.searchInput, { color: Colors.text }]}
+                placeholder="Buscar comercio…"
+                placeholderTextColor={Colors.textMuted}
+                value={busqueda}
+                onChangeText={t => { setBusqueda(t); setMostrarSug(true); }}
+                autoFocus
+                returnKeyType="search"
+                onSubmitEditing={() => setMostrarSug(false)}
+              />
+              {busqueda ? (
+                <TouchableOpacity onPress={() => setBusqueda('')}>
+                  <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {sugerencias.length > 0 && (
+              <View style={[styles.dropdown, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+                {sugerencias.map((sug, i) => (
+                  <TouchableOpacity key={i}
+                    style={[styles.dropdownItem, i < sugerencias.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}
+                    onPress={() => { seleccionarSugerencia(sug); setModalBuscar(false); }}>
+                    <Ionicons name="search-outline" size={14} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                    <Text style={[styles.dropdownText, { color: Colors.text }]}>{sug}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </View>
+      </Modal>
 
       {cargando ? (
         <View style={styles.centered}>
@@ -404,42 +523,75 @@ export default function SociosScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Sección Destacados */}
-          {!busqueda && destacados.length > 0 && (
+          {!busqueda && (destacados.length > 0 || subcats.length > 0) && (
             <View>
-              <View style={styles.seccionHeader}>
+              <TouchableOpacity
+                style={styles.seccionHeader}
+                onPress={() => setSubcatAbierto(v => !v)}
+                activeOpacity={0.7}>
                 <Ionicons name="star" size={14} color={Colors.accent} />
-                <Text style={[styles.seccionTitulo, { color: Colors.accent }]}>Destacados</Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.destacadosRow}>
-                {destacados.map(s => (
-                  <TouchableOpacity key={s.id} style={[styles.cardDestacado, { backgroundColor: Colors.card, borderColor: Colors.border }]} onPress={() => setSocioModal(s)} activeOpacity={0.85}>
-                    {s.imagen ? (
-                      <Image source={{ uri: s.imagen }} style={styles.cardDestacadoImg} resizeMode="cover" />
-                    ) : (
-                      <View style={[styles.cardDestacadoImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
-                        <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
-                      </View>
-                    )}
-                    <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-                    {s.whatsapp ? (
-                      <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
-                        <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
-                        <Text style={[styles.cardDestacadoBtnText, { color: '#25D366' }]}>WhatsApp</Text>
-                      </TouchableOpacity>
-                    ) : s.telefono ? (
-                      <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
-                        <Ionicons name="call-outline" size={13} color={Colors.success} />
-                        <Text style={[styles.cardDestacadoBtnText, { color: Colors.success }]}>Llamar</Text>
-                      </TouchableOpacity>
-                    ) : null}
+                <Text style={[styles.seccionTitulo, { color: Colors.accent, flex: 1 }]}>Destacados</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={[styles.seccionTitulo, { color: Colors.accent }]}>Categoría</Text>
+                  <Ionicons name={subcatAbierto ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.accent} />
+                </View>
+              </TouchableOpacity>
+
+              {/* Subcategorías desplegables */}
+              {subcatAbierto && subcats.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
+                  <TouchableOpacity
+                    onPress={() => setSubcatFiltro(null)}
+                    style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5,
+                      backgroundColor: !subcatFiltro ? Colors.accent : Colors.card,
+                      borderColor: !subcatFiltro ? Colors.accent : Colors.border }}>
+                    <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: !subcatFiltro ? '#fff' : Colors.textMuted }}>Todos</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                  {subcats.map(sc => (
+                    <TouchableOpacity key={sc.id}
+                      onPress={() => setSubcatFiltro(subcatFiltro === sc.id ? null : sc.id)}
+                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5,
+                        backgroundColor: subcatFiltro === sc.id ? Colors.accent : Colors.card,
+                        borderColor: subcatFiltro === sc.id ? Colors.accent : Colors.border }}>
+                      <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: subcatFiltro === sc.id ? '#fff' : Colors.textMuted }}>{sc.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              {/* Cards horizontales: solo cuando NO hay filtro activo */}
+              {!subcatFiltro && destacados.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.destacadosRow}>
+                  {destacados.map(s => (
+                    <TouchableOpacity key={s.id} style={[styles.cardDestacado, { backgroundColor: Colors.card, borderColor: Colors.border }]} onPress={() => setSocioModal(s)} activeOpacity={0.85}>
+                      {s.imagen ? (
+                        <Image source={{ uri: s.imagen }} style={styles.cardDestacadoImg} resizeMode="cover" />
+                      ) : (
+                        <View style={[styles.cardDestacadoImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
+                          <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
+                        </View>
+                      )}
+                      <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
+                      {s.whatsapp ? (
+                        <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
+                          <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+                          <Text style={[styles.cardDestacadoBtnText, { color: '#25D366' }]}>WhatsApp</Text>
+                        </TouchableOpacity>
+                      ) : s.telefono ? (
+                        <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
+                          <Ionicons name="call-outline" size={13} color={Colors.success} />
+                          <Text style={[styles.cardDestacadoBtnText, { color: Colors.success }]}>Llamar</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           )}
 
-          {/* Resultados de búsqueda */}
-          {busqueda.trim() !== '' && (
+          {/* Resultados de búsqueda o filtro subcategoría */}
+          {(busqueda.trim() !== '' || subcatFiltro) && (
             sociosFiltrados.length === 0 ? (
               <View style={styles.centered}>
                 <Ionicons name="search-outline" size={48} color={Colors.textMuted} />
@@ -453,6 +605,26 @@ export default function SociosScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* FAB búsqueda */}
+      {!busqueda && (
+        <TouchableOpacity
+          onPress={() => { setBusqueda(''); setModalBuscar(true); }}
+          activeOpacity={0.85}
+          style={{ position: 'absolute', bottom: 28, right: 24, width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
+          <Ionicons name="search" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* FAB limpiar búsqueda (cuando hay texto activo) */}
+      {busqueda ? (
+        <TouchableOpacity
+          onPress={() => { setBusqueda(''); setModalBuscar(false); }}
+          activeOpacity={0.85}
+          style={{ position: 'absolute', bottom: 28, right: 24, width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
+          <Ionicons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
+      ) : null}
     </SafeAreaView>
   );
 }

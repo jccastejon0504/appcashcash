@@ -37,6 +37,10 @@ export default function UnirseSocioScreen() {
   const [infoPago,    setInfoPago]    = useState<Record<string, string[]>>({});
   const [copiado,     setCopiado]     = useState<string | null>(null);
 
+  type Oferta = { precio_original: number | null; precio_oferta: number; descuento_pct: number | null; meses_gratis: number };
+  const [ofertas,    setOfertas]    = useState<{ mensual?: Oferta; anual?: Oferta }>({});
+  const [textoPlan,  setTextoPlan]  = useState('');
+
   // Paso 1
   const [nombre,      setNombre]      = useState('');
   const [ciudad,      setCiudad]      = useState('');
@@ -65,6 +69,16 @@ export default function UnirseSocioScreen() {
       data.forEach(m => { mapa[m.id] = m.datos as string[]; });
       setInfoPago(mapa);
     });
+
+    supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
+      if (!data) return;
+      const map: { mensual?: Oferta; anual?: Oferta } = {};
+      data.forEach((o: any) => { map[o.plan as Plan] = o; });
+      setOfertas(map);
+    });
+
+    supabase.from('config_app').select('valor').eq('clave', 'texto_planes').single()
+      .then(({ data }) => { if (data?.valor) setTextoPlan(data.valor); });
   }, []);
 
   const pickImage = (onSelect: (uri: string) => void) => {
@@ -164,7 +178,7 @@ export default function UnirseSocioScreen() {
       plan,
       metodo_pago: metodo,
       referencia:  referencia.trim(),
-      monto:       PLANES[plan].precio,
+      monto:       ofertas[plan]?.precio_oferta ?? PLANES[plan].precio,
       imagen:      urlPortada,
       imagen2:     urlsGaleria[0],
       imagen3:     urlsGaleria[1],
@@ -315,9 +329,17 @@ export default function UnirseSocioScreen() {
     <View style={styles.pasoContainer}>
       <Text style={[styles.pasoTitulo, { color: Colors.text }]}>Elige tu plan</Text>
       <Text style={[styles.pasoSub, { color: Colors.textMuted }]}>Selecciona la membresía que más te conviene</Text>
+      {textoPlan ? (
+        <Text style={{ fontSize: FontSize.sm, color: Colors.accent, fontWeight: '600', marginTop: -8, paddingHorizontal: 2 }}>
+          {textoPlan}
+        </Text>
+      ) : null}
 
       {(Object.entries(PLANES) as [Plan, typeof PLANES.mensual][]).map(([key, val]) => {
-        const activo = plan === key;
+        const activo  = plan === key;
+        const oferta  = ofertas[key];
+        const precio  = oferta ? oferta.precio_oferta : val.precio;
+        const descSub = oferta?.meses_gratis ? `+${oferta.meses_gratis} mes${oferta.meses_gratis !== 1 ? 'es' : ''} gratis` : val.descripcion;
         return (
           <TouchableOpacity key={key} onPress={() => setPlan(key)}
             style={[styles.planCard, { borderColor: activo ? Colors.accent : Colors.border, backgroundColor: activo ? Colors.accent + '12' : Colors.card }]}>
@@ -325,12 +347,22 @@ export default function UnirseSocioScreen() {
               <View style={[styles.planRadio, { borderColor: activo ? Colors.accent : Colors.border }]}>
                 {activo && <View style={[styles.planRadioInner, { backgroundColor: Colors.accent }]} />}
               </View>
-              <View>
+              <View style={{ gap: 2 }}>
                 <Text style={[styles.planNombre, { color: Colors.text }]}>{val.label}</Text>
-                <Text style={[styles.planDesc, { color: Colors.textMuted }]}>{val.descripcion}</Text>
+                <Text style={[styles.planDesc, { color: oferta?.meses_gratis ? Colors.success : Colors.textMuted }]}>{descSub}</Text>
               </View>
             </View>
-            <Text style={[styles.planPrecio, { color: activo ? Colors.accent : Colors.text }]}>${val.precio}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+              {oferta?.descuento_pct ? (
+                <View style={{ backgroundColor: Colors.accent, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>-{oferta.descuento_pct}%</Text>
+                </View>
+              ) : null}
+              {oferta?.precio_original ? (
+                <Text style={{ fontSize: 11, color: Colors.textMuted, textDecorationLine: 'line-through' }}>${oferta.precio_original}</Text>
+              ) : null}
+              <Text style={[styles.planPrecio, { color: activo ? Colors.accent : Colors.text }]}>${precio}</Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -357,7 +389,7 @@ export default function UnirseSocioScreen() {
     <View style={styles.pasoContainer}>
       <Text style={[styles.pasoTitulo, { color: Colors.text }]}>Realizar pago</Text>
       <Text style={[styles.pasoSub, { color: Colors.textMuted }]}>
-        Total a pagar: <Text style={{ color: Colors.accent, fontWeight: '800' }}>${PLANES[plan].precio}</Text>
+        Total a pagar: <Text style={{ color: Colors.accent, fontWeight: '800' }}>${ofertas[plan]?.precio_oferta ?? PLANES[plan].precio}</Text>
       </Text>
 
       <Text style={[styles.label, { color: Colors.textMuted, marginBottom: 8 }]}>Método de pago</Text>

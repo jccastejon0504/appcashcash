@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Ofertas de Planes</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #6c3fc5;
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 10px rgba(108,63,197,.3);
+    }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header span { font-size: 13px; opacity: .75; margin-top: 2px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+
+    .planes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 640px) { .planes-grid { grid-template-columns: 1fr; } }
+
+    .plan-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+
+    .plan-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .plan-header h2 { font-size: 18px; font-weight: 800; }
+
+    .badge-activo {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: #dcfce7;
+      color: #16a34a;
+    }
+    .badge-inactivo {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: #f1f5f9;
+      color: #94a3b8;
+    }
+
+    /* Vista previa estilo screenshot */
+    .preview-box {
+      margin: 18px 22px;
+      border: 2px solid #e8e0f8;
+      border-radius: 14px;
+      padding: 18px 16px;
+      background: #faf8ff;
+      position: relative;
+    }
+    .preview-box.activo { border-color: #6c3fc5; background: #f5f0ff; }
+
+    .preview-desc { font-size: 12px; color: #777; margin-bottom: 12px; }
+
+    .preview-descuento {
+      position: absolute;
+      top: -10px;
+      right: 14px;
+      background: #6c3fc5;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 10px;
+      border-radius: 99px;
+    }
+
+    .preview-precio-orig {
+      font-size: 13px;
+      color: #999;
+      text-decoration: line-through;
+    }
+    .preview-precio-oferta {
+      font-size: 28px;
+      font-weight: 900;
+      color: #6c3fc5;
+      line-height: 1.1;
+    }
+    .preview-precio-oferta sup { font-size: 14px; }
+    .preview-precio-oferta span { font-size: 13px; font-weight: 600; color: #777; }
+    .preview-meses {
+      font-size: 13px;
+      font-weight: 700;
+      color: #16a34a;
+      margin-top: 4px;
+    }
+    .preview-sin-oferta {
+      font-size: 22px;
+      font-weight: 800;
+      color: #333;
+    }
+
+    /* Formulario */
+    form { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    label { font-size: 12px; font-weight: 700; color: #555; display: block; margin-bottom: 4px; }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1a1a2e;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus, textarea:focus { border-color: #6c3fc5; }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+    }
+    .toggle-row span { font-size: 13px; font-weight: 700; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #cbd5e1;
+      border-radius: 24px;
+      transition: .3s;
+    }
+    .slider:before {
+      position: absolute;
+      content: '';
+      height: 18px; width: 18px;
+      left: 3px; bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    input:checked + .slider { background: #6c3fc5; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .btn-guardar {
+      background: #6c3fc5;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-guardar:hover { background: #5930a8; }
+    .btn-guardar:disabled { background: #c4b5e8; cursor: not-allowed; }
+
+    .btn-borrar {
+      background: transparent;
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px;
+      border: 1.5px solid #fecaca;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-borrar:hover { background: #fef2f2; }
+
+    .msg {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+    .msg.ok  { background: #dcfce7; color: #16a34a; }
+    .msg.err { background: #fee2e2; color: #dc2626; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #f0f0f0;
+      margin: 0 22px;
+    }
+
+    /* Historial */
+    .historial-section { margin-top: 36px; }
+    .historial-section h3 { font-size: 15px; font-weight: 800; color: #555; margin-bottom: 12px; }
+    .historial-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .historial-table th {
+      background: #f8f5ff;
+      padding: 11px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #6c3fc5;
+      text-align: left;
+    }
+    .historial-table td {
+      padding: 10px 14px;
+      font-size: 13px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .historial-table tr:hover td { background: #faf8ff; }
+
+    .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Ofertas de Planes · Socios Comerciales</h1>
+    <span>CashCach Admin · Panel de gestión de promociones</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="planes-grid">
+    <!-- Plan Mensual -->
+    <div class="plan-card" id="card-mensual">
+      <div class="plan-header">
+        <h2>Plan Mensual</h2>
+        <span class="badge-inactivo" id="badge-mensual">Sin oferta</span>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-box" id="preview-mensual">
+        <p class="preview-sin-oferta" id="preview-mensual-content">$15 / mes</p>
+      </div>
+
+      <hr class="divider" />
+
+      <form id="form-mensual">
+        <input type="hidden" id="id-mensual" />
+
+        <div>
+          <label>Descripción / Tagline</label>
+          <textarea id="descripcion-mensual" placeholder="Todo lo que necesitas para empezar"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Precio original ($)</label>
+            <input type="number" id="precio-original-mensual" placeholder="15" step="0.01" />
+          </div>
+          <div>
+            <label>Precio oferta ($)</label>
+            <input type="number" id="precio-oferta-mensual" placeholder="2.99" step="0.01" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Descuento (%)</label>
+            <input type="number" id="descuento-mensual" placeholder="79" min="0" max="99" />
+          </div>
+          <div>
+            <label>Meses gratis</label>
+            <input type="number" id="meses-mensual" placeholder="3" min="0" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Fecha inicio</label>
+            <input type="date" id="inicio-mensual" />
+          </div>
+          <div>
+            <label>Fecha fin</label>
+            <input type="date" id="fin-mensual" />
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <span>Oferta activa</span>
+          <label class="toggle">
+            <input type="checkbox" id="activo-mensual" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="msg" id="msg-mensual"></div>
+
+        <button type="submit" class="btn-guardar" id="btn-mensual">Guardar oferta mensual</button>
+        <button type="button" class="btn-borrar" id="btn-borrar-mensual" style="display:none">Eliminar oferta</button>
+      </form>
+    </div>
+
+    <!-- Plan Anual -->
+    <div class="plan-card" id="card-anual">
+      <div class="plan-header">
+        <h2>Plan Anual</h2>
+        <span class="badge-inactivo" id="badge-anual">Sin oferta</span>
+      </div>
+
+      <div class="preview-box" id="preview-anual">
+        <p class="preview-sin-oferta" id="preview-anual-content">$150 / año</p>
+      </div>
+
+      <hr class="divider" />
+
+      <form id="form-anual">
+        <input type="hidden" id="id-anual" />
+
+        <div>
+          <label>Descripción / Tagline</label>
+          <textarea id="descripcion-anual" placeholder="Más herramientas y potencia para crecer"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Precio original ($)</label>
+            <input type="number" id="precio-original-anual" placeholder="150" step="0.01" />
+          </div>
+          <div>
+            <label>Precio oferta ($)</label>
+            <input type="number" id="precio-oferta-anual" placeholder="4.39" step="0.01" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Descuento (%)</label>
+            <input type="number" id="descuento-anual" placeholder="80" min="0" max="99" />
+          </div>
+          <div>
+            <label>Meses gratis</label>
+            <input type="number" id="meses-anual" placeholder="3" min="0" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label>Fecha inicio</label>
+            <input type="date" id="inicio-anual" />
+          </div>
+          <div>
+            <label>Fecha fin</label>
+            <input type="date" id="fin-anual" />
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <span>Oferta activa</span>
+          <label class="toggle">
+            <input type="checkbox" id="activo-anual" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="msg" id="msg-anual"></div>
+
+        <button type="submit" class="btn-guardar" id="btn-anual">Guardar oferta anual</button>
+        <button type="button" class="btn-borrar" id="btn-borrar-anual" style="display:none">Eliminar oferta</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="historial-section">
+    <h3>Historial de ofertas</h3>
+    <div id="historial-loading" class="loading">Cargando…</div>
+    <table class="historial-table" id="historial-table" style="display:none">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Descripción</th>
+          <th>Precio orig.</th>
+          <th>Precio oferta</th>
+          <th>Descuento</th>
+          <th>Meses gratis</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="historial-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function showMsg(plan, text, tipo) {
+    const el = document.getElementById(`msg-${plan}`);
+    el.textContent = text;
+    el.className = `msg ${tipo}`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 3500);
+  }
+
+  function renderPreview(plan, oferta) {
+    const box = document.getElementById(`preview-${plan}`);
+    const content = document.getElementById(`preview-${plan}-content`);
+    const badge   = document.getElementById(`badge-${plan}`);
+
+    if (!oferta) {
+      box.className = 'preview-box';
+      const def = plan === 'mensual' ? '$15 / mes' : '$150 / año';
+      content.outerHTML = `<p class="preview-sin-oferta" id="preview-${plan}-content">${def}</p>`;
+      badge.textContent = 'Sin oferta';
+      badge.className = 'badge-inactivo';
+      return;
+    }
+
+    badge.textContent = oferta.activo ? 'Activa' : 'Inactiva';
+    badge.className   = oferta.activo ? 'badge-activo' : 'badge-inactivo';
+    box.className     = oferta.activo ? 'preview-box activo' : 'preview-box';
+
+    const periodo = plan === 'mensual' ? '/mes' : '/año';
+    const meses   = oferta.meses_gratis > 0
+      ? `<p class="preview-meses">+${oferta.meses_gratis} mes(es) gratis</p>` : '';
+    const descuento = oferta.descuento_pct
+      ? `<div class="preview-descuento">-${oferta.descuento_pct}%</div>` : '';
+    const orig = oferta.precio_original
+      ? `<p class="preview-precio-orig">$${Number(oferta.precio_original).toFixed(2)}</p>` : '';
+    const desc = oferta.descripcion
+      ? `<p class="preview-desc">${oferta.descripcion}</p>` : '';
+
+    box.innerHTML = `
+      ${descuento}
+      ${desc}
+      ${orig}
+      <p class="preview-precio-oferta">
+        <sup>$</sup>${Number(oferta.precio_oferta).toFixed(2)}<span>${periodo}</span>
+      </p>
+      ${meses}
+    `;
+  }
+
+  function fillForm(plan, oferta) {
+    document.getElementById(`id-${plan}`).value             = oferta?.id ?? '';
+    document.getElementById(`descripcion-${plan}`).value    = oferta?.descripcion ?? '';
+    document.getElementById(`precio-original-${plan}`).value = oferta?.precio_original ?? '';
+    document.getElementById(`precio-oferta-${plan}`).value  = oferta?.precio_oferta ?? '';
+    document.getElementById(`descuento-${plan}`).value      = oferta?.descuento_pct ?? '';
+    document.getElementById(`meses-${plan}`).value          = oferta?.meses_gratis ?? '';
+    document.getElementById(`inicio-${plan}`).value         = oferta?.fecha_inicio ?? '';
+    document.getElementById(`fin-${plan}`).value            = oferta?.fecha_fin ?? '';
+    document.getElementById(`activo-${plan}`).checked       = oferta?.activo ?? false;
+    document.getElementById(`btn-borrar-${plan}`).style.display = oferta ? 'block' : 'none';
+  }
+
+  // ── Cargar datos ──────────────────────────────────────────────────────────
+
+  async function cargar() {
+    const { data, error } = await db
+      .from('planes_ofertas')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      document.getElementById('historial-loading').textContent = 'Error al cargar datos.';
+      return;
+    }
+
+    const mensual = data.find(o => o.plan === 'mensual') ?? null;
+    const anual   = data.find(o => o.plan === 'anual')   ?? null;
+
+    fillForm('mensual', mensual);
+    fillForm('anual', anual);
+    renderPreview('mensual', mensual);
+    renderPreview('anual', anual);
+
+    // Historial
+    const tbody = document.getElementById('historial-body');
+    tbody.innerHTML = '';
+    data.forEach(o => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><b>${o.plan === 'mensual' ? 'Mensual' : 'Anual'}</b></td>
+        <td>${o.descripcion ?? '—'}</td>
+        <td>${o.precio_original ? '$' + Number(o.precio_original).toFixed(2) : '—'}</td>
+        <td>${o.precio_oferta ? '$' + Number(o.precio_oferta).toFixed(2) : '—'}</td>
+        <td>${o.descuento_pct != null ? '-' + o.descuento_pct + '%' : '—'}</td>
+        <td>${o.meses_gratis ?? 0}</td>
+        <td>${o.fecha_inicio ?? '—'}</td>
+        <td>${o.fecha_fin ?? '—'}</td>
+        <td>${o.activo ? '<span class="badge-activo">Activa</span>' : '<span class="badge-inactivo">Inactiva</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('historial-loading').style.display = 'none';
+    document.getElementById('historial-table').style.display = data.length ? 'table' : 'none';
+    if (!data.length) document.getElementById('historial-loading').textContent = 'Sin historial aún.';
+  }
+
+  // ── Guardar ───────────────────────────────────────────────────────────────
+
+  async function guardarPlan(plan, e) {
+    e.preventDefault();
+    const btn = document.getElementById(`btn-${plan}`);
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    const id              = document.getElementById(`id-${plan}`).value;
+    const precio_original = parseFloat(document.getElementById(`precio-original-${plan}`).value) || null;
+    const precio_oferta   = parseFloat(document.getElementById(`precio-oferta-${plan}`).value) || null;
+    const descuento_pct   = parseInt(document.getElementById(`descuento-${plan}`).value) || null;
+    const meses_gratis    = parseInt(document.getElementById(`meses-${plan}`).value) || 0;
+    const descripcion     = document.getElementById(`descripcion-${plan}`).value.trim() || null;
+    const fecha_inicio    = document.getElementById(`inicio-${plan}`).value || null;
+    const fecha_fin       = document.getElementById(`fin-${plan}`).value || null;
+    const activo          = document.getElementById(`activo-${plan}`).checked;
+
+    if (!precio_oferta) {
+      showMsg(plan, 'El precio oferta es obligatorio.', 'err');
+      btn.disabled = false;
+      btn.textContent = `Guardar oferta ${plan}`;
+      return;
+    }
+
+    const payload = { plan, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
+
+    let error;
+    if (id) {
+      ({ error } = await db.from('planes_ofertas').update(payload).eq('id', id));
+    } else {
+      ({ error } = await db.from('planes_ofertas').insert(payload));
+    }
+
+    btn.disabled = false;
+    btn.textContent = `Guardar oferta ${plan}`;
+
+    if (error) {
+      showMsg(plan, 'Error: ' + error.message, 'err');
+    } else {
+      showMsg(plan, '¡Oferta guardada correctamente!', 'ok');
+      await cargar();
+    }
+  }
+
+  // ── Borrar ────────────────────────────────────────────────────────────────
+
+  async function borrarPlan(plan) {
+    const id = document.getElementById(`id-${plan}`).value;
+    if (!id) return;
+    if (!confirm(`¿Eliminar la oferta del plan ${plan}?`)) return;
+    const { error } = await db.from('planes_ofertas').delete().eq('id', id);
+    if (error) { showMsg(plan, 'Error: ' + error.message, 'err'); return; }
+    showMsg(plan, 'Oferta eliminada.', 'ok');
+    await cargar();
+  }
+
+  // ── Cálculo automático precio oferta ─────────────────────────────────────
+
+  function calcularOferta(plan) {
+    const orig = parseFloat(document.getElementById(`precio-original-${plan}`).value);
+    const pct  = parseFloat(document.getElementById(`descuento-${plan}`).value);
+    if (!isNaN(orig) && !isNaN(pct) && pct > 0 && pct < 100) {
+      const oferta = orig * (1 - pct / 100);
+      document.getElementById(`precio-oferta-${plan}`).value = oferta.toFixed(2);
+    }
+  }
+
+  ['mensual', 'anual'].forEach(plan => {
+    document.getElementById(`precio-original-${plan}`).addEventListener('input', () => calcularOferta(plan));
+    document.getElementById(`descuento-${plan}`).addEventListener('input', () => calcularOferta(plan));
+  });
+
+  // ── Eventos ───────────────────────────────────────────────────────────────
+
+  document.getElementById('form-mensual').addEventListener('submit', e => guardarPlan('mensual', e));
+  document.getElementById('form-anual').addEventListener('submit', e => guardarPlan('anual', e));
+  document.getElementById('btn-borrar-mensual').addEventListener('click', () => borrarPlan('mensual'));
+  document.getElementById('btn-borrar-anual').addEventListener('click', () => borrarPlan('anual'));
+
+  cargar();
+</script>
+</body>
+</html>

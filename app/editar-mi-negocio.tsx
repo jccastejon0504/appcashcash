@@ -52,6 +52,9 @@ export default function EditarMiNegocioScreen() {
   const [metodosPago,   setMetodosPago]   = useState<{id:string;label:string;activo:boolean}[]>([]);
   const [copiado,       setCopiado]       = useState<string|null>(null);
 
+  type Oferta = { precio_original: number | null; precio_oferta: number; descuento_pct: number | null; meses_gratis: number; descripcion: string | null };
+  const [ofertas, setOfertas] = useState<{ mensual?: Oferta; anual?: Oferta }>({});
+
   const PRECIOS = { mensual: 15, anual: 150 };
 
   // Imágenes (URI local o URL remota)
@@ -82,6 +85,13 @@ export default function EditarMiNegocioScreen() {
       data.forEach((m: any) => { mapa[m.id] = m.datos; });
       setInfoPago(mapa);
       if (data[0]) setMetodoRenov(data[0].id);
+    });
+
+    supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
+      if (!data) return;
+      const map: { mensual?: Oferta; anual?: Oferta } = {};
+      data.forEach((o: any) => { map[o.plan as 'mensual' | 'anual'] = o; });
+      setOfertas(map);
     });
   }, [id]);
 
@@ -137,7 +147,7 @@ export default function EditarMiNegocioScreen() {
       plan:        planRenov,
       metodo_pago: metodoRenov,
       referencia:  referenciaRenov.trim(),
-      monto:       PRECIOS[planRenov],
+      monto:       ofertas[planRenov]?.precio_oferta ?? PRECIOS[planRenov],
       comprobante: urlComprobante,
       tipo:        'renovacion',
       socio_id:    id,
@@ -193,6 +203,15 @@ export default function EditarMiNegocioScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+
+        {/* Agregar otro negocio */}
+        <TouchableOpacity
+          style={[styles.btnAgregar, { borderColor: Colors.accent }]}
+          onPress={() => router.push('/unirse-socio')}
+          activeOpacity={0.85}>
+          <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
+          <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar otro negocio</Text>
+        </TouchableOpacity>
 
         {/* Contador membresía */}
         {socio?.fecha_vencimiento && (() => {
@@ -315,24 +334,44 @@ export default function EditarMiNegocioScreen() {
               {/* Selector de plan */}
               <Text style={[styles.label, { color: Colors.textMuted }]}>Selecciona tu plan</Text>
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                {(['mensual','anual'] as const).map(p => (
-                  <TouchableOpacity key={p} onPress={() => setPlanRenov(p)}
-                    style={[styles.planBtn, {
-                      borderColor: planRenov === p ? Colors.accent : Colors.border,
-                      backgroundColor: planRenov === p ? Colors.accent + '12' : Colors.card,
-                      flex: 1,
-                    }]}>
-                    <Text style={[styles.planBtnLabel, { color: planRenov === p ? Colors.accent : Colors.text }]}>
-                      {p === 'mensual' ? 'Mensual' : 'Anual'}
-                    </Text>
-                    <Text style={[styles.planBtnPrecio, { color: planRenov === p ? Colors.accent : Colors.textMuted }]}>
-                      ${PRECIOS[p]}
-                    </Text>
-                    {p === 'anual' && (
-                      <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>Ahorra $30</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
+                {(['mensual','anual'] as const).map(p => {
+                  const oferta = ofertas[p];
+                  const activo = planRenov === p;
+                  return (
+                    <TouchableOpacity key={p} onPress={() => setPlanRenov(p)}
+                      style={[styles.planBtn, {
+                        borderColor: activo ? Colors.accent : Colors.border,
+                        backgroundColor: activo ? Colors.accent + '12' : Colors.card,
+                        flex: 1, position: 'relative',
+                      }]}>
+                      {/* Badge descuento */}
+                      {oferta?.descuento_pct ? (
+                        <View style={{ position: 'absolute', top: -10, right: -6, backgroundColor: Colors.accent, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 }}>
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>-{oferta.descuento_pct}%</Text>
+                        </View>
+                      ) : null}
+                      <Text style={[styles.planBtnLabel, { color: activo ? Colors.accent : Colors.text }]}>
+                        {p === 'mensual' ? 'Mensual' : 'Anual'}
+                      </Text>
+                      {/* Precio original tachado */}
+                      {oferta?.precio_original ? (
+                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textDecorationLine: 'line-through' }}>
+                          ${oferta.precio_original}
+                        </Text>
+                      ) : null}
+                      {/* Precio principal */}
+                      <Text style={[styles.planBtnPrecio, { color: activo ? Colors.accent : Colors.textMuted }]}>
+                        ${oferta ? oferta.precio_oferta : PRECIOS[p]}
+                      </Text>
+                      {/* Meses gratis */}
+                      {oferta?.meses_gratis ? (
+                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>+{oferta.meses_gratis} mes{oferta.meses_gratis !== 1 ? 'es' : ''} gratis</Text>
+                      ) : p === 'anual' && !oferta ? (
+                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>Ahorra $30</Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Métodos de pago */}
@@ -474,6 +513,11 @@ function makeStyles(Colors: any) { return StyleSheet.create({
     borderWidth: 1.5, borderRadius: Radius.lg, paddingVertical: 13,
   },
   btnRenovarText: { fontSize: FontSize.md, fontWeight: '700' },
+  btnAgregar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 11,
+  },
+  btnAgregarText: { fontSize: FontSize.sm, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
   modalBox:     { borderTopLeftRadius: Radius.lg * 2, borderTopRightRadius: Radius.lg * 2, maxHeight: '90%' },

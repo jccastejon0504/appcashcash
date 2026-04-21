@@ -7,8 +7,24 @@ import { HeroUINativeProvider } from 'heroui-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/services/supabase';
+
+function useRegistrarDescarga() {
+  useEffect(() => {
+    const registrar = async () => {
+      const ya = await AsyncStorage.getItem('app_instalada');
+      if (ya) return;
+      await supabase.from('descargas_app').insert({});
+      await AsyncStorage.setItem('app_instalada', 'true');
+    };
+    registrar();
+  }, []);
+}
 
 function AppTabs() {
+  useRegistrarDescarga();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
