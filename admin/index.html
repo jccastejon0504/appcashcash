@@ -329,6 +329,9 @@
     <div class="nav-item" data-section="metodos">
       <span class="icon">💳</span> Métodos de Pago
     </div>
+    <div class="nav-item" data-section="terminos">
+      <span class="icon">📄</span> Términos y Condiciones
+    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -574,6 +577,31 @@
       </div>
     </div>
 
+    <!-- ══ TÉRMINOS Y CONDICIONES ═══════════════════════════ -->
+    <div class="section" id="section-terminos">
+      <div class="card">
+        <div class="card-header">
+          <h2>Términos y Condiciones</h2>
+          <span class="badge badge-gray" id="badge-terminos">Sin guardar</span>
+        </div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+            Este texto se muestra en la pantalla "Términos y Condiciones" de la app. Si lo dejas vacío, la app mostrará el contenido predeterminado integrado.
+          </p>
+          <div class="form-group" style="margin-bottom:14px">
+            <label>Contenido (texto plano)</label>
+            <textarea id="terminos-texto" rows="20" placeholder="Escribe aquí los términos y condiciones…"></textarea>
+          </div>
+          <div class="msg" id="msg-terminos"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="guardarTerminos()">Guardar</button>
+            <button class="btn btn-outline" onclick="cargarTextoDefecto()">Cargar texto predeterminado</button>
+            <button class="btn btn-danger" onclick="borrarTerminos()" id="btn-borrar-terminos" style="display:none">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MÉTODOS DE PAGO ════════════════════════════════ -->
     <div class="section" id="section-metodos">
       <div class="grid-2">
@@ -632,12 +660,58 @@
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const SECCIONES = {
-    dashboard:    { title: 'Dashboard',          sub: 'Resumen general' },
-    ofertas:      { title: 'Ofertas de Planes',  sub: 'Gestiona las promociones de membresía' },
-    solicitudes:  { title: 'Solicitudes',        sub: 'Solicitudes de membresía recibidas' },
-    socios:       { title: 'Socios Activos',     sub: 'Listado de socios comerciales' },
-    metodos:      { title: 'Métodos de Pago',    sub: 'Configura los métodos de cobro' },
+    dashboard:    { title: 'Dashboard',                sub: 'Resumen general' },
+    ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
+    solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
+    socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
+    metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
+    terminos:     { title: 'Términos y Condiciones',   sub: 'Texto legal que se muestra en la app' },
   };
+
+  const TERMINOS_DEFAULT = `1. Aceptación de los Términos
+Al descargar, instalar o utilizar la aplicación CashCach, aceptas quedar vinculado por estos Términos y Condiciones. Si no estás de acuerdo con alguna parte de estos términos, no debes utilizar la aplicación.
+
+2. Descripción del Servicio
+CashCach es una aplicación de utilidad financiera que ofrece:
+• Calculadora de cambio con tasas BCV y USDT en tiempo real.
+• Lista de compras y comparación de precios de mercado.
+• Registro de ingresos y gastos personales (Mi Cartera).
+• Directorio de comercios locales (Mi Tienda).
+
+3. Tasas de Cambio
+Las tasas mostradas en la aplicación son obtenidas de fuentes públicas externas (BCV, DolarAPI, Binance P2P) y pueden tener un desfase de hasta 4 horas con respecto a la tasa oficial. CashCach no garantiza la exactitud, completitud ni vigencia de las tasas en tiempo real. No somos responsables de decisiones financieras tomadas con base en los datos mostrados.
+
+4. Módulo Mi Tienda — Socios Comerciales
+Los comercios que aparecen en el Directorio son registros proporcionados voluntariamente por sus propietarios. CashCach actúa como plataforma de publicación y no es responsable de la calidad, disponibilidad, precios ni veracidad de la información publicada por cada negocio.
+
+Las membresías de socios (Plan Básico y Plan Pro) requieren pago previo. Los pagos son procesados directamente entre el usuario y CashCach mediante los métodos habilitados. Una vez confirmado el pago, la activación del perfil puede tomar hasta 24 horas hábiles.
+
+5. Pagos y Reembolsos
+Los pagos de membresía son no reembolsables una vez que el perfil del negocio ha sido activado. En caso de error en el pago o duplicidad, el usuario debe contactarnos por WhatsApp dentro de las 24 horas siguientes a la transacción para gestionar la corrección.
+
+6. Conducta del Usuario
+El usuario se compromete a:
+• No publicar información falsa, engañosa o ilegal en su perfil de negocio.
+• No utilizar la aplicación para fines fraudulentos o actividades ilícitas.
+• No intentar acceder a partes de la aplicación o base de datos que no le corresponden.
+• Mantener actualizados los datos de contacto de su negocio.
+
+7. Privacidad de Datos
+La información proporcionada al registrar un negocio (nombre, teléfono, dirección, imágenes) es publicada de forma visible en el directorio de la aplicación. Al enviar esta información, el usuario autoriza expresamente su publicación.
+
+CashCach no vende ni comparte datos personales con terceros con fines comerciales. Los datos son almacenados en Supabase con medidas estándar de seguridad.
+
+8. Propiedad Intelectual
+El diseño, código, marca y contenido de CashCach son propiedad de sus desarrolladores. Queda prohibida la reproducción, distribución o modificación de cualquier parte de la aplicación sin autorización expresa por escrito.
+
+9. Limitación de Responsabilidad
+CashCach se proporciona "tal como está". No garantizamos disponibilidad continua del servicio ni ausencia de errores. En ningún caso CashCach será responsable de pérdidas económicas derivadas del uso de la aplicación, incluyendo pérdidas por tasas incorrectas, decisiones de compra/venta o transacciones comerciales.
+
+10. Modificaciones
+Nos reservamos el derecho de actualizar estos Términos en cualquier momento. Los cambios entran en vigor desde su publicación en la aplicación. El uso continuado de CashCach implica la aceptación de los términos vigentes.
+
+11. Contacto
+Para consultas, reclamos o soporte relacionado con estos términos, puedes contactarnos a través del WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.`;
 
   // ── Navegación ────────────────────────────────────────────────────────────
 
@@ -652,6 +726,7 @@
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'socios')      cargarSocios();
     if (id === 'metodos')     cargarMetodos();
+    if (id === 'terminos')    cargarTerminos();
   }
 
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -938,6 +1013,46 @@
     await db.from('metodos_pago').delete().eq('id', id);
     abrirNuevoMetodo();
     cargarMetodos();
+  }
+
+  // ── Términos y Condiciones ────────────────────────────────────────────────
+
+  async function cargarTerminos() {
+    const { data } = await db.from('config_app').select('valor').eq('clave', 'terminos_condiciones').single();
+    const badge = document.getElementById('badge-terminos');
+    const btnBorrar = document.getElementById('btn-borrar-terminos');
+    if (data?.valor) {
+      document.getElementById('terminos-texto').value = data.valor;
+      badge.textContent = 'Guardado en BD'; badge.className = 'badge badge-green';
+      btnBorrar.style.display = 'inline-flex';
+    } else {
+      document.getElementById('terminos-texto').value = '';
+      badge.textContent = 'Usando texto predeterminado'; badge.className = 'badge badge-gray';
+      btnBorrar.style.display = 'none';
+    }
+  }
+
+  function cargarTextoDefecto() {
+    document.getElementById('terminos-texto').value = TERMINOS_DEFAULT;
+  }
+
+  async function guardarTerminos() {
+    const valor = document.getElementById('terminos-texto').value.trim();
+    if (!valor) { showMsg('terminos', 'El texto no puede estar vacío.', 'err'); return; }
+    const { data: existe } = await db.from('config_app').select('id').eq('clave', 'terminos_condiciones').single();
+    const { error } = existe
+      ? await db.from('config_app').update({ valor }).eq('clave', 'terminos_condiciones')
+      : await db.from('config_app').insert({ clave: 'terminos_condiciones', valor });
+    if (error) { showMsg('terminos', 'Error: ' + error.message, 'err'); return; }
+    showMsg('terminos', '¡Guardado! La app mostrará este texto.', 'ok');
+    await cargarTerminos();
+  }
+
+  async function borrarTerminos() {
+    if (!confirm('¿Eliminar el texto de la BD? La app usará el contenido predeterminado.')) return;
+    await db.from('config_app').delete().eq('clave', 'terminos_condiciones');
+    showMsg('terminos', 'Eliminado. La app usará el texto predeterminado.', 'ok');
+    await cargarTerminos();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

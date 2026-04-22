@@ -70,7 +70,7 @@ function AppTabs() {
       <Tabs.Screen
         name="comparacion"
         options={{
-          title: 'Locales',
+          title: 'Mercados',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart-outline" size={size} color={color} />
           ),
@@ -91,6 +91,7 @@ function AppTabs() {
       <Tabs.Screen name="directorio"    options={{ href: null }} />
       <Tabs.Screen name="unirse-socio"      options={{ href: null }} />
       <Tabs.Screen name="editar-mi-negocio" options={{ href: null }} />
+      <Tabs.Screen name="terminos"           options={{ href: null }} />
     </Tabs>
   );
 }

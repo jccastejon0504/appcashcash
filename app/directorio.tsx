@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl,
-  Image, TextInput, Keyboard, Modal,
+  Image, TextInput, Keyboard, Modal, Dimensions,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -33,6 +33,11 @@ export default function DirectorioScreen() {
   const [mostrarSug,      setMostrarSug]      = useState(false);
   const [comercioModal,   setComercioModal]   = useState<SocioComercial | null>(null);
   const [imagenAmpliada,  setImagenAmpliada]  = useState<string | null>(null);
+  type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null };
+  const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
+  const [productoModal,   setProductoModal]   = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
+  const [paginaProducto,  setPaginaProducto]  = useState(0);
+  const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
 
   const cargarCategorias = useCallback(async (esRefresh = false) => {
@@ -56,6 +61,12 @@ export default function DirectorioScreen() {
     cargarCategorias();
     cargarTodosComerciosParaBusqueda();
   }, [cargarCategorias, cargarTodosComerciosParaBusqueda]);
+
+  useEffect(() => {
+    if (!comercioModal) { setGaleriaItems([]); return; }
+    supabase.from('galeria_items').select('*').eq('socio_id', comercioModal.id).order('orden')
+      .then(({ data }) => setGaleriaItems((data ?? []) as ItemGaleria[]));
+  }, [comercioModal]);
 
   const seleccionarCategoria = async (cat: Categoria) => {
     setCatActiva(cat);
@@ -266,26 +277,101 @@ export default function DirectorioScreen() {
                   ) : null}
                 </View>
 
-                {/* Galería de imágenes */}
-                <View style={{ marginTop: 16 }}>
-                  <Text style={[styles.galeriaTitulo, { color: Colors.textMuted }]}>Galería</Text>
-                  <View style={styles.galeriaGrid}>
-                    {[c.imagen, c.imagen2, c.imagen3, c.imagen4, c.imagen5, c.imagen6].map((img, i) => (
-                      img ? (
-                        <TouchableOpacity key={i} onPress={() => setImagenAmpliada(img)} activeOpacity={0.85}
-                          style={[styles.galeriaImg, { borderColor: Colors.border }]}>
-                          <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                {/* Galería / catálogo */}
+                {galeriaItems.length > 0 && (
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={[styles.galeriaTitulo, { color: Colors.textMuted }]}>Catálogo</Text>
+                    <View style={styles.galeriaGrid}>
+                      {galeriaItems.map((item, i) => (
+                        <TouchableOpacity key={item.id ?? i} activeOpacity={0.85}
+                          style={[styles.galeriaImg, { borderColor: Colors.border }]}
+                          onPress={() => setProductoModal({ item, whatsapp: c.whatsapp ?? null })}>
+                          <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          {(item.precio || item.precio_bs || item.titulo) && (
+                            <View style={styles.galeriaOverlay}>
+                              {(item.precio || item.precio_bs) && (
+                                <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                                  {item.precio ? <Text style={styles.galeriaOverlayPrecio} numberOfLines={1}>${item.precio}</Text> : null}
+                                  {item.precio_bs ? <Text style={styles.galeriaOverlayBs} numberOfLines={1}>Bs.{item.precio_bs}</Text> : null}
+                                </View>
+                              )}
+                              {item.titulo ? <Text style={styles.galeriaOverlayTitulo} numberOfLines={1}>{item.titulo}</Text> : null}
+                            </View>
+                          )}
                         </TouchableOpacity>
-                      ) : (
-                        <View key={i} style={[styles.galeriaImg, styles.galeriaImgVacia, { backgroundColor: Colors.border + '44', borderColor: Colors.border }]}>
-                          <Ionicons name="image-outline" size={20} color={Colors.textMuted} />
-                        </View>
-                      )
-                    ))}
+                      ))}
+                    </View>
                   </View>
-                </View>
+                )}
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderProductoModal = () => {
+    if (!productoModal) return null;
+    const { item, whatsapp } = productoModal;
+    const imagenes = [item.imagen, item.imagen2, item.imagen3].filter(Boolean) as string[];
+    const waMsg = encodeURIComponent(`Hola, vi "${item.titulo ?? 'un producto'}" en CashCach. ¿Sigue disponible?`);
+    const waUrl = whatsapp ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${waMsg}` : null;
+    return (
+      <Modal visible animationType="slide" transparent onRequestClose={() => { setProductoModal(null); setPaginaProducto(0); }}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
+
+            {/* Carousel */}
+            <ScrollView
+              horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
+              {imagenes.map((img, i) => (
+                <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
+              ))}
+            </ScrollView>
+
+            {/* Dots */}
+            {imagenes.length > 1 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
+                {imagenes.map((_, i) => (
+                  <View key={i} style={{
+                    width: i === paginaProducto ? 8 : 6,
+                    height: i === paginaProducto ? 8 : 6,
+                    borderRadius: 4,
+                    backgroundColor: i === paginaProducto ? Colors.accent : Colors.border,
+                  }} />
+                ))}
+              </View>
+            )}
+
+            <View style={{ padding: Spacing.lg, paddingTop: imagenes.length > 1 ? 4 : Spacing.lg, gap: 10 }}>
+              {/* Nombre + X */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[styles.productoTitulo, { color: Colors.text, flex: 1 }]}>{item.titulo ?? ''}</Text>
+                <TouchableOpacity
+                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
+                  onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
+                  <Ionicons name="close" size={18} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Precios */}
+              {(item.precio || item.precio_bs) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                  {item.precio ? <Text style={[styles.productoPrecio, { color: Colors.accent }]}>${item.precio}</Text> : null}
+                  {item.precio_bs ? <Text style={[styles.productoPrecioBs, { color: Colors.textMuted }]}>Bs. {item.precio_bs}</Text> : null}
+                </View>
+              ) : null}
+
+              {waUrl ? (
+                <TouchableOpacity style={styles.productoWaBtn} onPress={() => Linking.openURL(waUrl).catch(() => {})}>
+                  <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                  <Text style={styles.productoWaBtnText}>Consultar al vendedor</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
         </View>
       </Modal>
@@ -462,6 +548,7 @@ export default function DirectorioScreen() {
       )}
 
       {renderModal()}
+      {renderProductoModal()}
 
       {/* Imagen ampliada */}
       <Modal visible={!!imagenAmpliada} transparent animationType="fade"
@@ -586,7 +673,32 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     width: '31%', aspectRatio: 1, borderRadius: Radius.md,
     borderWidth: 1, overflow: 'hidden',
   },
-  galeriaImgVacia: { alignItems: 'center', justifyContent: 'center' },
+
+  galeriaOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#000000AA', paddingHorizontal: 4, paddingVertical: 3,
+  },
+  galeriaOverlayPrecio: { fontSize: 10, fontWeight: '800', color: '#FFD700' },
+  galeriaOverlayBs:     { fontSize: 9, fontWeight: '600', color: '#ffffffBB' },
+  galeriaOverlayTitulo: { fontSize: 9, color: '#fff' },
+
+  productoBox: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden', maxHeight: '80%',
+  },
+  productoImg:       { width: '100%', height: 280 },
+  productoPrecio:    { fontSize: FontSize.xl, fontWeight: '800' },
+  productoPrecioBs:  { fontSize: FontSize.md, fontWeight: '600', marginBottom: 2 },
+  productoTitulo:    { fontSize: FontSize.lg, fontWeight: '600', marginBottom: 16 },
+  productoWaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#25D366', borderRadius: Radius.md, paddingVertical: 12,
+  },
+  productoWaBtnText:  { color: '#fff', fontSize: FontSize.md, fontWeight: '700' },
+  productoCerrarX: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   infoFila:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingHorizontal: Spacing.md },
   infoTexto: { flex: 1, fontSize: FontSize.sm, color: Colors.textMuted },

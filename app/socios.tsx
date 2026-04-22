@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl, Image,
-  TextInput, Keyboard, Modal,
+  TextInput, Keyboard, Modal, Dimensions,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -26,13 +26,17 @@ export default function SociosScreen() {
   const [submenu,          setSubmenu]          = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,      setBusqueda]      = useState('');
-  const [mostrarSug,    setMostrarSug]    = useState(false);
   const [modalBuscar,   setModalBuscar]   = useState(false);
   const [subcats,       setSubcats]       = useState<{ id: string; nombre: string }[]>([]);
   const [subcatAbierto, setSubcatAbierto] = useState(false);
   const [subcatFiltro,  setSubcatFiltro]  = useState<string | null>(null);
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
+  type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null };
+  const [galeriaItems,   setGaleriaItems]   = useState<ItemGaleria[]>([]);
+  const [productoModal,  setProductoModal]  = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
+  const [paginaProducto, setPaginaProducto] = useState(0);
+  const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
 
   const cargar = useCallback(async (esRefresh = false) => {
@@ -49,6 +53,12 @@ export default function SociosScreen() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    if (!socioModal) { setGaleriaItems([]); return; }
+    supabase.from('galeria_items').select('*').eq('socio_id', socioModal.id).order('orden')
+      .then(({ data }) => setGaleriaItems((data ?? []) as ItemGaleria[]));
+  }, [socioModal]);
 
   useEffect(() => {
     supabase.from('subcategorias').select('id,nombre').order('nombre').then(({ data }) => {
@@ -104,7 +114,6 @@ export default function SociosScreen() {
 
   const seleccionarSugerencia = (texto: string) => {
     setBusqueda(texto);
-    setMostrarSug(false);
     Keyboard.dismiss();
   };
 
@@ -209,24 +218,33 @@ export default function SociosScreen() {
                   ) : null}
                 </View>
 
-                {/* Galería de imágenes */}
-                <View style={{ marginTop: 16 }}>
-                  <Text style={[styles.galeriaTitulo, { color: Colors.textMuted }]}>Galería</Text>
-                  <View style={styles.galeriaGrid}>
-                    {[s.imagen, s.imagen2, s.imagen3, s.imagen4, s.imagen5, s.imagen6].map((img, i) => (
-                      img ? (
-                        <TouchableOpacity key={i} onPress={() => setImagenAmpliada(img)} activeOpacity={0.85}
+                {/* Catálogo / Galería */}
+                {galeriaItems.length > 0 && (
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={[styles.galeriaTitulo, { color: Colors.textMuted }]}>Catálogo</Text>
+                    <View style={styles.galeriaGrid}>
+                      {galeriaItems.map(item => (
+                        <TouchableOpacity key={item.id}
+                          onPress={() => setProductoModal({ item, whatsapp: s.whatsapp ?? null })}
+                          activeOpacity={0.85}
                           style={[styles.galeriaImg, { borderColor: Colors.border }]}>
-                          <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          {(item.titulo || item.precio || item.precio_bs) && (
+                            <View style={styles.galeriaOverlay}>
+                              {(item.precio || item.precio_bs) && (
+                                <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                                  {item.precio && <Text style={styles.galeriaOverlayPrecio}>${item.precio}</Text>}
+                                  {item.precio_bs && <Text style={styles.galeriaOverlayBs}>Bs.{item.precio_bs}</Text>}
+                                </View>
+                              )}
+                              {item.titulo && <Text style={styles.galeriaOverlayTitulo} numberOfLines={1}>{item.titulo}</Text>}
+                            </View>
+                          )}
                         </TouchableOpacity>
-                      ) : (
-                        <View key={i} style={[styles.galeriaImg, styles.galeriaImgVacia, { backgroundColor: Colors.border + '44', borderColor: Colors.border }]}>
-                          <Ionicons name="image-outline" size={20} color={Colors.textMuted} />
-                        </View>
-                      )
-                    ))}
+                      ))}
+                    </View>
                   </View>
-                </View>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -287,6 +305,76 @@ export default function SociosScreen() {
     ],
   }));
 
+  const renderProductoModal = () => {
+    if (!productoModal) return null;
+    const { item, whatsapp } = productoModal;
+    const imagenes = [item.imagen, item.imagen2, item.imagen3].filter(Boolean) as string[];
+    return (
+      <Modal visible transparent animationType="slide" onRequestClose={() => { setProductoModal(null); setPaginaProducto(0); }}>
+        <View style={{ flex: 1, backgroundColor: '#000000BB', justifyContent: 'flex-end' }}>
+          <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
+
+            {/* Carousel */}
+            <ScrollView
+              horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
+              {imagenes.map((img, i) => (
+                <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
+              ))}
+            </ScrollView>
+
+            {/* Dots */}
+            {imagenes.length > 1 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
+                {imagenes.map((_, i) => (
+                  <View key={i} style={{
+                    width: i === paginaProducto ? 8 : 6,
+                    height: i === paginaProducto ? 8 : 6,
+                    borderRadius: 4,
+                    backgroundColor: i === paginaProducto ? Colors.accent : Colors.border,
+                  }} />
+                ))}
+              </View>
+            )}
+
+            <View style={{ padding: Spacing.lg, paddingTop: imagenes.length > 1 ? 4 : Spacing.lg, gap: 10 }}>
+              {/* Nombre + X */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[styles.productoTitulo, { color: Colors.text, flex: 1 }]}>{item.titulo ?? ''}</Text>
+                <TouchableOpacity
+                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
+                  onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
+                  <Ionicons name="close" size={18} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Precios */}
+              {(item.precio || item.precio_bs) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                  {item.precio ? <Text style={[styles.productoPrecio, { color: Colors.accent }]}>${item.precio}</Text> : null}
+                  {item.precio_bs ? <Text style={[styles.productoPrecioBs, { color: Colors.textMuted }]}>Bs. {item.precio_bs}</Text> : null}
+                </View>
+              ) : null}
+
+              {whatsapp ? (
+                <TouchableOpacity
+                  style={styles.productoWaBtn}
+                  onPress={() => {
+                    const msg = `Hola, vi${item.titulo ? ` "${item.titulo}"` : ' tu publicación'} en CashCach. ¿Sigue disponible?`;
+                    Linking.openURL(`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`).catch(() => {});
+                  }}>
+                  <Ionicons name="logo-whatsapp" size={22} color="#fff" />
+                  <Text style={styles.productoWaBtnText}>Consultar al vendedor</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   const renderImagenAmpliada = () => (
     <Modal visible={!!imagenAmpliada} transparent animationType="fade"
       onRequestClose={() => { resetVisor(); setImagenAmpliada(null); }}>
@@ -315,13 +403,14 @@ export default function SociosScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {renderModal()}
+      {renderProductoModal()}
       {renderImagenAmpliada()}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Socios Comerciales</Text>
+        <Text style={styles.headerTitle}>Mi Tienda</Text>
         <TouchableOpacity
           style={[styles.directorioBtn, { backgroundColor: Colors.accent }]}
           onPress={() => router.push('/directorio')}
@@ -343,7 +432,7 @@ export default function SociosScreen() {
             <Ionicons name="create" size={18} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>Mi espacio de negocio</Text>
+            <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>Mis tiendas</Text>
             <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>
               {misSocios.length === 0 ? 'Toca para gestionar tu negocio' : `${misSocios.length} negocio${misSocios.length > 1 ? 's' : ''} · toca para ver`}
             </Text>
@@ -371,7 +460,7 @@ export default function SociosScreen() {
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
-                  <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar perfil · subir imágenes</Text>
+                  <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar mi tienda · subir imágenes</Text>
                 </View>
                 <View style={{ backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 8, marginRight: 10, borderRadius: Radius.md }}>
                   <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
@@ -396,7 +485,7 @@ export default function SociosScreen() {
               activeOpacity={0.8}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
               <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
-              <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nuevo negocio</Text>
+              <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
             </TouchableOpacity>
 
           </View>
@@ -417,10 +506,10 @@ export default function SociosScreen() {
                 placeholder="Buscar comercio…"
                 placeholderTextColor={Colors.textMuted}
                 value={busqueda}
-                onChangeText={t => { setBusqueda(t); setMostrarSug(true); }}
+                onChangeText={setBusqueda}
                 autoFocus
                 returnKeyType="search"
-                onSubmitEditing={() => setMostrarSug(false)}
+                onSubmitEditing={Keyboard.dismiss}
               />
               {busqueda ? (
                 <TouchableOpacity onPress={() => setBusqueda('')}>
@@ -687,5 +776,30 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     width: '31%', aspectRatio: 1, borderRadius: Radius.md,
     borderWidth: 1, overflow: 'hidden',
   },
-  galeriaImgVacia: { alignItems: 'center', justifyContent: 'center' },
+  galeriaOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#000000AA', paddingHorizontal: 6, paddingVertical: 5,
+  },
+  galeriaOverlayPrecio: { color: '#FFD700', fontSize: 11, fontWeight: '800' },
+  galeriaOverlayBs:     { color: '#ffffffBB', fontSize: 10, fontWeight: '600' },
+  galeriaOverlayTitulo: { color: '#ffffffCC', fontSize: 10, fontWeight: '500', marginTop: 1 },
+
+  /* Modal producto */
+  productoBox: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden',
+    maxHeight: '85%',
+  },
+  productoImg:     { width: '100%', height: 280 },
+  productoPrecio:   { fontSize: FontSize.xl, fontWeight: '800' },
+  productoPrecioBs: { fontSize: FontSize.md, fontWeight: '600', marginBottom: 2 },
+  productoTitulo:   { fontSize: FontSize.lg, fontWeight: '700' },
+  productoWaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#25D366', borderRadius: Radius.lg, paddingVertical: 15, marginTop: 4,
+  },
+  productoWaBtnText:  { color: '#fff', fontSize: FontSize.md, fontWeight: '800' },
+  productoCerrarX: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
 }); }

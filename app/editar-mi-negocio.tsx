@@ -9,20 +9,25 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
-import { supabase } from '@/services/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_KEY } from '@/services/supabase';
 
-const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+type Plan    = 'gratis' | 'basico' | 'pro';
+type Periodo = 'mensual' | 'anual';
+type PlanKey = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
+
+const PLAN_GALERIA: Record<string, number> = { gratis: 0, basico: 6, pro: 12 };
 
 type Socio = {
   id: string; nombre: string; telefono: string; whatsapp: string;
   web: string; direccion: string;
-  imagen: string; imagen2: string; imagen3: string;
-  imagen4: string; imagen5: string; imagen6: string;
+  imagen: string;
+  imagen2: string; imagen3: string; imagen4: string;
+  imagen5: string; imagen6: string; imagen7: string;
+  imagen8: string; imagen9: string; imagen10: string;
+  imagen11: string; imagen12: string;
   fecha_vencimiento: string | null;
+  plan: Plan | null;
 };
-
-const GALERIA_KEYS = ['imagen2','imagen3','imagen4','imagen5','imagen6'] as const;
 
 export default function EditarMiNegocioScreen() {
   const { colors: Colors } = useTheme();
@@ -42,24 +47,32 @@ export default function EditarMiNegocioScreen() {
   const [direccion, setDireccion] = useState('');
 
   // Renovación
-  const [modalRenovar,  setModalRenovar]  = useState(false);
-  const [planRenov,     setPlanRenov]     = useState<'mensual'|'anual'>('mensual');
-  const [metodoRenov,   setMetodoRenov]   = useState('pagomovil');
-  const [referenciaRenov, setReferenciaRenov] = useState('');
+  const [modalRenovar,     setModalRenovar]     = useState(false);
+  const [planRenov,        setPlanRenov]        = useState<Exclude<Plan,'gratis'>>('basico');
+  const [periodoRenov,     setPeriodoRenov]     = useState<Periodo>('mensual');
+  const [metodoRenov,      setMetodoRenov]      = useState('pagomovil');
+  const [referenciaRenov,  setReferenciaRenov]  = useState('');
   const [comprobanteRenov, setComprobanteRenov] = useState<string|null>(null);
-  const [enviandoRenov, setEnviandoRenov] = useState(false);
-  const [infoPago,      setInfoPago]      = useState<Record<string,string[]>>({});
-  const [metodosPago,   setMetodosPago]   = useState<{id:string;label:string;activo:boolean}[]>([]);
-  const [copiado,       setCopiado]       = useState<string|null>(null);
+  const [enviandoRenov,    setEnviandoRenov]    = useState(false);
+  const [infoPago,         setInfoPago]         = useState<Record<string,string[]>>({});
+  const [metodosPago,      setMetodosPago]      = useState<{id:string;label:string;activo:boolean}[]>([]);
+  const [copiado,          setCopiado]          = useState<string|null>(null);
 
   type Oferta = { precio_original: number | null; precio_oferta: number; descuento_pct: number | null; meses_gratis: number; descripcion: string | null };
-  const [ofertas, setOfertas] = useState<{ mensual?: Oferta; anual?: Oferta }>({});
-
-  const PRECIOS = { mensual: 15, anual: 150 };
+  const [ofertas,     setOfertas]     = useState<Partial<Record<PlanKey, Oferta>>>({});
+  const [preciosBase, setPreciosBase] = useState<Record<PlanKey, number>>({
+    basico_mensual: 15, basico_anual: 150,
+    pro_mensual:    25, pro_anual:    250,
+  });
 
   // Imágenes (URI local o URL remota)
-  const [portada,  setPortada]  = useState<string>('');
-  const [galeria,  setGaleria]  = useState<string[]>(['','','','','']);
+  const [portada, setPortada] = useState<string>('');
+
+  // Catálogo de galería con título y precio
+  type ItemGaleria = { id?: string; imagen: string; imagen2: string; imagen3: string; titulo: string; precio: string; precio_bs: string; orden: number };
+  const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
+  const [guardandoCat,    setGuardandoCat]    = useState(false);
+  const [tasaBCV,         setTasaBCV]         = useState<number | null>(null);
 
   useEffect(() => {
     const cargar = async () => {
@@ -73,11 +86,33 @@ export default function EditarMiNegocioScreen() {
         setWeb(data.web ?? '');
         setDireccion(data.direccion ?? '');
         setPortada(data.imagen ?? '');
-        setGaleria([data.imagen2??'', data.imagen3??'', data.imagen4??'', data.imagen5??'', data.imagen6??'']);
       }
       setCargando(false);
     };
-    if (id) cargar();
+    if (id) {
+      cargar();
+      // Cargar galería con título y precio
+      supabase.from('galeria_items').select('*').eq('socio_id', id).order('orden')
+        .then(({ data }) => {
+          if (data) setGaleriaItems(data.map((d: any) => ({
+            id:        d.id,
+            imagen:    d.imagen    ?? '',
+            imagen2:   d.imagen2   ?? '',
+            imagen3:   d.imagen3   ?? '',
+            titulo:    d.titulo    ?? '',
+            precio:    d.precio    ?? '',
+            precio_bs: d.precio_bs ?? '',
+            orden:     d.orden     ?? 0,
+          })));
+        });
+    }
+    // Cargar tasa BCV
+    fetch('https://ve.dolarapi.com/v1/dolares/oficiales')
+      .then(r => r.json()).then(d => {
+        const t = parseFloat(d.promedio ?? d.promedio_real);
+        if (!isNaN(t) && t > 0) setTasaBCV(t);
+      }).catch(() => {});
+
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
       setMetodosPago(data);
@@ -89,10 +124,26 @@ export default function EditarMiNegocioScreen() {
 
     supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
-      const map: { mensual?: Oferta; anual?: Oferta } = {};
-      data.forEach((o: any) => { map[o.plan as 'mensual' | 'anual'] = o; });
+      const map: Partial<Record<PlanKey, Oferta>> = {};
+      data.forEach((o: any) => {
+        if (o.plan && o.periodo) map[`${o.plan}_${o.periodo}` as PlanKey] = o;
+      });
       setOfertas(map);
     });
+
+    supabase.from('config_app').select('clave,valor')
+      .in('clave', ['precio_basico_mensual', 'precio_basico_anual', 'precio_pro_mensual', 'precio_pro_anual'])
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string> = {};
+        data.forEach((r: any) => { map[r.clave] = r.valor; });
+        setPreciosBase({
+          basico_mensual: parseFloat(map.precio_basico_mensual) || 15,
+          basico_anual:   parseFloat(map.precio_basico_anual)   || 150,
+          pro_mensual:    parseFloat(map.precio_pro_mensual)     || 25,
+          pro_anual:      parseFloat(map.precio_pro_anual)       || 250,
+        });
+      });
   }, [id]);
 
   const pickImage = (onSelect: (uri: string) => void) => {
@@ -140,14 +191,17 @@ export default function EditarMiNegocioScreen() {
     setEnviandoRenov(true);
     let urlComprobante: string | null = null;
     if (comprobanteRenov) urlComprobante = await subirImagen(comprobanteRenov, 'comprobante_renov');
+    const planKeyRenov = `${planRenov}_${periodoRenov}` as PlanKey;
+    const montoRenov   = ofertas[planKeyRenov]?.precio_oferta ?? preciosBase[planKeyRenov];
     const { error } = await supabase.from('solicitudes_socios').insert({
       nombre:      socio?.nombre ?? '',
       telefono:    telefono.trim(),
       whatsapp:    whatsapp.trim(),
       plan:        planRenov,
+      periodo:     periodoRenov,
       metodo_pago: metodoRenov,
       referencia:  referenciaRenov.trim(),
-      monto:       ofertas[planRenov]?.precio_oferta ?? PRECIOS[planRenov],
+      monto:       montoRenov,
       comprobante: urlComprobante,
       tipo:        'renovacion',
       socio_id:    id,
@@ -160,30 +214,104 @@ export default function EditarMiNegocioScreen() {
     Alert.alert('¡Solicitud enviada!', 'El equipo de CashCash revisará tu pago y renovará tu membresía.');
   };
 
+  // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs
+  useEffect(() => {
+    if (!tasaBCV) return;
+    setGaleriaItems(prev => prev.map(item => {
+      if (item.precio && !item.precio_bs) {
+        const n = parseFloat(item.precio);
+        if (!isNaN(n)) return { ...item, precio_bs: (n * tasaBCV).toFixed(2) };
+      }
+      return item;
+    }));
+  }, [tasaBCV]);
+
+  const guardarCatalogo = async () => {
+    setGuardandoCat(true);
+    const itemsSubidos = await Promise.all(
+      galeriaItems.map(async (item, i) => ({
+        socio_id:  id,
+        imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
+        imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
+        imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
+        titulo:    item.titulo.trim()    || null,
+        precio:    item.precio.trim()    || null,
+        precio_bs: item.precio_bs.trim() || null,
+        orden:     i,
+      }))
+    );
+    await supabase.from('galeria_items').delete().eq('socio_id', id);
+    if (itemsSubidos.length > 0) {
+      const { data } = await supabase.from('galeria_items').insert(itemsSubidos).select();
+      if (data) setGaleriaItems(data.map((d: any) => ({
+        id:        d.id,
+        imagen:    d.imagen    ?? '',
+        imagen2:   d.imagen2   ?? '',
+        imagen3:   d.imagen3   ?? '',
+        titulo:    d.titulo    ?? '',
+        precio:    d.precio    ?? '',
+        precio_bs: d.precio_bs ?? '',
+        orden:     d.orden     ?? 0,
+      })));
+    } else {
+      setGaleriaItems([]);
+    }
+    setGuardandoCat(false);
+    Alert.alert('¡Listo!', 'Catálogo guardado correctamente.');
+  };
+
+  const agregarItemGaleria = () => {
+    const galeriaSlots = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
+    if (galeriaItems.length >= galeriaSlots) return;
+    pickImage(uri => {
+      setGaleriaItems(prev => [...prev, { imagen: uri, imagen2: '', imagen3: '', titulo: '', precio: '', precio_bs: '', orden: prev.length }]);
+    });
+  };
+
+  const eliminarItemGaleria = async (i: number) => {
+    const item = galeriaItems[i];
+    if (item.id) await supabase.from('galeria_items').delete().eq('id', item.id);
+    setGaleriaItems(prev => prev.filter((_, idx) => idx !== i).map((it, idx) => ({ ...it, orden: idx })));
+  };
+
   const guardar = async () => {
-    if (!nombre.trim()) { Alert.alert('Campo requerido', 'El nombre del negocio no puede estar vacío.'); return; }
+    if (!nombre.trim()) { Alert.alert('Campo requerido', 'El nombre de mi tienda no puede estar vacío.'); return; }
     setGuardando(true);
 
-    const urlPortada  = await subirImagen(portada, 'portada');
-    const urlsGaleria = await Promise.all(galeria.map((u, i) => subirImagen(u, `foto${i + 2}`)));
+    const urlPortada = await subirImagen(portada, 'portada');
 
+    // Guardar datos principales del socio
     const { error } = await supabase.from('socios_comerciales').update({
-      nombre:   nombre.trim(),
-      telefono: telefono.trim(),
-      whatsapp: whatsapp.trim(),
-      web:      web.trim(),
+      nombre:    nombre.trim(),
+      telefono:  telefono.trim(),
+      whatsapp:  whatsapp.trim(),
+      web:       web.trim(),
       direccion: direccion.trim(),
-      imagen:   urlPortada,
-      imagen2:  urlsGaleria[0],
-      imagen3:  urlsGaleria[1],
-      imagen4:  urlsGaleria[2],
-      imagen5:  urlsGaleria[3],
-      imagen6:  urlsGaleria[4],
+      imagen:    urlPortada,
     }).eq('id', id);
 
+    if (error) { setGuardando(false); Alert.alert('Error', error.message); return; }
+
+    // Guardar galería de productos (con título y precio)
+    const itemsSubidos = await Promise.all(
+      galeriaItems.map(async (item, i) => ({
+        socio_id:  id,
+        imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
+        imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
+        imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
+        titulo:    item.titulo.trim()    || null,
+        precio:    item.precio.trim()    || null,
+        precio_bs: item.precio_bs.trim() || null,
+        orden:     i,
+      }))
+    );
+
+    // Borrar todos los items existentes y re-insertar
+    await supabase.from('galeria_items').delete().eq('socio_id', id);
+    if (itemsSubidos.length > 0) await supabase.from('galeria_items').insert(itemsSubidos);
+
     setGuardando(false);
-    if (error) { Alert.alert('Error', error.message); return; }
-    Alert.alert('¡Listo!', 'Tu perfil fue actualizado.', [{ text: 'OK', onPress: () => router.back() }]);
+    Alert.alert('¡Listo!', 'Tu perfil fue actualizado.', [{ text: 'OK', onPress: () => router.replace('/socios') }]);
   };
 
   if (cargando) return (
@@ -196,10 +324,10 @@ export default function EditarMiNegocioScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: Colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.replace('/socios')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: Colors.text }]}>Editar mi negocio</Text>
+        <Text style={[styles.headerTitle, { color: Colors.text }]}>Editar mi tienda</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -210,7 +338,7 @@ export default function EditarMiNegocioScreen() {
           onPress={() => router.push('/unirse-socio')}
           activeOpacity={0.85}>
           <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
-          <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar otro negocio</Text>
+          <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar nueva tienda</Text>
         </TouchableOpacity>
 
         {/* Contador membresía */}
@@ -262,34 +390,125 @@ export default function EditarMiNegocioScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Galería */}
-        <Text style={[styles.seccion, { color: Colors.textMuted }]}>Galería (5 fotos)</Text>
-        <View style={styles.galeriaRow}>
-          {galeria.map((uri, i) => (
-            <TouchableOpacity key={i}
-              style={[styles.galeriaSlot, { borderColor: Colors.border, backgroundColor: Colors.card }]}
-              onPress={() => pickImage(u => setGaleria(prev => { const n = [...prev]; n[i] = u; return n; }))}
-              activeOpacity={0.8}>
-              {uri ? (
-                <>
-                  <Image source={{ uri }} style={styles.galeriaImg} resizeMode="cover" />
-                  <TouchableOpacity style={[styles.quitarBtn, { backgroundColor: Colors.card }]}
-                    onPress={() => setGaleria(prev => { const n = [...prev]; n[i] = ''; return n; })}>
-                    <Ionicons name="close" size={11} color={Colors.text} />
+        {/* Catálogo de productos / galería */}
+        {(() => {
+          const slots = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
+          if (slots === 0) return null;
+          return (
+            <View style={{ gap: Spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[styles.seccion, { color: Colors.textMuted }]}>
+                  Catálogo de productos ({galeriaItems.length}/{slots})
+                </Text>
+              </View>
+
+              {/* Cards de items */}
+              {galeriaItems.map((item, i) => (
+                <View key={i} style={[styles.catalogoCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+                  {/* 3 slots de imagen */}
+                  <View style={{ gap: 4 }}>
+                    {(['imagen', 'imagen2', 'imagen3'] as const).map((campo, si) => (
+                      <TouchableOpacity key={si}
+                        style={[styles.catalogoImagen, { borderColor: si === 0 ? Colors.accent : Colors.border, backgroundColor: Colors.background }]}
+                        onPress={() => pickImage(uri => setGaleriaItems(prev => {
+                          const n = [...prev]; n[i] = { ...n[i], [campo]: uri }; return n;
+                        }))}
+                        activeOpacity={0.8}>
+                        {item[campo] ? (
+                          <Image source={{ uri: item[campo] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        ) : (
+                          <Ionicons name={si === 0 ? 'camera' : 'add'} size={si === 0 ? 22 : 18} color={si === 0 ? Colors.accent : Colors.textMuted} />
+                        )}
+                        {item[campo] ? (
+                          <View style={[styles.editBadge, { backgroundColor: Colors.accent }]}>
+                            <Ionicons name="camera" size={10} color="#fff" />
+                          </View>
+                        ) : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Inputs título y precio */}
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 9 }]}
+                      value={item.titulo}
+                      onChangeText={t => setGaleriaItems(prev => { const n = [...prev]; n[i] = { ...n[i], titulo: t }; return n; })}
+                      placeholder="Título del producto"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 9 }]}
+                      value={item.precio}
+                      onChangeText={t => setGaleriaItems(prev => {
+                        const n = [...prev];
+                        const bs = tasaBCV && t && !isNaN(parseFloat(t))
+                          ? (parseFloat(t) * tasaBCV).toFixed(2) : n[i].precio_bs;
+                        n[i] = { ...n[i], precio: t, precio_bs: bs };
+                        return n;
+                      })}
+                      placeholder="Precio USD (ej: 1.50)"
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 9 }]}
+                      value={item.precio_bs}
+                      onChangeText={t => setGaleriaItems(prev => {
+                        const n = [...prev];
+                        const usd = tasaBCV && t && !isNaN(parseFloat(t))
+                          ? (parseFloat(t) / tasaBCV).toFixed(2) : n[i].precio;
+                        n[i] = { ...n[i], precio_bs: t, precio: usd };
+                        return n;
+                      })}
+                      placeholder={tasaBCV ? `Precio Bs. (tasa: ${tasaBCV.toFixed(2)})` : 'Precio Bs.'}
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+
+                  {/* Eliminar */}
+                  <TouchableOpacity onPress={() => eliminarItemGaleria(i)} style={{ padding: 6 }}>
+                    <Ionicons name="trash-outline" size={20} color={Colors.textMuted} />
                   </TouchableOpacity>
-                </>
-              ) : (
-                <Ionicons name="add" size={22} color={Colors.textMuted} />
+                </View>
+              ))}
+
+              {/* Botón agregar */}
+              {galeriaItems.length < slots && (
+                <TouchableOpacity
+                  style={[styles.btnAgregar, { borderColor: Colors.accent }]}
+                  onPress={agregarItemGaleria}
+                  activeOpacity={0.85}>
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
+                  <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar al catálogo</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          ))}
-        </View>
+
+              {/* Botón guardar catálogo */}
+              {galeriaItems.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.btnGuardar, { backgroundColor: guardandoCat ? Colors.border : Colors.success }]}
+                  onPress={guardarCatalogo}
+                  disabled={guardandoCat}>
+                  {guardandoCat
+                    ? <ActivityIndicator color="#fff" />
+                    : <>
+                        <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                        <Text style={styles.btnGuardarText}>Guardar catálogo</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Datos */}
-        <Text style={[styles.seccion, { color: Colors.textMuted }]}>Información del negocio</Text>
+        <Text style={[styles.seccion, { color: Colors.textMuted }]}>Información de mi tienda</Text>
 
         {([
-          { label: 'Nombre del negocio *', value: nombre, set: setNombre, placeholder: 'Nombre' },
+          { label: 'Nombre de mi tienda *', value: nombre, set: setNombre, placeholder: 'Nombre' },
           { label: 'Teléfono', value: telefono, set: setTelefono, placeholder: '0414-0000000', keyboard: 'phone-pad' },
           { label: 'WhatsApp', value: whatsapp, set: setWhatsapp, placeholder: '0414-0000000', keyboard: 'phone-pad' },
           { label: 'Sitio web', value: web, set: setWeb, placeholder: 'www.ejemplo.com' },
@@ -331,43 +550,55 @@ export default function EditarMiNegocioScreen() {
 
             <ScrollView contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} keyboardShouldPersistTaps="handled">
 
-              {/* Selector de plan */}
+              {/* Selector de plan y período */}
               <Text style={[styles.label, { color: Colors.textMuted }]}>Selecciona tu plan</Text>
+
+              {/* Toggle período */}
+              <View style={[styles.toggleWrap, { backgroundColor: Colors.border }]}>
+                {(['mensual', 'anual'] as Periodo[]).map(p => (
+                  <TouchableOpacity key={p} onPress={() => setPeriodoRenov(p)}
+                    style={[styles.toggleBtn, periodoRenov === p && [styles.toggleBtnActive, { backgroundColor: Colors.card }]]}>
+                    <Text style={[styles.toggleBtnText, { color: periodoRenov === p ? Colors.accent : Colors.textMuted }]}>
+                      {p === 'mensual' ? 'Mensual' : 'Anual'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Básico / Pro */}
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                {(['mensual','anual'] as const).map(p => {
-                  const oferta = ofertas[p];
+                {(['basico', 'pro'] as Exclude<Plan,'gratis'>[]).map(p => {
+                  const key    = `${p}_${periodoRenov}` as PlanKey;
+                  const oferta = ofertas[key];
                   const activo = planRenov === p;
+                  const precioPlan = oferta?.precio_oferta ?? preciosBase[key];
                   return (
                     <TouchableOpacity key={p} onPress={() => setPlanRenov(p)}
                       style={[styles.planBtn, {
-                        borderColor: activo ? Colors.accent : Colors.border,
+                        borderColor:     activo ? Colors.accent : Colors.border,
                         backgroundColor: activo ? Colors.accent + '12' : Colors.card,
                         flex: 1, position: 'relative',
                       }]}>
-                      {/* Badge descuento */}
                       {oferta?.descuento_pct ? (
                         <View style={{ position: 'absolute', top: -10, right: -6, backgroundColor: Colors.accent, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 }}>
                           <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>-{oferta.descuento_pct}%</Text>
                         </View>
                       ) : null}
                       <Text style={[styles.planBtnLabel, { color: activo ? Colors.accent : Colors.text }]}>
-                        {p === 'mensual' ? 'Mensual' : 'Anual'}
+                        {p === 'basico' ? '⭐ Básico' : '🚀 Pro'}
                       </Text>
-                      {/* Precio original tachado */}
                       {oferta?.precio_original ? (
                         <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textDecorationLine: 'line-through' }}>
                           ${oferta.precio_original}
                         </Text>
                       ) : null}
-                      {/* Precio principal */}
                       <Text style={[styles.planBtnPrecio, { color: activo ? Colors.accent : Colors.textMuted }]}>
-                        ${oferta ? oferta.precio_oferta : PRECIOS[p]}
+                        ${precioPlan}
                       </Text>
-                      {/* Meses gratis */}
                       {oferta?.meses_gratis ? (
-                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>+{oferta.meses_gratis} mes{oferta.meses_gratis !== 1 ? 'es' : ''} gratis</Text>
-                      ) : p === 'anual' && !oferta ? (
-                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>Ahorra $30</Text>
+                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>
+                          +{oferta.meses_gratis} mes{oferta.meses_gratis !== 1 ? 'es' : ''} gratis
+                        </Text>
                       ) : null}
                     </TouchableOpacity>
                   );
@@ -482,18 +713,14 @@ function makeStyles(Colors: any) { return StyleSheet.create({
     padding: 7, borderRadius: 99,
   },
 
-  galeriaRow:  { flexDirection: 'row', gap: Spacing.sm },
-  galeriaSlot: {
-    flex: 1, aspectRatio: 1, borderRadius: Radius.md, borderWidth: 1.5,
-    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  catalogoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: Radius.lg, borderWidth: 1, padding: 10,
   },
-  galeriaImg:  { width: '100%', height: '100%' },
-  quitarBtn: {
-    position: 'absolute', top: 4, right: 4,
-    borderRadius: 99, padding: 3,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
+  catalogoImagen: {
+    width: 80, height: 80, borderRadius: Radius.md, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-
   campo: { gap: 5 },
   label: { fontSize: FontSize.sm, fontWeight: '600' },
   input: {
@@ -505,6 +732,7 @@ function makeStyles(Colors: any) { return StyleSheet.create({
   btnGuardar: {
     marginTop: Spacing.md, borderRadius: Radius.lg,
     paddingVertical: 15, alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
   },
   btnGuardarText: { fontSize: FontSize.md, fontWeight: '800', color: '#fff' },
 
@@ -529,8 +757,16 @@ function makeStyles(Colors: any) { return StyleSheet.create({
   contadorDot:   { width: 8, height: 8, borderRadius: 4 },
   contadorLabel: { fontSize: FontSize.sm, flex: 1 },
   contadorValor: { fontSize: FontSize.sm, fontWeight: '700' },
-  separador:     { height: 1, marginVertical: 2 },
 
+  toggleWrap: {
+    flexDirection: 'row', borderRadius: Radius.lg, padding: 3, gap: 3,
+  },
+  toggleBtn: {
+    flex: 1, paddingVertical: 9, borderRadius: Radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  toggleBtnActive: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  toggleBtnText:   { fontSize: FontSize.sm, fontWeight: '700' },
   planBtn: {
     borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md,
     alignItems: 'center', gap: 4,

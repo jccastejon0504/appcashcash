@@ -469,6 +469,17 @@ export default function CalculadoraBCVScreen() {
             <View style={[s.guiaCard, { backgroundColor: T.cardAlt, borderColor: T.border }]}>
               <Text style={[s.guiaTitulo, { color: T.text }]}>¿Cómo funciona cada módulo?</Text>
 
+              {/* Nota destacada */}
+              <View style={[s.guiaItem, { backgroundColor: T.success + '15', borderRadius: 10, padding: 10, marginBottom: 4 }]}>
+                <Ionicons name="information-circle-outline" size={18} color={T.success} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.success }]}>Compras y Mercado</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>
+                    Los módulos <Text style={{ fontWeight: '700', color: T.text }}>Compras</Text> y <Text style={{ fontWeight: '700', color: T.text }}>Mercado</Text> están diseñados para el día a día del hogar: compara precios de alimentos, productos de limpieza y artículos de uso doméstico en los distintos locales de tu zona.
+                  </Text>
+                </View>
+              </View>
+
               <View style={s.guiaItem}>
                 <Ionicons name="calculator-outline" size={18} color={T.accent} />
                 <View style={s.guiaTextos}>
@@ -488,7 +499,7 @@ export default function CalculadoraBCVScreen() {
               <View style={s.guiaItem}>
                 <Ionicons name="storefront-outline" size={18} color={T.accent} />
                 <View style={s.guiaTextos}>
-                  <Text style={[s.guiaNombre, { color: T.text }]}>Comercio — Comparación de precios</Text>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Mercado — Comparación de precios</Text>
                   <Text style={[s.guiaDesc, { color: T.textMuted }]}>Registra productos con su precio en cada local. Compara quién vende más barato y comparte los datos con tu familia.</Text>
                 </View>
               </View>
@@ -498,6 +509,25 @@ export default function CalculadoraBCVScreen() {
                 <View style={s.guiaTextos}>
                   <Text style={[s.guiaNombre, { color: T.text }]}>Cartera — Ingresos y gastos</Text>
                   <Text style={[s.guiaDesc, { color: T.textMuted }]}>Registra tus ingresos y gastos en dólares o bolívares. Consulta el balance por semana, mes o año.</Text>
+                </View>
+              </View>
+
+              {/* Nota Mi Tienda */}
+              <View style={[s.guiaItem, { backgroundColor: T.accent + '15', borderRadius: 10, padding: 10, marginTop: 4 }]}>
+                <Ionicons name="storefront-outline" size={18} color={T.accent} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.accent }]}>¡Nuevo! Mi Tienda</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>
+                    Ahora CashCach cuenta con un módulo de tiendas. Registra tu negocio, publica tu catálogo con fotos, precios en dólares y bolívares, y conecta directamente con tus clientes por WhatsApp. Compra y vende productos de cualquier categoría, todo en un solo lugar.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={s.guiaItem}>
+                <Ionicons name="storefront-outline" size={18} color={T.accent} />
+                <View style={s.guiaTextos}>
+                  <Text style={[s.guiaNombre, { color: T.text }]}>Mi Tienda — Directorio de comercios</Text>
+                  <Text style={[s.guiaDesc, { color: T.textMuted }]}>Explora tiendas y negocios locales, ve su catálogo de productos con precios actualizados y contáctalos al instante.</Text>
                 </View>
               </View>
             </View>
@@ -524,7 +554,7 @@ export default function CalculadoraBCVScreen() {
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/comparacion'); }}>
               <Ionicons name="bar-chart-outline" size={18} color={T.accent} />
-              <Text style={[s.menuItemText, { color: T.accent }]}>Locales / Productos</Text>
+              <Text style={[s.menuItemText, { color: T.accent }]}>Mercados / Productos</Text>
             </TouchableOpacity>
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate({ pathname: '/comparacion', params: { vista: 'comparar' } }); }}>
@@ -539,7 +569,12 @@ export default function CalculadoraBCVScreen() {
             <View style={[s.menuDivider, { backgroundColor: T.border }]} />
             <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/socios'); }}>
               <Ionicons name="storefront-outline" size={18} color={T.accent} />
-              <Text style={[s.menuItemText, { color: T.accent }]}>Socios Comerciales</Text>
+              <Text style={[s.menuItemText, { color: T.accent }]}>Mi Tienda</Text>
+            </TouchableOpacity>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/terminos'); }}>
+              <Ionicons name="document-text-outline" size={18} color={T.textMuted} />
+              <Text style={[s.menuItemText, { color: T.textMuted }]}>Términos y Condiciones</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -739,14 +774,9 @@ const s = StyleSheet.create({
     borderTopWidth: 1, padding: Spacing.lg, paddingBottom: 40,
     maxHeight: '90%',
   },
-  configHandle:    { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
-  configTitleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  configTitle:     { fontSize: FontSize.xl, fontWeight: '800' },
-  guiaArrow: {
-    borderRadius: Radius.sm, borderWidth: 1,
-    padding: 6, alignItems: 'center', justifyContent: 'center',
-  },
-  configSectionLabel:{ fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
+  configHandle:       { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
+  configTitle:        { fontSize: FontSize.xl, fontWeight: '800' },
+  configSectionLabel: { fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
 
   // Toggle tema
   temaRow: {
@@ -772,13 +802,6 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   swatchLabel: { fontSize: FontSize.xs, fontWeight: '700' },
-
-  // Preview
-  previewBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 12,
-  },
-  previewText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
 
   guiaCard: {
     borderRadius: Radius.lg, borderWidth: 1,

@@ -454,10 +454,11 @@ export default function ListadoMercadoScreen() {
               {comercios.length > 0 && (
                 <TouchableOpacity style={styles.btnPorComercio} onPress={() => setModalComercios(true)}>
                   <Ionicons name="storefront-outline" size={18} color={Colors.blue} />
-                  <Text style={styles.btnPorComercioText}>Ver precio total por comercio</Text>
+                  <Text style={styles.btnPorComercioText}>Evaluar precios por mercados</Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.blue} />
                 </TouchableOpacity>
               )}
+
 
             </>
           );
@@ -623,7 +624,7 @@ export default function ListadoMercadoScreen() {
           <Pressable style={styles.mcDismiss} onPress={() => setModalComercios(false)} />
           <View style={styles.modalComerciosCard}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalComerciosTitulo}>Precio total por comercio</Text>
+            <Text style={styles.modalComerciosTitulo}>Evaluar precios por mercados</Text>
             <Text style={styles.modalComerciosSubtitulo}>
               Cuánto costaría comprar tu lista completa en cada local
             </Text>
@@ -747,6 +748,12 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   badgeText: { fontSize: FontSize.xs, fontWeight: '800', color: '#fff' },
 
   body: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 80 },
+
+  infoBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md,
+  },
+  infoBannerText: { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
 
   addRow: { flexDirection: 'row', gap: Spacing.sm },
   addInput: {

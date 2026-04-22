@@ -8,7 +8,8 @@
     "android": "expo start --android -c",
     "ios": "expo start --ios -c",
     "web": "expo start --web -c",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "admin": "npx serve admin -p 3000 --no-clipboard"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
