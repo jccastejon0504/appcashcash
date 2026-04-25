@@ -64,7 +64,7 @@ export default function SociosScreen() {
   }, [socioModal]);
 
   useEffect(() => {
-    supabase.from('subcategorias').select('id,nombre').order('nombre').then(({ data }) => {
+    supabase.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre').then(({ data }) => {
       if (data) setSubcats(data as { id: string; nombre: string }[]);
     });
   }, []);
@@ -131,22 +131,36 @@ export default function SociosScreen() {
     const q = busqueda.toLowerCase();
     const items = new Set<string>();
     socios.forEach(s => {
-      if (s.nombre?.toLowerCase().includes(q))    items.add(s.nombre);
-      if (s.direccion?.toLowerCase().includes(q)) items.add(s.direccion);
+      const subcatNombre = subcats.find(sc => sc.id === s.subcategoria_id)?.nombre;
+      const campos: (string | null | undefined)[] = [s.nombre, s.ciudad, s.direccion, subcatNombre];
+      campos.forEach(campo => {
+        if (campo?.toLowerCase().includes(q)) items.add(campo);
+      });
+      // Palabras clave de la descripción
+      if (s.descripcion?.toLowerCase().includes(q)) {
+        const frase = s.descripcion.length > 50 ? s.descripcion.slice(0, 50) + '…' : s.descripcion;
+        items.add(frase);
+      }
     });
-    return Array.from(items).slice(0, 6);
-  }, [busqueda, socios]);
+    return Array.from(items).slice(0, 8);
+  }, [busqueda, socios, subcats]);
 
   const sociosFiltrados = useMemo(() => {
     let lista = socios;
     if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
     const q = busqueda.trim().toLowerCase();
     if (!q) return lista;
-    return lista.filter(s =>
-      s.nombre?.toLowerCase().includes(q) ||
-      s.direccion?.toLowerCase().includes(q)
-    );
-  }, [socios, busqueda, subcatFiltro]);
+    return lista.filter(s => {
+      const subcatNombre = subcats.find(sc => sc.id === s.subcategoria_id)?.nombre ?? '';
+      return (
+        s.nombre?.toLowerCase().includes(q) ||
+        s.ciudad?.toLowerCase().includes(q) ||
+        s.direccion?.toLowerCase().includes(q) ||
+        s.descripcion?.toLowerCase().includes(q) ||
+        subcatNombre.toLowerCase().includes(q)
+      );
+    });
+  }, [socios, busqueda, subcatFiltro, subcats]);
 
   const seleccionarSugerencia = (texto: string) => {
     setBusqueda(texto);

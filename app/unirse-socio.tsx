@@ -67,17 +67,14 @@ export default function UnirseSocioScreen() {
 
   // Selector ciudad → categoría
   type CiudadItem     = { id: string; nombre: string };
-  type SubcatItem     = { id: string; nombre: string; categoria_id: string };
+  type SubcatItem     = { id: string; nombre: string };
   const [ciudades,      setCiudades]      = useState<CiudadItem[]>([]);
   const [subcategorias, setSubcategorias] = useState<SubcatItem[]>([]);
   const [ciudadSelId,   setCiudadSelId]   = useState<string | null>(null);
   const [subcatSelId,   setSubcatSelId]   = useState<string | null>(null);
   const [dropCiudad,    setDropCiudad]    = useState(false);
   const [dropSubcat,    setDropSubcat]    = useState(false);
-  const subcatsFiltradas = useMemo(
-    () => ciudadSelId ? subcategorias.filter(s => s.categoria_id === ciudadSelId) : [],
-    [ciudadSelId, subcategorias]
-  );
+  const [subcatBusq,    setSubcatBusq]    = useState('');
 
   // Paso 2 – Plan
   const [plan,    setPlan]    = useState<Plan>('basico');
@@ -102,7 +99,7 @@ export default function UnirseSocioScreen() {
   useEffect(() => {
     supabase.from('categorias').select('id,nombre').order('orden')
       .then(({ data }) => { if (data) setCiudades(data as CiudadItem[]); });
-    supabase.from('subcategorias').select('id,nombre,categoria_id').order('nombre')
+    supabase.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre')
       .then(({ data }) => { if (data) setSubcategorias(data as SubcatItem[]); });
 
     // Tasa BCV desde cache
@@ -205,7 +202,7 @@ export default function UnirseSocioScreen() {
   const pasoValido = () => {
     if (paso === 1) return nombre.trim().length > 0 && ciudad.trim().length > 0 &&
       (telefono.trim().length > 0 || whatsapp.trim().length > 0);
-    if (paso === 4) return referencia.trim().length > 0;
+    if (paso === 4) return referencia.trim().length > 0 && comprobante !== null;
     return true;
   };
 
@@ -313,12 +310,12 @@ export default function UnirseSocioScreen() {
       <Text style={[styles.pasoSub, { color: Colors.textMuted }]}>Cuéntanos sobre tu tienda</Text>
 
       {([
-        { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza' },
-        { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
+        { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza', hint: 'Una vez aprobada la tienda, el nombre no podrá modificarse.' },
+        { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad', hint: 'Una vez aprobada la tienda, el teléfono no podrá modificarse.' },
         { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
-        { label: 'Redes',                value: redes,     set: setRedes,     placeholder: 'Ej: @minegocio' },
+        { label: 'Redes sociales / web', value: redes,     set: setRedes,     placeholder: 'Ej: @minegocio' },
         { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
-      ] as any[]).map(({ label, value, set, placeholder, keyboard }) => (
+      ] as any[]).map(({ label, value, set, placeholder, keyboard, hint }) => (
         <View key={label} style={styles.campo}>
           <Text style={[styles.label, { color: Colors.textMuted }]}>{label}</Text>
           <TextInput
@@ -327,6 +324,12 @@ export default function UnirseSocioScreen() {
             placeholder={placeholder} placeholderTextColor={Colors.textMuted}
             keyboardType={keyboard ?? 'default'}
           />
+          {hint && (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 5 }}>
+              <Ionicons name="information-circle-outline" size={13} color="#f59e0b" style={{ marginTop: 1 }} />
+              <Text style={{ fontSize: 11, color: '#f59e0b', flex: 1, lineHeight: 15 }}>{hint}</Text>
+            </View>
+          )}
         </View>
       ))}
 
@@ -347,7 +350,7 @@ export default function UnirseSocioScreen() {
             {ciudades.map(c => (
               <TouchableOpacity key={c.id}
                 style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
-                onPress={() => { setCiudadSelId(c.id); setCiudad(c.nombre); setSubcatSelId(null); setDropCiudad(false); }}>
+                onPress={() => { setCiudadSelId(c.id); setCiudad(c.nombre); setDropCiudad(false); }}>
                 <Text style={{ color: c.id === ciudadSelId ? Colors.accent : Colors.text, fontWeight: c.id === ciudadSelId ? '700' : '400' }}>{c.nombre}</Text>
               </TouchableOpacity>
             ))}
@@ -355,36 +358,48 @@ export default function UnirseSocioScreen() {
         )}
       </View>
 
-      {/* Selector Categoría (solo si hay ciudad seleccionada) */}
-      {ciudadSelId && (
-        <View style={styles.campo}>
-          <Text style={[styles.label, { color: Colors.textMuted }]}>Categoría</Text>
-          <TouchableOpacity
-            style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-            onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); }}
-            activeOpacity={0.8}>
-            <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
-              {subcatSelId ? (subcatsFiltradas.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
-            </Text>
-            <Ionicons name={dropSubcat ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-          </TouchableOpacity>
-          {dropSubcat && (
-            <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-              {subcatsFiltradas.length === 0 ? (
-                <View style={styles.dropdownItem}>
-                  <Text style={{ color: Colors.textMuted }}>Sin categorías para esta ciudad</Text>
-                </View>
-              ) : subcatsFiltradas.map(s => (
-                <TouchableOpacity key={s.id}
-                  style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
-                  onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); }}>
-                  <Text style={{ color: s.id === subcatSelId ? Colors.accent : Colors.text, fontWeight: s.id === subcatSelId ? '700' : '400' }}>{s.nombre}</Text>
+      {/* Selector Categoría (global, independiente de ciudad) */}
+      <View style={styles.campo}>
+        <Text style={[styles.label, { color: Colors.textMuted }]}>Categoría</Text>
+        <TouchableOpacity
+          style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+          onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); if (dropSubcat) setSubcatBusq(''); }}
+          activeOpacity={0.8}>
+          <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
+            {subcatSelId ? (subcategorias.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
+          </Text>
+          <Ionicons name={dropSubcat ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
+        {dropSubcat && (
+          <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+              <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={{ flex: 1, color: Colors.text, fontSize: FontSize.md, padding: 0 }}
+                value={subcatBusq} onChangeText={setSubcatBusq}
+                placeholder="Buscar categoría…" placeholderTextColor={Colors.textMuted}
+                autoFocus
+              />
+              {subcatBusq.length > 0 && (
+                <TouchableOpacity onPress={() => setSubcatBusq('')}>
+                  <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
-          )}
-        </View>
-      )}
+            {subcategorias.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).length === 0 ? (
+              <View style={styles.dropdownItem}>
+                <Text style={{ color: Colors.textMuted }}>Sin resultados</Text>
+              </View>
+            ) : subcategorias.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).map(s => (
+              <TouchableOpacity key={s.id}
+                style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
+                onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); setSubcatBusq(''); }}>
+                <Text style={{ color: s.id === subcatSelId ? Colors.accent : Colors.text, fontWeight: s.id === subcatSelId ? '700' : '400' }}>{s.nombre}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
       <View style={styles.campo}>
         <Text style={[styles.label, { color: Colors.textMuted }]}>Descripción breve</Text>
@@ -640,7 +655,7 @@ export default function UnirseSocioScreen() {
       </View>
 
       <View style={styles.campo}>
-        <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante</Text>
+        <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante *</Text>
         <TouchableOpacity
           style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.card }]}
           onPress={() => pickImage(setComprobante)} activeOpacity={0.8}>

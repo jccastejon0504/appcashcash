@@ -32,6 +32,8 @@ type Socio = {
   imagen11: string; imagen12: string;
   fecha_vencimiento: string | null;
   plan: Plan | null;
+  nombre_bloqueado?: boolean;
+  telefono_bloqueado?: boolean;
 };
 
 export default function EditarMiNegocioScreen() {
@@ -63,11 +65,9 @@ export default function EditarMiNegocioScreen() {
   const [subcatSelId,    setSubcatSelId]    = useState<string | null>(null);
   const [dropCiudad,     setDropCiudad]     = useState(false);
   const [dropSubcat,     setDropSubcat]     = useState(false);
+  const [subcatBusq,     setSubcatBusq]     = useState('');
 
-  const subcatsFiltradas = useMemo(
-    () => ciudadSelId ? subcategorias.filter(s => s.categoria_id === ciudadSelId) : [],
-    [ciudadSelId, subcategorias]
-  );
+  const subcatsFiltradas = subcategorias;
 
   // Renovación
   const [modalRenovar,     setModalRenovar]     = useState(false);
@@ -126,18 +126,24 @@ export default function EditarMiNegocioScreen() {
         setResolvedId(socioId);
       }
 
-      const [{ data }, { data: ciu }, { data: subcats }, { data: cfgLimite }] = await Promise.all([
+      const [{ data }, { data: ciu }, { data: subcats }, { data: cfgLimite }, { data: cfgLock }] = await Promise.all([
         supabase.from('socios_comerciales').select('*').eq('id', socioId).single(),
         supabase.from('categorias').select('id,nombre').order('orden'),
-        supabase.from('subcategorias').select('id,nombre,categoria_id').order('nombre'),
+        supabase.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre'),
         supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
+        supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${socioId}`, `lock_tel_${socioId}`]),
       ]);
       const limite = cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100;
       setLimiteTiendas(limite);
       if (ciu)     setCiudades(ciu as Ciudad[]);
       if (subcats) setSubcategorias(subcats as Subcategoria[]);
       if (data) {
-        setSocio(data);
+        const lockMap = Object.fromEntries((cfgLock ?? []).map((r: any) => [r.clave, r.valor]));
+        setSocio({
+          ...data,
+          nombre_bloqueado:   lockMap[`lock_nombre_${socioId}`] === 'true',
+          telefono_bloqueado: lockMap[`lock_tel_${socioId}`]    === 'true',
+        });
         setNombre(data.nombre ?? '');
         setCiudad(data.ciudad ?? '');
         setTelefono(data.telefono ?? '');
@@ -146,14 +152,13 @@ export default function EditarMiNegocioScreen() {
         setDireccion(data.direccion ?? '');
         setDescripcion(data.descripcion ?? '');
         setPortada(data.imagen ?? '');
-        // Preseleccionar ciudad y categoría guardadas
-        if (data.subcategoria_id && subcats) {
-          const sub = (subcats as Subcategoria[]).find(s => s.id === data.subcategoria_id);
-          if (sub) {
-            setCiudadSelId(sub.categoria_id);
-            setSubcatSelId(sub.id);
-          }
+        // Preseleccionar ciudad guardada
+        if (data.ciudad && ciu) {
+          const ciudadMatch = (ciu as Ciudad[]).find(c => c.nombre.toLowerCase() === (data.ciudad ?? '').toLowerCase());
+          if (ciudadMatch) setCiudadSelId(ciudadMatch.id);
         }
+        // Preseleccionar categoría guardada (global, sin depender de ciudad)
+        if (data.subcategoria_id) setSubcatSelId(data.subcategoria_id);
       }
       // Contar tiendas del usuario por teléfono
       if (data?.telefono || data?.whatsapp) {
@@ -266,23 +271,29 @@ export default function EditarMiNegocioScreen() {
 
   const enviarRenovacion = async () => {
     if (!referenciaRenov.trim()) { Alert.alert('Campo requerido', 'Ingresa el número de referencia.'); return; }
+    if (!comprobanteRenov) { Alert.alert('Campo requerido', 'Adjunta la foto del comprobante de pago.'); return; }
     setEnviandoRenov(true);
     let urlComprobante: string | null = null;
     if (comprobanteRenov) urlComprobante = await subirImagen(comprobanteRenov, 'comprobante_renov');
     const planKeyRenov = `${planRenov}_${periodoRenov}` as PlanKey;
     const montoRenov   = ofertas[planKeyRenov]?.precio_oferta ?? preciosBase[planKeyRenov];
     const { error } = await supabase.from('solicitudes').insert({
-      nombre:      socio?.nombre ?? '',
-      telefono:    telefono.trim(),
-      whatsapp:    whatsapp.trim(),
-      plan:        planRenov,
-      periodo:     periodoRenov,
-      metodo_pago: metodoRenov,
-      referencia:  referenciaRenov.trim(),
-      monto:       montoRenov,
-      comprobante: urlComprobante,
-      tipo:        'renovacion',
-      socio_id:    resolvedId,
+      nombre:         socio?.nombre ?? '',
+      telefono:       telefono.trim(),
+      whatsapp:       whatsapp.trim(),
+      redes:          socio?.web        ?? null,
+      direccion:      socio?.direccion  ?? null,
+      descripcion:    socio?.descripcion ?? null,
+      ciudad:         socio?.ciudad     ?? null,
+      subcategoria_id: subcatSelId ?? socio?.subcategoria_id ?? null,
+      plan:           planRenov,
+      periodo:        periodoRenov,
+      metodo_pago:    metodoRenov,
+      referencia:     referenciaRenov.trim(),
+      monto:          montoRenov,
+      comprobante:    urlComprobante,
+      tipo:           'renovacion',
+      socio_id:       resolvedId,
     });
     setEnviandoRenov(false);
     if (error) { Alert.alert('Error', error.message); return; }
@@ -295,14 +306,19 @@ export default function EditarMiNegocioScreen() {
   // Refrescar fecha_vencimiento y plan cada vez que la pantalla recibe el foco
   useFocusEffect(useCallback(() => {
     if (!resolvedId) return;
-    supabase
-      .from('socios_comerciales')
-      .select('fecha_vencimiento, plan')
-      .eq('id', resolvedId)
-      .single()
-      .then(({ data }) => {
-        if (data) setSocio(prev => prev ? { ...prev, fecha_vencimiento: data.fecha_vencimiento, plan: data.plan } : prev);
-      });
+    Promise.all([
+      supabase.from('socios_comerciales').select('fecha_vencimiento, plan').eq('id', resolvedId).single(),
+      supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`]),
+    ]).then(([{ data }, { data: cfg }]) => {
+      const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
+      if (data) setSocio(prev => prev ? {
+        ...prev,
+        fecha_vencimiento:  data.fecha_vencimiento,
+        plan:               data.plan,
+        nombre_bloqueado:   cfgMap[`lock_nombre_${resolvedId}`] === 'true',
+        telefono_bloqueado: cfgMap[`lock_tel_${resolvedId}`]    === 'true',
+      } : prev);
+    });
   }, [resolvedId]));
 
   // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs
@@ -650,22 +666,29 @@ export default function EditarMiNegocioScreen() {
         <Text style={[styles.seccion, { color: Colors.textMuted }]}>Información de mi tienda</Text>
 
         {([
-          { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza' },
-          { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
+          { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza', bloqueado: !!socio?.nombre_bloqueado },
+          { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad', bloqueado: !!socio?.telefono_bloqueado },
           { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
-          { label: 'Redes',                value: web,       set: setWeb,       placeholder: 'Ej: @minegocio' },
+          { label: 'Redes sociales / web', value: web,       set: setWeb,       placeholder: 'Ej: @minegocio' },
           { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
           { label: 'Descripción',          value: descripcion, set: setDescripcion, placeholder: 'Breve descripción de tu negocio…', multiline: true },
-        ] as any[]).map(({ label, value, set, placeholder, keyboard, multiline }) => (
+        ] as any[]).map(({ label, value, set, placeholder, keyboard, multiline, bloqueado }) => (
           <View key={label} style={styles.campo}>
-            <Text style={[styles.label, { color: Colors.textMuted }]}>{label}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+              <Text style={[styles.label, { color: Colors.textMuted, marginBottom: 0 }]}>{label}</Text>
+              {bloqueado && <Ionicons name="lock-closed" size={12} color="#ef4444" />}
+            </View>
             <TextInput
-              style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, color: Colors.text }, multiline && { height: 80, textAlignVertical: 'top' }]}
-              value={value} onChangeText={set}
+              style={[styles.input, { backgroundColor: bloqueado ? Colors.background : Colors.card, borderColor: bloqueado ? '#fca5a5' : Colors.border, color: bloqueado ? Colors.textMuted : Colors.text }, multiline && { height: 80, textAlignVertical: 'top' }]}
+              value={value} onChangeText={bloqueado ? undefined : set}
+              editable={!bloqueado}
               placeholder={placeholder} placeholderTextColor={Colors.textMuted}
               keyboardType={keyboard ?? 'default'}
               multiline={multiline ?? false}
             />
+            {bloqueado && (
+              <Text style={{ fontSize: 11, color: '#ef4444', marginTop: 3 }}>Bloqueado por el administrador.</Text>
+            )}
           </View>
         ))}
 
@@ -689,7 +712,6 @@ export default function EditarMiNegocioScreen() {
                   onPress={() => {
                     setCiudadSelId(c.id);
                     setCiudad(c.nombre);
-                    setSubcatSelId(null);
                     setDropCiudad(false);
                   }}>
                   <Text style={{ color: c.id === ciudadSelId ? Colors.accent : Colors.text, fontWeight: c.id === ciudadSelId ? '700' : '400' }}>{c.nombre}</Text>
@@ -699,12 +721,11 @@ export default function EditarMiNegocioScreen() {
           )}
         </View>
 
-        {ciudadSelId && (
-          <View style={styles.campo}>
+        <View style={styles.campo}>
             <Text style={[styles.label, { color: Colors.textMuted }]}>Categoría</Text>
             <TouchableOpacity
               style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-              onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); }}
+              onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); if (dropSubcat) setSubcatBusq(''); }}
               activeOpacity={0.8}>
               <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
                 {subcatSelId ? (subcatsFiltradas.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
@@ -713,21 +734,34 @@ export default function EditarMiNegocioScreen() {
             </TouchableOpacity>
             {dropSubcat && (
               <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-                {subcatsFiltradas.length === 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+                  <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+                  <TextInput
+                    style={{ flex: 1, color: Colors.text, fontSize: FontSize.md, padding: 0 }}
+                    value={subcatBusq} onChangeText={setSubcatBusq}
+                    placeholder="Buscar categoría…" placeholderTextColor={Colors.textMuted}
+                    autoFocus
+                  />
+                  {subcatBusq.length > 0 && (
+                    <TouchableOpacity onPress={() => setSubcatBusq('')}>
+                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {subcatsFiltradas.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).length === 0 ? (
                   <View style={styles.dropdownItem}>
-                    <Text style={{ color: Colors.textMuted }}>Sin categorías para esta ciudad</Text>
+                    <Text style={{ color: Colors.textMuted }}>Sin resultados</Text>
                   </View>
-                ) : subcatsFiltradas.map(s => (
+                ) : subcatsFiltradas.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).map(s => (
                   <TouchableOpacity key={s.id}
                     style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
-                    onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); }}>
+                    onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); setSubcatBusq(''); }}>
                     <Text style={{ color: s.id === subcatSelId ? Colors.accent : Colors.text, fontWeight: s.id === subcatSelId ? '700' : '400' }}>{s.nombre}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
           </View>
-        )}
 
         <TouchableOpacity
           style={[styles.btnGuardar, { backgroundColor: guardando ? Colors.border : Colors.accent }]}
@@ -861,7 +895,7 @@ export default function EditarMiNegocioScreen() {
 
               {/* Comprobante */}
               <View style={{ gap: 5 }}>
-                <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante</Text>
+                <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante *</Text>
                 <TouchableOpacity
                   style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.background, height: 110 }]}
                   onPress={() => pickImage(setComprobanteRenov)} activeOpacity={0.8}>

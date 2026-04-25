@@ -893,7 +893,10 @@
         <div class="card">
           <div class="card-header">
             <h2>Ciudades</h2>
-            <button class="btn btn-primary btn-sm" onclick="abrirFormEstado()">+ Agregar</button>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" onclick="cargarCiudadesVenezuela()" title="Insertar todas las ciudades de Venezuela">🇻🇪 Cargar VE</button>
+              <button class="btn btn-primary btn-sm" onclick="abrirFormEstado()">+ Agregar</button>
+            </div>
           </div>
           <div class="card-body" style="padding:0">
             <div id="form-estado" style="display:none;padding:16px;border-bottom:1px solid var(--border);background:#f8f9fb">
@@ -912,17 +915,20 @@
           </div>
         </div>
 
-        <!-- Categoría (subcategorías) -->
+        <!-- Categorías Globales (subcategorías sin ciudad) -->
         <div class="card">
           <div class="card-header">
-            <h2>Categoría <span id="label-estado-sel" style="font-weight:400;font-size:13px;color:var(--muted)">— selecciona una ciudad</span></h2>
-            <button class="btn btn-primary btn-sm" id="btn-agregar-ciudad" style="display:none" onclick="abrirFormCiudad()">+ Agregar</button>
+            <h2>Categorías</h2>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" onclick="cargarCategoriasVenezuela()" title="Insertar categorías de negocios de Venezuela">🗂 Cargar categorías</button>
+              <button class="btn btn-primary btn-sm" onclick="abrirFormCiudad()">+ Agregar</button>
+            </div>
           </div>
           <div class="card-body" style="padding:0">
             <div id="form-ciudad" style="display:none;padding:16px;border-bottom:1px solid var(--border);background:#f8f9fb">
               <div class="form-group">
-                <label>Nombre de la ciudad</label>
-                <input type="text" id="input-ciudad" placeholder="Ej: Barquisimeto" />
+                <label>Nombre de la categoría</label>
+                <input type="text" id="input-ciudad" placeholder="Ej: Mecánica General" />
               </div>
               <input type="hidden" id="input-ciudad-id" />
               <div class="msg" id="msg-ciudad"></div>
@@ -931,9 +937,7 @@
                 <button class="btn btn-outline btn-sm" onclick="cerrarFormCiudad()">Cancelar</button>
               </div>
             </div>
-            <div id="lista-ciudades" style="display:flex;flex-direction:column">
-              <p style="padding:20px;color:var(--muted);text-align:center;font-size:13px">Selecciona una ciudad para ver sus categorías</p>
-            </div>
+            <div id="lista-ciudades" style="display:flex;flex-direction:column"></div>
           </div>
         </div>
 
@@ -1430,21 +1434,21 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   // ── Solicitudes ───────────────────────────────────────────────────────────
 
-  let _ciudadesSol = [];
-  let _catsSol     = [];
+  let _catsSol      = [];
+  let _ciudadesSol  = [];
 
   async function cargarSolicitudes() {
     const filtro = document.getElementById('filtro-solicitudes').value;
-    let q = db.from('solicitudes').select('*,subcategorias(id,nombre,categoria_id)').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*,subcategorias(id,nombre)').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
 
-    const [{ data, error }, { data: ciu }, { data: cats }] = await Promise.all([
+    const [{ data, error }, { data: cats }, { data: ciu }] = await Promise.all([
       q,
+      db.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre'),
       db.from('categorias').select('id,nombre').order('orden'),
-      db.from('subcategorias').select('id,nombre,categoria_id').order('nombre'),
     ]);
-    _ciudadesSol = ciu ?? [];
     _catsSol     = cats ?? [];
+    _ciudadesSol = ciu  ?? [];
 
     const lista = document.getElementById('lista-solicitudes');
     if (error) { lista.innerHTML = `<p style="color:red;padding:20px;text-align:center">Error: ${error.message}</p>`; return; }
@@ -1454,15 +1458,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const estado       = s.estado ?? 'pendiente';
       const colorBorde   = estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
       const uid          = s.id.replace(/-/g,'').slice(0,8);
-      const ciudadActual = s.subcategorias?.categoria_id ?? '';
       const catActual    = s.subcategoria_id ?? '';
-      const catsDeCiudad = ciudadActual ? _catsSol.filter(c => c.categoria_id === ciudadActual) : [];
-
-      const optCiudades = _ciudadesSol.map(c =>
-        `<option value="${c.id}"${ciudadActual === c.id ? ' selected' : ''}>${c.nombre}</option>`
-      ).join('');
-      const optCats = catsDeCiudad.map(c =>
+      const ciudadActual = s.ciudad ?? '';
+      const optCats      = _catsSol.map(c =>
         `<option value="${c.id}"${catActual === c.id ? ' selected' : ''}>${c.nombre}</option>`
+      ).join('');
+      const optCiudades  = _ciudadesSol.map(c =>
+        `<option value="${c.nombre}"${ciudadActual === c.nombre ? ' selected' : ''}>${c.nombre}</option>`
       ).join('');
 
       return `
@@ -1482,7 +1484,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <span onclick="toggleSol('${uid}')" id="arrow-${uid}" style="font-size:12px;color:var(--muted);transition:transform .2s;cursor:pointer">▼</span>
         </div>
         <!-- Detalle (colapsable) -->
-        <div id="sol-${uid}" style="display:none">
+        <div id="sol-${uid}" data-sol-id="${s.id}" style="display:none">
           <!-- Campos del cliente -->
           <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
             <div style="grid-column:1/-1;font-size:11px;color:var(--muted)">${fmtFecha(s.created_at)} · ${s.tipo ?? 'nueva'}</div>
@@ -1493,8 +1495,28 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             ${s.ciudad     ? `<div>📍 <b>Ciudad:</b> ${s.ciudad}</div>` : ''}
             ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
             ${s.descripcion? `<div style="grid-column:1/-1;color:var(--muted);font-style:italic">"${s.descripcion}"</div>` : ''}
-            <div style="grid-column:1/-1;margin-top:4px">
+            ${estado === 'aprobado' ? `
+            <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+                <span>🔒 Bloquear nombre en app</span>
+                <label class="toggle">
+                  <input type="checkbox" id="lock-nombre-${uid}" />
+                  <span class="slider"></span>
+                </label>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+                <span>🔒 Bloquear teléfono en app</span>
+                <label class="toggle">
+                  <input type="checkbox" id="lock-tel-${uid}" />
+                  <span class="slider"></span>
+                </label>
+              </label>
+              <button class="btn btn-primary btn-sm" onclick="guardarBloqueoSol('${s.id}','${uid}')">Guardar bloqueo</button>
+              <span id="msg-bloqueo-${uid}" style="font-size:12px"></span>
+            </div>` : ''}
+            <div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button class="btn btn-sm btn-outline" onclick="toggleEditSol('${uid}')">✏️ Editar datos</button>
+              ${estado === 'aprobado' ? `<button class="btn btn-sm btn-outline" style="color:#7c3aed;border-color:#7c3aed" onclick="sincronizarSocio('${s.id}','${uid}')">⚙ Sincronizar → Socios Activos</button><span id="msg-sinc-${uid}" style="font-size:12px"></span>` : ''}
             </div>
           </div>
           <!-- Editar datos solicitud -->
@@ -1538,13 +1560,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <!-- Asignar ciudad y categoría -->
           <div style="padding:12px 16px;border-top:1px solid var(--border);background:#f8f9fb;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Asignar:</span>
-            <select id="sel-ciudad-${uid}" onchange="filtrarCatsSol('${uid}')"
-              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff">
+            <select id="sel-ciudad-${uid}"
+              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff;min-width:140px">
               <option value="">— Ciudad —</option>
               ${optCiudades}
             </select>
             <select id="sel-cat-${uid}"
-              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff">
+              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff;flex:1;min-width:160px">
               <option value="">— Categoría —</option>
               ${optCats}
             </select>
@@ -1573,16 +1595,63 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             <span class="badge badge-gray">${fmt(s.monto ?? 0)}</span>
             ${s.metodo_pago ? `<span style="color:var(--muted)">${s.metodo_pago}</span>` : ''}
             ${s.referencia  ? `<span style="font-family:monospace;color:var(--muted)">Ref: ${s.referencia}</span>` : ''}
+            ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">🧾 Comprobante</a>` : ''}
             <div style="margin-left:auto;display:flex;gap:6px">
               ${estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();cambiarEstado('${s.id}','aprobado')">✓ Aprobar</button>` : ''}
               ${estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger"  onclick="event.stopPropagation();cambiarEstado('${s.id}','rechazado')">✗ Rechazar</button>` : ''}
-              ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline">🧾 Comprobante</a>` : ''}
               <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="event.stopPropagation();eliminarSolicitud('${s.id}')">🗑 Eliminar</button>
             </div>
           </div>
         </div>
       </div>`;
     }).join('');
+
+    // Cargar estados de bloqueo para solicitudes aprobadas
+    const aprobadas = data.filter(s => s.estado === 'aprobado');
+    if (aprobadas.length) cargarBloqueosBulk(aprobadas);
+  }
+
+  async function cargarBloqueosBulk(aprobadas) {
+    // Recopilar todos los socio_ids (directos + por teléfono)
+    const conId  = aprobadas.filter(s => s.socio_id);
+    const sinId  = aprobadas.filter(s => !s.socio_id && (s.telefono || s.whatsapp));
+
+    // Mapa solId → socioId
+    const mapaSOL = {};
+    for (const s of conId) mapaSOL[s.id] = s.socio_id;
+
+    if (sinId.length) {
+      const phones = [...new Set(sinId.map(s => (s.telefono || s.whatsapp || '').replace(/\D/g,'')).filter(Boolean))];
+      const orQ = phones.map(p => `telefono.ilike.%${p}%,whatsapp.ilike.%${p}%`).join(',');
+      const { data: found } = await db.from('socios_comerciales')
+        .select('id,nombre,telefono,whatsapp').or(orQ);
+      for (const sol of sinId) {
+        const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g,'');
+        const socio = (found ?? []).find(s =>
+          (s.telefono?.replace(/\D/g,'') === tel || s.whatsapp?.replace(/\D/g,'') === tel) &&
+          s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase()
+        );
+        if (socio) mapaSOL[sol.id] = socio.id;
+      }
+    }
+
+    // Obtener todas las claves de bloqueo de config_app en una sola consulta
+    const socioIds = [...new Set(Object.values(mapaSOL))];
+    if (!socioIds.length) return;
+    const claves = socioIds.flatMap(id => [`lock_nombre_${id}`, `lock_tel_${id}`]);
+    const { data: cfgRows } = await db.from('config_app').select('clave,valor').in('clave', claves);
+    const cfg = Object.fromEntries((cfgRows ?? []).map(r => [r.clave, r.valor]));
+
+    for (const sol of aprobadas) {
+      const uid = sol.id.replace(/-/g,'').slice(0,8);
+      const chkN = document.getElementById(`lock-nombre-${uid}`);
+      const chkT = document.getElementById(`lock-tel-${uid}`);
+      if (!chkN || !chkT) continue;
+      const sid = mapaSOL[sol.id];
+      if (!sid) continue;
+      chkN.checked = cfg[`lock_nombre_${sid}`] === 'true';
+      chkT.checked = cfg[`lock_tel_${sid}`]    === 'true';
+    }
   }
 
   function renderFotosSol(s, uid) {
@@ -1661,33 +1730,83 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     input.disabled = false;
   }
 
-  function filtrarCatsSol(uid) {
-    const ciudadId = document.getElementById(`sel-ciudad-${uid}`).value;
-    const cats     = ciudadId ? _catsSol.filter(c => c.categoria_id === ciudadId) : [];
-    const sel      = document.getElementById(`sel-cat-${uid}`);
-    sel.innerHTML  = '<option value="">— Categoría —</option>' +
-      cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+
+  async function sincronizarSocio(solId, uid) {
+    const msg = document.getElementById(`msg-sinc-${uid}`);
+    if (msg) { msg.textContent = 'Buscando…'; msg.style.color = 'var(--muted)'; }
+
+    const { data: sol } = await db.from('solicitudes').select('*').eq('id', solId).single();
+    if (!sol) { if (msg) { msg.textContent = 'Error: solicitud no encontrada.'; msg.style.color = 'var(--red)'; } return; }
+
+    const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+
+    // Buscar si ya existe por socio_id o nombre exacto
+    let socioId = sol.socio_id ?? null;
+    if (!socioId && tel) {
+      const { data: exist } = await db.from('socios_comerciales')
+        .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+      const mismo = exist?.find(e => e.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+      if (mismo) socioId = mismo.id;
+    }
+
+    if (socioId) {
+      // Actualizar registro existente
+      await db.from('socios_comerciales').update({
+        fecha_vencimiento: sol.fecha_vencimiento, plan: sol.plan, activo: true,
+        ciudad: sol.ciudad, direccion: sol.direccion, descripcion: sol.descripcion,
+        web: sol.redes, subcategoria_id: sol.subcategoria_id,
+      }).eq('id', socioId);
+      await db.from('solicitudes').update({ socio_id: socioId }).eq('id', solId);
+      if (msg) { msg.textContent = '✓ Actualizado en Socios Activos.'; msg.style.color = 'var(--green)'; }
+    } else {
+      // Crear nuevo registro
+      const { data: nuevo, error } = await db.from('socios_comerciales').insert({
+        nombre: sol.nombre, telefono: sol.telefono, whatsapp: sol.whatsapp,
+        web: sol.redes, ciudad: sol.ciudad, direccion: sol.direccion,
+        descripcion: sol.descripcion, plan: sol.plan,
+        imagen: sol.imagen, imagen2: sol.imagen2, imagen3: sol.imagen3,
+        imagen4: sol.imagen4, imagen5: sol.imagen5, imagen6: sol.imagen6,
+        imagen7: sol.imagen7, imagen8: sol.imagen8, imagen9: sol.imagen9,
+        imagen10: sol.imagen10, imagen11: sol.imagen11, imagen12: sol.imagen12,
+        fecha_vencimiento: sol.fecha_vencimiento, subcategoria_id: sol.subcategoria_id,
+        activo: true,
+      }).select('id').single();
+      if (error) { if (msg) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; } return; }
+      if (nuevo?.id) await db.from('solicitudes').update({ socio_id: nuevo.id }).eq('id', solId);
+      if (msg) { msg.textContent = '✓ Creado en Socios Activos.'; msg.style.color = 'var(--green)'; }
+    }
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
+    cargarSocios();
   }
 
   async function asignarCategoriaSol(solId, uid) {
-    const subcategoriaId = document.getElementById(`sel-cat-${uid}`).value || null;
+    const subcategoriaId = document.getElementById(`sel-cat-${uid}`).value    || null;
+    const ciudad         = document.getElementById(`sel-ciudad-${uid}`).value || null;
     const msg = document.getElementById(`msg-asignar-${uid}`);
 
     // Actualizar en solicitudes
-    const { error } = await db.from('solicitudes').update({ subcategoria_id: subcategoriaId }).eq('id', solId);
+    const payload = { subcategoria_id: subcategoriaId };
+    if (ciudad !== null) payload.ciudad = ciudad;
+    const { error } = await db.from('solicitudes').update(payload).eq('id', solId);
     if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
 
-    // Propagar a socios_comerciales usando teléfono + nombre de la solicitud
-    const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', solId).single();
+    // Propagar a socios_comerciales
+    const { data: sol } = await db.from('solicitudes').select('socio_id,telefono,whatsapp,nombre').eq('id', solId).single();
     if (sol) {
-      const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
-      if (tel) {
-        const { data: socios } = await db.from('socios_comerciales')
-          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
-        const mismo = socios?.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
-        if (mismo) {
-          await db.from('socios_comerciales').update({ subcategoria_id: subcategoriaId }).eq('id', mismo.id);
+      let socioId = sol.socio_id ?? null;
+      if (!socioId) {
+        const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+        if (tel) {
+          const { data: socios } = await db.from('socios_comerciales')
+            .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+          const mismo = socios?.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+          if (mismo) socioId = mismo.id;
         }
+      }
+      if (socioId) {
+        const upd = { subcategoria_id: subcategoriaId };
+        if (ciudad !== null) upd.ciudad = ciudad;
+        await db.from('socios_comerciales').update(upd).eq('id', socioId);
       }
     }
 
@@ -1702,6 +1821,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function guardarEditSol(solId, uid) {
     const msg = document.getElementById(`msg-edit-sol-${uid}`);
+
+    // Leer datos ORIGINALES antes de actualizar (para buscar en socios_comerciales)
+    const { data: solOriginal } = await db.from('solicitudes')
+      .select('socio_id,telefono,whatsapp,nombre').eq('id', solId).single();
+
     const payload = {
       nombre:      document.getElementById(`esol-nombre-${uid}`).value.trim()      || null,
       ciudad:      document.getElementById(`esol-ciudad-${uid}`).value.trim()      || null,
@@ -1711,32 +1835,36 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       direccion:   document.getElementById(`esol-direccion-${uid}`).value.trim()   || null,
       descripcion: document.getElementById(`esol-descripcion-${uid}`).value.trim() || null,
     };
+
     const { error } = await db.from('solicitudes').update(payload).eq('id', solId);
     if (error) { msg.style.color='var(--red)'; msg.textContent='Error: '+error.message; return; }
 
-    // Propagar cambios a socios_comerciales si existe el socio
-    const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', solId).single();
-    if (sol) {
-      const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g,'');
-      if (tel) {
-        const { data: socios } = await db.from('socios_comerciales')
-          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
-        // buscar por nombre anterior (antes de editar) o por el nuevo
-        const mismo = socios?.find(s =>
-          s.nombre?.trim().toLowerCase() === (sol.nombre??'').trim().toLowerCase() ||
-          s.nombre?.trim().toLowerCase() === (payload.nombre??'').trim().toLowerCase()
-        );
-        if (mismo) {
-          await db.from('socios_comerciales').update({
-            nombre:      payload.nombre,
-            ciudad:      payload.ciudad,
-            telefono:    payload.telefono,
-            whatsapp:    payload.whatsapp,
-            web:         payload.redes,
-            direccion:   payload.direccion,
-            descripcion: payload.descripcion,
-          }).eq('id', mismo.id);
+    // Propagar a socios_comerciales usando datos ORIGINALES para encontrar el registro
+    if (solOriginal) {
+      let socioId = solOriginal.socio_id ?? null;
+
+      if (!socioId) {
+        const tel = (solOriginal.telefono || solOriginal.whatsapp || '').replace(/\D/g,'');
+        if (tel) {
+          const { data: socios } = await db.from('socios_comerciales')
+            .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+          const mismo = socios?.find(s =>
+            s.nombre?.trim().toLowerCase() === (solOriginal.nombre ?? '').trim().toLowerCase()
+          );
+          if (mismo) socioId = mismo.id;
         }
+      }
+
+      if (socioId) {
+        await db.from('socios_comerciales').update({
+          nombre:      payload.nombre,
+          ciudad:      payload.ciudad,
+          telefono:    payload.telefono,
+          whatsapp:    payload.whatsapp,
+          web:         payload.redes,
+          direccion:   payload.direccion,
+          descripcion: payload.descripcion,
+        }).eq('id', socioId);
       }
     }
 
@@ -1750,6 +1878,51 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const open  = body.style.display === 'none';
     body.style.display  = open ? 'block' : 'none';
     arrow.style.transform = open ? 'rotate(180deg)' : '';
+  }
+
+  async function resolverSocioIdDeSol(solId) {
+    const { data: sol } = await db.from('solicitudes').select('socio_id,telefono,whatsapp,nombre').eq('id', solId).single();
+    if (!sol) return null;
+    if (sol.socio_id) return sol.socio_id;
+    const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g,'');
+    if (!tel) return null;
+    const { data: ss } = await db.from('socios_comerciales').select('id,nombre,fecha_vencimiento').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+    if (!ss?.length) return null;
+    // 1) Nombre exacto
+    const exacto = ss.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+    if (exacto) return exacto.id;
+    // 2) Un solo resultado con ese teléfono → asumir mismo negocio (para bloqueos/edición)
+    if (ss.length === 1) return ss[0].id;
+    // 3) Varios → tomar el activo más reciente que más se parezca al nombre
+    const activos = ss.filter(s => !s.fecha_vencimiento || new Date(s.fecha_vencimiento) >= new Date());
+    return (activos.length ? activos : ss)
+      .sort((a,b) => new Date(b.fecha_vencimiento||0) - new Date(a.fecha_vencimiento||0))[0].id;
+  }
+
+  async function guardarBloqueoSol(solId, uid) {
+    const msg  = document.getElementById(`msg-bloqueo-${uid}`);
+    const chkN = document.getElementById(`lock-nombre-${uid}`);
+    const chkT = document.getElementById(`lock-tel-${uid}`);
+    if (!chkN || !chkT) return;
+
+    const socioId = await resolverSocioIdDeSol(solId);
+    if (!socioId) {
+      if (msg) { msg.textContent = 'Tienda no encontrada.'; msg.style.color = 'var(--red)'; }
+      return;
+    }
+    // Guardar socio_id en solicitud para búsquedas futuras instantáneas
+    await db.from('solicitudes').update({ socio_id: socioId }).eq('id', solId);
+
+    const rows = [
+      { clave: `lock_nombre_${socioId}`,   valor: chkN.checked ? 'true' : 'false' },
+      { clave: `lock_tel_${socioId}`,      valor: chkT.checked ? 'true' : 'false' },
+    ];
+    const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
+    if (error) {
+      if (msg) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; }
+      return;
+    }
+    if (msg) { msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)'; setTimeout(() => msg.textContent = '', 2500); }
   }
 
   async function eliminarSolicitud(id) {
@@ -1801,9 +1974,24 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         let socioId = sol.socio_id ?? null;   // renovaciones traen el id directo
         if (!socioId && tel) {
           const { data: exist } = await db.from('socios_comerciales')
-            .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+            .select('id,nombre,fecha_vencimiento').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+          // 1) Coincidencia exacta de nombre
           const mismo = exist?.find(e => e.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
-          if (mismo) socioId = mismo.id;
+          if (mismo) {
+            socioId = mismo.id;
+          } else if (sol.tipo === 'renovacion') {
+            // Solo para renovaciones: buscar por teléfono sin exigir nombre exacto
+            if (exist?.length === 1) {
+              // 2) Un solo resultado → es el mismo negocio
+              socioId = exist[0].id;
+            } else if (exist?.length > 1) {
+              // 3) Varios → tomar el activo más reciente
+              const activos = exist.filter(e => !e.fecha_vencimiento || new Date(e.fecha_vencimiento) >= new Date());
+              socioId = (activos.length ? activos : exist)
+                .sort((a,b) => new Date(b.fecha_vencimiento||0) - new Date(a.fecha_vencimiento||0))[0].id;
+            }
+          }
+          // Para solicitudes nuevas: si no hay nombre exacto → INSERT (no asumir por teléfono solo)
         }
 
         if (socioId) {
@@ -1820,7 +2008,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           const { error: errUpd } = await db.from('socios_comerciales').update(updateData).eq('id', socioId);
           if (errUpd) { alert('Error al actualizar socio: ' + errUpd.message); return; }
         } else {
-          const { error: errIns } = await db.from('socios_comerciales').insert({
+          const { data: nuevoSocio, error: errIns } = await db.from('socios_comerciales').insert({
             nombre:            sol.nombre,
             telefono:          sol.telefono,
             whatsapp:          sol.whatsapp,
@@ -1844,16 +2032,19 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             fecha_vencimiento: fechaVenc,
             subcategoria_id:   sol.subcategoria_id,
             activo:            true,
-          });
+          }).select('id').single();
           if (errIns) { alert('Error al crear socio: ' + errIns.message); return; }
+          // Guardar el ID del nuevo socio en la solicitud para que ediciones futuras lo encuentren directamente
+          if (nuevoSocio?.id) {
+            await db.from('solicitudes').update({ socio_id: nuevoSocio.id }).eq('id', id);
+          }
         }
 
-        // Si es renovación: eliminar la(s) solicitud(es) vencida(s) anteriores del mismo negocio
+        // Si es renovación: limpiar solicitudes y socios_comerciales vencidos del mismo negocio
         if (sol.tipo === 'renovacion') {
-          // Buscar solicitudes del mismo negocio que NO sean esta misma y estén vencidas o aprobadas anteriores
+          // ── 1. Eliminar solicitudes viejas ────────────────────────────────
           let solsViejas = [];
 
-          // Opción 1: si tiene socio_id, buscar por socio_id
           if (sol.socio_id) {
             const { data: porSocioId } = await db.from('solicitudes')
               .select('id,fecha_vencimiento,tipo')
@@ -1862,7 +2053,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             if (porSocioId?.length) solsViejas = porSocioId;
           }
 
-          // Opción 2: fallback por teléfono + nombre (mismas fichas, distinto registro)
           if (!solsViejas.length && tel) {
             const { data: porTel } = await db.from('solicitudes')
               .select('id,nombre,fecha_vencimiento,tipo')
@@ -1873,13 +2063,57 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             );
           }
 
-          // Eliminar solo las que ya estén vencidas o sean el registro base (tipo != 'renovacion')
-          const aEliminar = solsViejas.filter(s => {
+          const aEliminarSols = solsViejas.filter(s => {
             const vencida = s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date();
             return vencida || s.tipo !== 'renovacion';
           });
-          for (const vieja of aEliminar) {
+          for (const vieja of aEliminarSols) {
             await db.from('solicitudes').delete().eq('id', vieja.id);
+          }
+
+          // ── 2. Eliminar socios_comerciales vencidos del mismo negocio ─────
+          // Antes de eliminarlos, rescatar sus datos hacia el registro activo
+          if (socioId && tel) {
+            const { data: sociosViejos } = await db.from('socios_comerciales')
+              .select('*')
+              .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+              .neq('id', socioId);
+
+            const ahora = new Date();
+            const vencidos = (sociosViejos ?? [])
+              .filter(s => s.fecha_vencimiento && new Date(s.fecha_vencimiento) < ahora);
+
+            if (vencidos.length) {
+              // Tomar el más reciente como fuente de datos
+              const fuente = vencidos.sort((a, b) =>
+                new Date(b.fecha_vencimiento) - new Date(a.fecha_vencimiento)
+              )[0];
+
+              // Obtener el registro activo actual
+              const { data: activo } = await db.from('socios_comerciales')
+                .select('*').eq('id', socioId).single();
+
+              if (activo && fuente) {
+                // Copiar al activo solo los campos que estén vacíos/null
+                const camposRescate = [
+                  'whatsapp','web','ciudad','direccion','descripcion','subcategoria_id',
+                  'imagen','imagen2','imagen3','imagen4','imagen5','imagen6',
+                  'imagen7','imagen8','imagen9','imagen10','imagen11','imagen12',
+                ];
+                const parche = {};
+                for (const campo of camposRescate) {
+                  if (!activo[campo] && fuente[campo]) parche[campo] = fuente[campo];
+                }
+                if (Object.keys(parche).length > 0) {
+                  await db.from('socios_comerciales').update(parche).eq('id', socioId);
+                }
+              }
+
+              // Ahora sí eliminar los vencidos
+              for (const v of vencidos) {
+                await db.from('socios_comerciales').delete().eq('id', v.id);
+              }
+            }
           }
         }
       }
@@ -1906,26 +2140,16 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { data, error } = await db.from('categorias').select('id,nombre,orden').order('orden');
     const lista = document.getElementById('lista-estados');
     if (error) { lista.innerHTML = `<p style="padding:16px;color:red">${error.message}</p>`; return; }
-    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin estados aún</p>'; return; }
+    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin ciudades aún</p>'; return; }
     lista.innerHTML = data.map(e => `
-      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:${estadoSelId===e.id?'#f0ecff':''}"
-           id="fila-estado-${e.id}" onclick="seleccionarEstado('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
         <span style="flex:1;font-weight:600;font-size:14px">${e.nombre}</span>
-        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editarEstado('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">✏️</button>
-        <button class="btn btn-sm btn-danger"  onclick="event.stopPropagation();eliminarEstado('${e.id}')">🗑</button>
+        <button class="btn btn-sm btn-outline" onclick="editarEstado('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">✏️</button>
+        <button class="btn btn-sm btn-danger"  onclick="eliminarEstado('${e.id}')">🗑</button>
       </div>`).join('');
-  }
-
-  function seleccionarEstado(id, nombre) {
-    estadoSelId  = id;
-    estadoSelNom = nombre;
-    document.getElementById('label-estado-sel').textContent = `— ${nombre}`;
-    document.getElementById('btn-agregar-ciudad').style.display = '';
-    document.querySelectorAll('[id^="fila-estado-"]').forEach(el => el.style.background = '');
-    const fila = document.getElementById(`fila-estado-${id}`);
-    if (fila) fila.style.background = '#f0ecff';
     cargarCiudades();
   }
+
 
   function abrirFormEstado(id, nombre) {
     document.getElementById('input-estado-id').value = id ?? '';
@@ -1957,25 +2181,50 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     cargarEstados();
   }
 
+  async function cargarCiudadesVenezuela() {
+    const ciudadesVE = [
+      'Amazonas','Anzoátegui','Apure','Aragua','Barinas','Bolívar','Carabobo',
+      'Cojedes','Delta Amacuro','Distrito Capital','Falcón','Guárico','La Guaira',
+      'Lara','Mérida','Miranda','Monagas','Nueva Esparta','Portuguesa','Sucre',
+      'Táchira','Trujillo','Yaracuy','Zulia',
+      // Ciudades principales
+      'Caracas','Maracaibo','Valencia','Barquisimeto','Maracay','Ciudad Guayana',
+      'Barcelona','Puerto La Cruz','Maturín','San Cristóbal','Cumaná','Mérida ciudad',
+      'Barinas ciudad','Punto Fijo','Coro','Ciudad Bolívar','Acarigua','Porlamar',
+      'Valera','El Tigre','Guarenas','Guatire','La Victoria','Turmero','Cabimas',
+      'Anaco','Carúpano','Calabozo','San Carlos','Upata','Puerto Ayacucho',
+      'San Fernando de Apure','Guanare','Tucupita','Valle de la Pascua',
+    ];
+
+    if (!confirm(`¿Cargar ${ciudadesVE.length} ciudades/estados de Venezuela? Solo se agregarán las que no existan aún.`)) return;
+
+    const { data: existentes } = await db.from('categorias').select('nombre').order('orden');
+    const yaExisten = new Set((existentes ?? []).map(e => e.nombre.trim().toLowerCase()));
+    const nuevas = ciudadesVE.filter(c => !yaExisten.has(c.trim().toLowerCase()));
+
+    if (!nuevas.length) { alert('Todas las ciudades ya están cargadas.'); return; }
+
+    const { data: last } = await db.from('categorias').select('orden').order('orden',{ascending:false}).limit(1);
+    let orden = (last?.[0]?.orden ?? 0) + 1;
+
+    const rows = nuevas.map(nombre => ({ nombre, orden: orden++ }));
+    const { error } = await db.from('categorias').insert(rows);
+    if (error) { alert('Error: ' + error.message); return; }
+    alert(`✓ Se agregaron ${nuevas.length} ciudades.`);
+    cargarEstados();
+  }
+
   async function eliminarEstado(id) {
-    if (!confirm('¿Eliminar este estado? También se eliminarán todas sus ciudades.')) return;
-    await db.from('subcategorias').delete().eq('categoria_id', id);
+    if (!confirm('¿Eliminar esta ciudad?')) return;
     await db.from('categorias').delete().eq('id', id);
-    if (estadoSelId === id) {
-      estadoSelId = null;
-      document.getElementById('label-estado-sel').textContent = '— selecciona un estado';
-      document.getElementById('btn-agregar-ciudad').style.display = 'none';
-      document.getElementById('lista-ciudades').innerHTML = '<p style="padding:20px;color:var(--muted);text-align:center;font-size:13px">Selecciona un estado para ver sus ciudades</p>';
-    }
     cargarEstados();
   }
 
   async function cargarCiudades() {
-    if (!estadoSelId) return;
-    const { data, error } = await db.from('subcategorias').select('id,nombre,orden').eq('categoria_id', estadoSelId).order('nombre');
     const lista = document.getElementById('lista-ciudades');
+    const { data, error } = await db.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre');
     if (error) { lista.innerHTML = `<p style="padding:16px;color:red">${error.message}</p>`; return; }
-    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin ciudades para este estado</p>'; return; }
+    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin categorías aún. Usa "Cargar categorías" para comenzar.</p>'; return; }
     lista.innerHTML = data.map(c => `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
         <span style="flex:1;font-size:14px">${c.nombre}</span>
@@ -2001,15 +2250,116 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const nombre = document.getElementById('input-ciudad').value.trim();
     const id     = document.getElementById('input-ciudad-id').value;
     if (!nombre) { showMsg('msg-ciudad','Escribe un nombre','error'); return; }
-    if (!estadoSelId) return;
     let error;
     if (id) {
       ({ error } = await db.from('subcategorias').update({ nombre }).eq('id', id));
     } else {
-      ({ error } = await db.from('subcategorias').insert({ nombre, categoria_id: estadoSelId }));
+      ({ error } = await db.from('subcategorias').insert({ nombre, categoria_id: null }));
     }
     if (error) { showMsg('msg-ciudad', error.message, 'error'); return; }
     cerrarFormCiudad();
+    cargarCiudades();
+  }
+
+  async function cargarCategoriasVenezuela() {
+    const categorias = [
+      // ── Comercio General y Tecnología ─────────────────────────────────────
+      'Tecnología y Electrónica',
+      'Hogar y Electrodomésticos',
+      'Ferretería y Herramientas',
+      'Moda y Accesorios',
+      'Deportes y Fitness',
+      'Salud y Belleza',
+      'Mantenimiento Técnico',
+      'Servicios para el Hogar',
+      'Consultoría y Profesionales',
+      'Educación y Cursos',
+      // ── Salud Humana ──────────────────────────────────────────────────────
+      'Farmacia y Medicamentos',
+      'Equipos Médicos y Ortopedia',
+      'Cuidado Personal e Higiene',
+      'Suplementos y Nutrición',
+      'Óptica y Cuidado Visual',
+      'Maternidad y Bebés',
+      'Primeros Auxilios',
+      'Consultas Médicas',
+      'Laboratorio y Bioanálisis',
+      'Imágenes y Diagnóstico',
+      'Enfermería a Domicilio',
+      'Odontología',
+      'Fisioterapia y Rehabilitación',
+      'Psicología y Salud Mental',
+      'Medicamentos Crónicos',
+      'Equipos en Alquiler',
+      // ── Salud Animal / Veterinaria ────────────────────────────────────────
+      'Farmacia Veterinaria',
+      'Alimentos Médicos y Dietas Especiales',
+      'Control de Parásitos',
+      'Accesorios Quirúrgicos y de Recuperación',
+      'Equipos de Diagnóstico Veterinario',
+      'Consultas Veterinarias',
+      'Cirugía y Quirófano',
+      'Laboratorio Clínico Animal',
+      'Vacunación y Desparasitación',
+      'Odontología Veterinaria',
+      'Fisioterapia y Rehabilitación Animal',
+      'Peluquería Médica y Estética Animal',
+      'Emergencias Veterinarias 24 Horas',
+      'Cuidado del Animal Geriátrico',
+      // ── Automotriz ────────────────────────────────────────────────────────
+      'Repuestos de Motor',
+      'Suspensión y Dirección',
+      'Sistema de Frenos',
+      'Iluminación y Faros',
+      'Baterías y Sistema Eléctrico',
+      'Neumáticos y Rines',
+      'Aceites, Filtros y Químicos',
+      'Accesorios y Tuning',
+      'Audio y Entretenimiento Automotriz',
+      'Mecánica General',
+      'Latonería y Pintura',
+      'Alineación y Balanceo',
+      'Aire Acondicionado Automotriz',
+      'Lavado y Detallado (Detailing)',
+      'Escaneo y Diagnóstico Computarizado',
+      'Auxilio Vial y Grúas',
+      // ── Transporte y Logística ────────────────────────────────────────────
+      'Venta de Vehículos',
+      'Seguridad y Rastreo GPS',
+      'Equipamiento de Carga',
+      'Fletes y Mudanzas',
+      'Transporte Ejecutivo y Traslados',
+      'Logística y Distribución',
+      'Encomiendas y Mensajería',
+      'Alquiler de Vehículos',
+      'Transporte Escolar y de Personal',
+      // ── Consumibles y Plásticos ───────────────────────────────────────────
+      'Envases y Recipientes',
+      'Embalaje y Empaque',
+      'Desechables para Alimentos',
+      'Bolsas y Plásticos Industriales',
+      'Papelería y Suministros de Oficina',
+      'Limpieza y Desinfección',
+      'Materia Prima y Resinas',
+      'Personalización y Serigrafía',
+      'Diseño de Moldes',
+      'Reciclaje y Gestión de Residuos',
+      'Distribución al Mayor',
+      'Asesoría en Materiales',
+    ];
+
+    if (!confirm(`¿Cargar ${categorias.length} categorías globales? Solo se agregarán las que no existan aún.`)) return;
+
+    const { data: existentes } = await db.from('subcategorias').select('nombre').is('categoria_id', null);
+    const yaExisten = new Set((existentes ?? []).map(e => e.nombre.trim().toLowerCase()));
+    const nuevas = categorias.filter(c => !yaExisten.has(c.trim().toLowerCase()));
+
+    if (!nuevas.length) { alert('Todas las categorías ya están cargadas.'); return; }
+
+    const rows = nuevas.map(nombre => ({ nombre, categoria_id: null }));
+    const { error } = await db.from('subcategorias').insert(rows);
+    if (error) { alert('Error: ' + error.message); return; }
+    alert(`✓ Se agregaron ${nuevas.length} categorías.`);
     cargarCiudades();
   }
 
@@ -2126,7 +2476,23 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   async function eliminarSocio(id, nombre) {
-    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción eliminará también su ficha en solicitudes y no se puede deshacer.`)) return;
+
+    // Obtener teléfono del socio para borrar solicitudes asociadas
+    const { data: socio } = await db.from('socios_comerciales').select('telefono,nombre').eq('id', id).single();
+
+    // Borrar solicitudes vinculadas: por socio_id directo o por teléfono+nombre
+    const orFiltros = [`socio_id.eq.${id}`];
+    if (socio?.telefono) orFiltros.push(`telefono.ilike.%${socio.telefono.replace(/\D/g,'')}%`);
+
+    let query = db.from('solicitudes').delete().or(orFiltros.join(','));
+    // Si hay teléfono filtramos también por nombre para no borrar otras tiendas del mismo número
+    if (socio?.telefono && socio?.nombre) {
+      query = db.from('solicitudes').delete()
+        .or(`socio_id.eq.${id},and(telefono.ilike.%${socio.telefono.replace(/\D/g,'')}%,nombre.ilike.%${socio.nombre.trim()}%)`);
+    }
+    await query;
+
     await db.from('socios_comerciales').delete().eq('id', id);
     cargarSocios();
   }
