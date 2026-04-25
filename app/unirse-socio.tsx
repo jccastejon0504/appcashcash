@@ -18,10 +18,10 @@ type Periodo   = 'mensual' | 'anual';
 type PlanKey   = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 type MetodoPago = 'pagomovil' | 'zelle' | 'usdt';
 
-const PLAN_GALERIA: Record<Plan, number> = { gratis: 0, basico: 6, pro: 12 };
+const PLAN_GALERIA: Record<Plan, number> = { gratis: 3, basico: 6, pro: 12 };
 
 const PLANES_DEF = [
-  { key: 'gratis' as Plan, label: 'Gratis', icono: '🆓', galSlots: 0,  free: true  },
+  { key: 'gratis' as Plan, label: 'Gratis', icono: '🆓', galSlots: 3,  free: true  },
   { key: 'basico' as Plan, label: 'Básico', icono: '⭐', galSlots: 6,  free: false },
   { key: 'pro'    as Plan, label: 'Pro',    icono: '🚀', galSlots: 12, free: false },
 ];
@@ -460,9 +460,7 @@ export default function UnirseSocioScreen() {
                 <Text style={[styles.planNombre, { color: Colors.text }]}>Plan {p.label}</Text>
               </View>
               <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-                {p.free
-                  ? 'Perfil + 1 foto de portada'
-                  : `Perfil + galería de ${p.galSlots} fotos`}
+                {`Perfil + portada + galería de ${p.galSlots} fotos`}
               </Text>
               {p.free && gratisMeses != null && gratisMeses > 0 && (
                 <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700' }}>
@@ -503,7 +501,9 @@ export default function UnirseSocioScreen() {
         </Text>
         {([
           'Perfil visible en el Directorio',
-          plan !== 'gratis' && 'Galería de fotos',
+          'Foto de portada de tu negocio',
+          'Galería de 3 fotos para mostrar tus productos',
+          plan !== 'gratis' && `Galería ampliada de ${plan === 'basico' ? 6 : 12} fotos`,
           plan !== 'gratis' && 'Botones de llamada, WhatsApp y Web',
           plan !== 'gratis' && 'Apareces en búsquedas por categoría',
           plan === 'pro'    && 'Posición destacada en búsquedas',
@@ -523,9 +523,7 @@ export default function UnirseSocioScreen() {
       <View style={styles.pasoContainer}>
         <Text style={[styles.pasoTitulo, { color: Colors.text }]}>Fotos de tu negocio</Text>
         <Text style={[styles.pasoSub, { color: Colors.textMuted }]}>
-          {plan === 'gratis'
-            ? 'Agrega tu foto de portada'
-            : `Portada + hasta ${galeriaSlots} fotos en galería`}
+          {`Portada + hasta ${galeriaSlots} fotos en galería`}
         </Text>
 
         {/* Portada */}

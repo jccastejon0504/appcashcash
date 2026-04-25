@@ -495,6 +495,35 @@
           </div>
         </div>
 
+        <!-- Días de membresía por plan -->
+        <div class="card">
+          <div class="card-header"><h2>Días de membresía por plan</h2></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Básico mensual (días)</label>
+                <input type="number" id="cfg-dias-basico-mensual" min="1" max="9999" value="31" />
+              </div>
+              <div class="form-group">
+                <label>Básico anual (días)</label>
+                <input type="number" id="cfg-dias-basico-anual" min="1" max="9999" value="365" />
+              </div>
+              <div class="form-group">
+                <label>Pro mensual (días)</label>
+                <input type="number" id="cfg-dias-pro-mensual" min="1" max="9999" value="31" />
+              </div>
+              <div class="form-group">
+                <label>Pro anual (días)</label>
+                <input type="number" id="cfg-dias-pro-anual" min="1" max="9999" value="365" />
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+              <button class="btn btn-primary" onclick="guardarDiasPlan()">Guardar días</button>
+              <span class="msg" id="msg-dias-plan"></span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Fila 2: 4 cards de ofertas -->
@@ -1224,7 +1253,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
                     'gratis_fecha_inicio','gratis_fecha_fin',
                     'precio_base_basico_mensual','precio_base_basico_anual',
-                    'precio_base_pro_mensual','precio_base_pro_anual','texto_promocional']);
+                    'precio_base_pro_mensual','precio_base_pro_anual','texto_promocional',
+                    'dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual']);
     let preciosBase = {};
     if (configs) {
       const cfg = Object.fromEntries(configs.map(c => [c.clave, c.valor]));
@@ -1238,6 +1268,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       document.getElementById('precio-base-pro-mensual').value    = cfg.precio_base_pro_mensual    ?? '';
       document.getElementById('precio-base-pro-anual').value      = cfg.precio_base_pro_anual      ?? '';
       document.getElementById('texto-promo').value                = cfg.texto_promocional          ?? '';
+      document.getElementById('cfg-dias-basico-mensual').value = parseInt(cfg.dias_basico_mensual) || 31;
+      document.getElementById('cfg-dias-basico-anual').value   = parseInt(cfg.dias_basico_anual)   || 365;
+      document.getElementById('cfg-dias-pro-mensual').value    = parseInt(cfg.dias_pro_mensual)    || 31;
+      document.getElementById('cfg-dias-pro-anual').value      = parseInt(cfg.dias_pro_anual)      || 365;
       preciosBase = {
         'basico-mensual': cfg.precio_base_basico_mensual ?? '',
         'basico-anual':   cfg.precio_base_basico_anual   ?? '',
@@ -1552,7 +1586,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   function renderFotosSol(s, uid) {
-    const slots = Math.min({ gratis: 0, basico: 6, pro: 11 }[s.plan] ?? 0, 11);
+    const slots = Math.min({ gratis: 3, basico: 6, pro: 11 }[s.plan] ?? 0, 11);
     const estiloImg = (w) => `width:${w}px;height:${w}px;object-fit:cover;border-radius:8px;border:1px solid var(--border)`;
     const estiloPlaceholder = (w) => `width:${w}px;height:${w}px;border-radius:8px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px;background:#fafafa`;
     const btnSubir = (campo) => `<label style="cursor:pointer;font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:5px;padding:3px 7px;white-space:nowrap">Subir<input type="file" accept="image/*" style="display:none" onchange="subirFotoSol('${s.id}','${uid}','${campo}',this)"></label>`;
@@ -1746,10 +1780,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         if (sol.plan === 'gratis') {
           const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
           if (cfg?.valor) fechaVenc = new Date(cfg.valor).toISOString();
-        } else if (sol.periodo === 'mensual') {
-          fechaVenc = new Date(hoy.setMonth(hoy.getMonth() + 1)).toISOString();
-        } else if (sol.periodo === 'anual') {
-          fechaVenc = new Date(hoy.setFullYear(hoy.getFullYear() + 1)).toISOString();
+        } else if (sol.plan && sol.periodo) {
+          const clavesDias = ['dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual'];
+          const { data: cfgDias } = await db.from('config_app').select('clave,valor').in('clave', clavesDias);
+          const diasCfg = Object.fromEntries((cfgDias || []).map(r => [r.clave, parseInt(r.valor)]));
+          const clave = `dias_${sol.plan}_${sol.periodo}`;
+          const fallback = sol.periodo === 'anual' ? 365 : 31;
+          const dias = diasCfg[clave] || fallback;
+          fechaVenc = new Date(hoy.getTime() + dias * 24 * 60 * 60 * 1000).toISOString();
         }
 
         // Guardar fecha_aprobacion y fecha_vencimiento en la solicitud
@@ -1758,10 +1796,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           fecha_vencimiento: fechaVenc,
         }).eq('id', id);
 
-        // Verificar si ya existe el mismo negocio (mismo teléfono Y mismo nombre)
+        // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
         const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
-        let socioId = null;
-        if (tel) {
+        let socioId = sol.socio_id ?? null;   // renovaciones traen el id directo
+        if (!socioId && tel) {
           const { data: exist } = await db.from('socios_comerciales')
             .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
           const mismo = exist?.find(e => e.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
@@ -1769,9 +1807,17 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         }
 
         if (socioId) {
-          const { error: errUpd } = await db.from('socios_comerciales')
-            .update({ web: sol.redes, ciudad: sol.ciudad, fecha_vencimiento: fechaVenc, plan: sol.plan, activo: true, subcategoria_id: sol.subcategoria_id })
-            .eq('id', socioId);
+          // Para renovaciones solo actualizar plan y vencimiento; NO sobreescribir datos del negocio con nulls
+          const updateData = { fecha_vencimiento: fechaVenc, plan: sol.plan, activo: true };
+          if (!sol.tipo || sol.tipo !== 'renovacion') {
+            // Solicitud nueva: sí actualizar todos los campos del negocio
+            Object.assign(updateData, {
+              web: sol.redes, ciudad: sol.ciudad,
+              direccion: sol.direccion, descripcion: sol.descripcion,
+              subcategoria_id: sol.subcategoria_id,
+            });
+          }
+          const { error: errUpd } = await db.from('socios_comerciales').update(updateData).eq('id', socioId);
           if (errUpd) { alert('Error al actualizar socio: ' + errUpd.message); return; }
         } else {
           const { error: errIns } = await db.from('socios_comerciales').insert({
@@ -1800,6 +1846,41 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             activo:            true,
           });
           if (errIns) { alert('Error al crear socio: ' + errIns.message); return; }
+        }
+
+        // Si es renovación: eliminar la(s) solicitud(es) vencida(s) anteriores del mismo negocio
+        if (sol.tipo === 'renovacion') {
+          // Buscar solicitudes del mismo negocio que NO sean esta misma y estén vencidas o aprobadas anteriores
+          let solsViejas = [];
+
+          // Opción 1: si tiene socio_id, buscar por socio_id
+          if (sol.socio_id) {
+            const { data: porSocioId } = await db.from('solicitudes')
+              .select('id,fecha_vencimiento,tipo')
+              .eq('socio_id', sol.socio_id)
+              .neq('id', id);
+            if (porSocioId?.length) solsViejas = porSocioId;
+          }
+
+          // Opción 2: fallback por teléfono + nombre (mismas fichas, distinto registro)
+          if (!solsViejas.length && tel) {
+            const { data: porTel } = await db.from('solicitudes')
+              .select('id,nombre,fecha_vencimiento,tipo')
+              .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+              .neq('id', id);
+            solsViejas = (porTel ?? []).filter(s =>
+              s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase()
+            );
+          }
+
+          // Eliminar solo las que ya estén vencidas o sean el registro base (tipo != 'renovacion')
+          const aEliminar = solsViejas.filter(s => {
+            const vencida = s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date();
+            return vencida || s.tipo !== 'renovacion';
+          });
+          for (const vieja of aEliminar) {
+            await db.from('solicitudes').delete().eq('id', vieja.id);
+          }
         }
       }
     }
@@ -2156,8 +2237,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarReglas() {
     const { data } = await db.from('config_app').select('valor').eq('clave','limite_tiendas_por_cliente').single();
-    const val = data?.valor ? parseInt(data.valor) : 3;
-    document.getElementById('cfg-limite-tiendas').value = Math.min(10, Math.max(1, val));
+    document.getElementById('cfg-limite-tiendas').value = Math.min(100, Math.max(1, parseInt(data?.valor) || 100));
   }
 
   function ajustarLimite(delta) {
@@ -2170,6 +2250,21 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const msg   = document.getElementById('msg-limite-tiendas');
     const valor = String(Math.min(100, Math.max(1, parseInt(document.getElementById('cfg-limite-tiendas').value) || 100)));
     const { error } = await db.from('config_app').upsert({ clave: 'limite_tiendas_por_cliente', valor }, { onConflict: 'clave' });
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+
+  async function guardarDiasPlan() {
+    const msg = document.getElementById('msg-dias-plan');
+    const filas = [
+      { clave: 'dias_basico_mensual', id: 'cfg-dias-basico-mensual', def: 31  },
+      { clave: 'dias_basico_anual',   id: 'cfg-dias-basico-anual',   def: 365 },
+      { clave: 'dias_pro_mensual',    id: 'cfg-dias-pro-mensual',    def: 31  },
+      { clave: 'dias_pro_anual',      id: 'cfg-dias-pro-anual',      def: 365 },
+    ];
+    const rows = filas.map(f => ({ clave: f.clave, valor: String(Math.max(1, parseInt(document.getElementById(f.id).value) || f.def)) }));
+    const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
     if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
     msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
     setTimeout(() => msg.textContent = '', 2500);

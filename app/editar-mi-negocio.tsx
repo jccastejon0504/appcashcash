@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -16,7 +16,7 @@ type Plan    = 'gratis' | 'basico' | 'pro';
 type Periodo = 'mensual' | 'anual';
 type PlanKey = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 
-const PLAN_GALERIA: Record<string, number> = { gratis: 0, basico: 6, pro: 12 };
+const PLAN_GALERIA: Record<string, number> = { gratis: 3, basico: 6, pro: 12 };
 
 type Ciudad     = { id: string; nombre: string };
 type Subcategoria = { id: string; nombre: string; categoria_id: string };
@@ -41,9 +41,11 @@ export default function EditarMiNegocioScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [resolvedId, setResolvedId] = useState<string | undefined>(id);
-  const [cargando,  setCargando]  = useState(true);
-  const [guardando, setGuardando] = useState(false);
-  const [socio,     setSocio]     = useState<Socio | null>(null);
+  const [cargando,      setCargando]      = useState(true);
+  const [guardando,     setGuardando]     = useState(false);
+  const [socio,         setSocio]         = useState<Socio | null>(null);
+  const [limiteTiendas, setLimiteTiendas] = useState(100);
+  const [totalTiendas,  setTotalTiendas]  = useState(0);
 
   // Campos editables
   const [nombre,    setNombre]    = useState('');
@@ -75,6 +77,7 @@ export default function EditarMiNegocioScreen() {
   const [referenciaRenov,  setReferenciaRenov]  = useState('');
   const [comprobanteRenov, setComprobanteRenov] = useState<string|null>(null);
   const [enviandoRenov,    setEnviandoRenov]    = useState(false);
+  const [renovEnviada,     setRenovEnviada]     = useState(false);
   const [infoPago,         setInfoPago]         = useState<Record<string,string[]>>({});
   const [metodosPago,      setMetodosPago]      = useState<{id:string;label:string;activo:boolean}[]>([]);
   const [copiado,          setCopiado]          = useState<string|null>(null);
@@ -123,11 +126,14 @@ export default function EditarMiNegocioScreen() {
         setResolvedId(socioId);
       }
 
-      const [{ data }, { data: ciu }, { data: subcats }] = await Promise.all([
+      const [{ data }, { data: ciu }, { data: subcats }, { data: cfgLimite }] = await Promise.all([
         supabase.from('socios_comerciales').select('*').eq('id', socioId).single(),
         supabase.from('categorias').select('id,nombre').order('orden'),
         supabase.from('subcategorias').select('id,nombre,categoria_id').order('nombre'),
+        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
       ]);
+      const limite = cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100;
+      setLimiteTiendas(limite);
       if (ciu)     setCiudades(ciu as Ciudad[]);
       if (subcats) setSubcategorias(subcats as Subcategoria[]);
       if (data) {
@@ -147,6 +153,17 @@ export default function EditarMiNegocioScreen() {
             setCiudadSelId(sub.categoria_id);
             setSubcatSelId(sub.id);
           }
+        }
+      }
+      // Contar tiendas del usuario por teléfono
+      if (data?.telefono || data?.whatsapp) {
+        const tel = (data.telefono || data.whatsapp || '').replace(/\D/g, '');
+        if (tel) {
+          const { data: misTiendas } = await supabase
+            .from('socios_comerciales')
+            .select('id')
+            .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+          setTotalTiendas(misTiendas?.length ?? 0);
         }
       }
       setCargando(false);
@@ -272,8 +289,21 @@ export default function EditarMiNegocioScreen() {
     setModalRenovar(false);
     setReferenciaRenov('');
     setComprobanteRenov(null);
-    Alert.alert('¡Solicitud enviada!', 'El equipo de CashCash revisará tu pago y renovará tu membresía.');
+    setRenovEnviada(true);
   };
+
+  // Refrescar fecha_vencimiento y plan cada vez que la pantalla recibe el foco
+  useFocusEffect(useCallback(() => {
+    if (!resolvedId) return;
+    supabase
+      .from('socios_comerciales')
+      .select('fecha_vencimiento, plan')
+      .eq('id', resolvedId)
+      .single()
+      .then(({ data }) => {
+        if (data) setSocio(prev => prev ? { ...prev, fecha_vencimiento: data.fecha_vencimiento, plan: data.plan } : prev);
+      });
+  }, [resolvedId]));
 
   // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs
   useEffect(() => {
@@ -412,6 +442,29 @@ export default function EditarMiNegocioScreen() {
     Alert.alert('¡Listo!', 'Tu perfil fue actualizado.', [{ text: 'OK', onPress: () => router.replace('/socios') }]);
   };
 
+  if (renovEnviada) return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: Colors.background }]}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.lg }}>
+        <View style={{ borderRadius: 60, padding: 20, backgroundColor: Colors.success + '18' }}>
+          <Ionicons name="checkmark-circle" size={72} color={Colors.success} />
+        </View>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.text, textAlign: 'center' }}>
+          ¡Solicitud enviada!
+        </Text>
+        <Text style={{ fontSize: FontSize.md, color: Colors.textMuted, textAlign: 'center', lineHeight: 24 }}>
+          Recibimos tu solicitud de renovación para{'\n'}<Text style={{ fontWeight: '800', color: Colors.text }}>{socio?.nombre}</Text>.{'\n\n'}
+          El equipo de CashCach revisará tu pago y activará tu membresía en las próximas horas.{'\n\n'}
+          Te contactaremos al WhatsApp que registraste.
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: Colors.accent, borderRadius: Radius.lg, paddingHorizontal: 40, paddingVertical: 15, marginTop: Spacing.md }}
+          onPress={() => router.replace('/socios')}>
+          <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: '800' }}>Volver al inicio</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+
   if (cargando) return (
     <SafeAreaView style={[styles.safe, { backgroundColor: Colors.background }]}>
       <ActivityIndicator size="large" color={Colors.accent} style={{ marginTop: 80 }} />
@@ -429,15 +482,6 @@ export default function EditarMiNegocioScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-
-        {/* Agregar otro negocio */}
-        <TouchableOpacity
-          style={[styles.btnAgregar, { borderColor: Colors.accent }]}
-          onPress={() => router.push('/unirse-socio')}
-          activeOpacity={0.85}>
-          <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
-          <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar nueva tienda</Text>
-        </TouchableOpacity>
 
         {/* Contador membresía */}
         {socio?.fecha_vencimiento && (() => {

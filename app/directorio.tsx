@@ -53,7 +53,8 @@ export default function DirectorioScreen() {
   }, []);
 
   const cargarTodosComerciosParaBusqueda = useCallback(async () => {
-    const { data } = await supabase.from('socios_comerciales').select('*');
+    const { data } = await supabase.from('socios_comerciales').select('*')
+      .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`);
     setTodosComercios(data ?? []);
   }, []);
 
@@ -88,6 +89,7 @@ export default function DirectorioScreen() {
       .from('socios_comerciales')
       .select('*')
       .eq('subcategoria_id', sub.id)
+      .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
     setComercios(data ?? []);
     setCargando(false);

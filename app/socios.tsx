@@ -48,6 +48,7 @@ export default function SociosScreen() {
       .from('socios_comerciales')
       .select('*')
       .or('activo.is.null,activo.eq.true')
+      .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
     if (err) setError('No se pudo cargar la información');
     else setSocios(data ?? []);
