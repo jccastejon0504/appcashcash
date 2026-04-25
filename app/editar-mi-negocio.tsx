@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase, SUPABASE_URL, SUPABASE_KEY } from '@/services/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Plan    = 'gratis' | 'basico' | 'pro';
 type Periodo = 'mensual' | 'anual';
@@ -17,9 +18,13 @@ type PlanKey = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 
 const PLAN_GALERIA: Record<string, number> = { gratis: 0, basico: 6, pro: 12 };
 
+type Ciudad     = { id: string; nombre: string };
+type Subcategoria = { id: string; nombre: string; categoria_id: string };
+
 type Socio = {
   id: string; nombre: string; telefono: string; whatsapp: string;
-  web: string; direccion: string;
+  web: string; direccion: string; descripcion: string;
+  subcategoria_id: string | null;
   imagen: string;
   imagen2: string; imagen3: string; imagen4: string;
   imagen5: string; imagen6: string; imagen7: string;
@@ -35,16 +40,32 @@ export default function EditarMiNegocioScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const [resolvedId, setResolvedId] = useState<string | undefined>(id);
   const [cargando,  setCargando]  = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [socio,     setSocio]     = useState<Socio | null>(null);
 
   // Campos editables
   const [nombre,    setNombre]    = useState('');
+  const [ciudad,    setCiudad]    = useState('');
   const [telefono,  setTelefono]  = useState('');
   const [whatsapp,  setWhatsapp]  = useState('');
-  const [web,       setWeb]       = useState('');
-  const [direccion, setDireccion] = useState('');
+  const [web,         setWeb]         = useState('');
+  const [direccion,   setDireccion]   = useState('');
+  const [descripcion, setDescripcion] = useState('');
+
+  // Selector ciudad → categoría
+  const [ciudades,       setCiudades]       = useState<Ciudad[]>([]);
+  const [subcategorias,  setSubcategorias]  = useState<Subcategoria[]>([]);
+  const [ciudadSelId,    setCiudadSelId]    = useState<string | null>(null);
+  const [subcatSelId,    setSubcatSelId]    = useState<string | null>(null);
+  const [dropCiudad,     setDropCiudad]     = useState(false);
+  const [dropSubcat,     setDropSubcat]     = useState(false);
+
+  const subcatsFiltradas = useMemo(
+    () => ciudadSelId ? subcategorias.filter(s => s.categoria_id === ciudadSelId) : [],
+    [ciudadSelId, subcategorias]
+  );
 
   // Renovación
   const [modalRenovar,     setModalRenovar]     = useState(false);
@@ -62,7 +83,7 @@ export default function EditarMiNegocioScreen() {
   const [ofertas,     setOfertas]     = useState<Partial<Record<PlanKey, Oferta>>>({});
   const [preciosBase, setPreciosBase] = useState<Record<PlanKey, number>>({
     basico_mensual: 15, basico_anual: 150,
-    pro_mensual:    25, pro_anual:    250,
+    pro_mensual:    30, pro_anual:    300,
   });
 
   // Imágenes (URI local o URL remota)
@@ -76,23 +97,62 @@ export default function EditarMiNegocioScreen() {
 
   useEffect(() => {
     const cargar = async () => {
-      const { data } = await supabase
-        .from('socios_comerciales').select('*').eq('id', id).single();
+      let socioId: string | undefined = id;
+
+      // Si no hay id (abierto desde Tab Bar), buscar por teléfono guardado
+      if (!socioId) {
+        const tel = await AsyncStorage.getItem('socio_telefono');
+        if (!tel) {
+          setCargando(false);
+          router.replace('/unirse-socio');
+          return;
+        }
+        const digits = tel.replace(/\D/g, '');
+        const { data: found } = await supabase
+          .from('socios_comerciales')
+          .select('id')
+          .or(`telefono.ilike.%${digits}%,whatsapp.ilike.%${digits}%`)
+          .limit(1)
+          .maybeSingle();
+        if (!found) {
+          setCargando(false);
+          router.replace('/unirse-socio');
+          return;
+        }
+        socioId = found.id;
+        setResolvedId(socioId);
+      }
+
+      const [{ data }, { data: ciu }, { data: subcats }] = await Promise.all([
+        supabase.from('socios_comerciales').select('*').eq('id', socioId).single(),
+        supabase.from('categorias').select('id,nombre').order('orden'),
+        supabase.from('subcategorias').select('id,nombre,categoria_id').order('nombre'),
+      ]);
+      if (ciu)     setCiudades(ciu as Ciudad[]);
+      if (subcats) setSubcategorias(subcats as Subcategoria[]);
       if (data) {
         setSocio(data);
         setNombre(data.nombre ?? '');
+        setCiudad(data.ciudad ?? '');
         setTelefono(data.telefono ?? '');
         setWhatsapp(data.whatsapp ?? '');
-        setWeb(data.web ?? '');
+        setWeb(data.redes ?? data.web ?? '');
         setDireccion(data.direccion ?? '');
+        setDescripcion(data.descripcion ?? '');
         setPortada(data.imagen ?? '');
+        // Preseleccionar ciudad y categoría guardadas
+        if (data.subcategoria_id && subcats) {
+          const sub = (subcats as Subcategoria[]).find(s => s.id === data.subcategoria_id);
+          if (sub) {
+            setCiudadSelId(sub.categoria_id);
+            setSubcatSelId(sub.id);
+          }
+        }
       }
       setCargando(false);
-    };
-    if (id) {
-      cargar();
+
       // Cargar galería con título y precio
-      supabase.from('galeria_items').select('*').eq('socio_id', id).order('orden')
+      supabase.from('galeria_items').select('*').eq('socio_id', socioId).order('orden')
         .then(({ data }) => {
           if (data) setGaleriaItems(data.map((d: any) => ({
             id:        d.id,
@@ -105,7 +165,8 @@ export default function EditarMiNegocioScreen() {
             orden:     d.orden     ?? 0,
           })));
         });
-    }
+    };
+    cargar();
     // Cargar tasa BCV
     fetch('https://ve.dolarapi.com/v1/dolares/oficiales')
       .then(r => r.json()).then(d => {
@@ -126,22 +187,22 @@ export default function EditarMiNegocioScreen() {
       if (!data) return;
       const map: Partial<Record<PlanKey, Oferta>> = {};
       data.forEach((o: any) => {
-        if (o.plan && o.periodo) map[`${o.plan}_${o.periodo}` as PlanKey] = o;
+        if (o.plan) map[o.plan as PlanKey] = o;
       });
       setOfertas(map);
     });
 
     supabase.from('config_app').select('clave,valor')
-      .in('clave', ['precio_basico_mensual', 'precio_basico_anual', 'precio_pro_mensual', 'precio_pro_anual'])
+      .in('clave', ['precio_base_basico_mensual', 'precio_base_basico_anual', 'precio_base_pro_mensual', 'precio_base_pro_anual'])
       .then(({ data }) => {
         if (!data) return;
         const map: Record<string, string> = {};
         data.forEach((r: any) => { map[r.clave] = r.valor; });
         setPreciosBase({
-          basico_mensual: parseFloat(map.precio_basico_mensual) || 15,
-          basico_anual:   parseFloat(map.precio_basico_anual)   || 150,
-          pro_mensual:    parseFloat(map.precio_pro_mensual)     || 25,
-          pro_anual:      parseFloat(map.precio_pro_anual)       || 250,
+          basico_mensual: map.precio_base_basico_mensual != null ? parseFloat(map.precio_base_basico_mensual) : 15,
+          basico_anual:   map.precio_base_basico_anual   != null ? parseFloat(map.precio_base_basico_anual)   : 150,
+          pro_mensual:    map.precio_base_pro_mensual    != null ? parseFloat(map.precio_base_pro_mensual)    : 30,
+          pro_anual:      map.precio_base_pro_anual      != null ? parseFloat(map.precio_base_pro_anual)      : 300,
         });
       });
   }, [id]);
@@ -193,7 +254,7 @@ export default function EditarMiNegocioScreen() {
     if (comprobanteRenov) urlComprobante = await subirImagen(comprobanteRenov, 'comprobante_renov');
     const planKeyRenov = `${planRenov}_${periodoRenov}` as PlanKey;
     const montoRenov   = ofertas[planKeyRenov]?.precio_oferta ?? preciosBase[planKeyRenov];
-    const { error } = await supabase.from('solicitudes_socios').insert({
+    const { error } = await supabase.from('solicitudes').insert({
       nombre:      socio?.nombre ?? '',
       telefono:    telefono.trim(),
       whatsapp:    whatsapp.trim(),
@@ -204,7 +265,7 @@ export default function EditarMiNegocioScreen() {
       monto:       montoRenov,
       comprobante: urlComprobante,
       tipo:        'renovacion',
-      socio_id:    id,
+      socio_id:    resolvedId,
     });
     setEnviandoRenov(false);
     if (error) { Alert.alert('Error', error.message); return; }
@@ -230,7 +291,7 @@ export default function EditarMiNegocioScreen() {
     setGuardandoCat(true);
     const itemsSubidos = await Promise.all(
       galeriaItems.map(async (item, i) => ({
-        socio_id:  id,
+        socio_id:  resolvedId,
         imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
         imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
         imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
@@ -240,7 +301,7 @@ export default function EditarMiNegocioScreen() {
         orden:     i,
       }))
     );
-    await supabase.from('galeria_items').delete().eq('socio_id', id);
+    await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
     if (itemsSubidos.length > 0) {
       const { data } = await supabase.from('galeria_items').insert(itemsSubidos).select();
       if (data) setGaleriaItems(data.map((d: any) => ({
@@ -282,20 +343,53 @@ export default function EditarMiNegocioScreen() {
 
     // Guardar datos principales del socio
     const { error } = await supabase.from('socios_comerciales').update({
-      nombre:    nombre.trim(),
-      telefono:  telefono.trim(),
-      whatsapp:  whatsapp.trim(),
-      web:       web.trim(),
-      direccion: direccion.trim(),
-      imagen:    urlPortada,
-    }).eq('id', id);
+      nombre:          nombre.trim(),
+      ciudad:          ciudad.trim(),
+      telefono:        telefono.trim(),
+      whatsapp:        whatsapp.trim(),
+      web:             web.trim(),
+      direccion:       direccion.trim(),
+      descripcion:     descripcion.trim() || null,
+      subcategoria_id: subcatSelId ?? null,
+      imagen:          urlPortada,
+    }).eq('id', resolvedId);
 
     if (error) { setGuardando(false); Alert.alert('Error', error.message); return; }
+
+    // Propagar cambios a solicitudes usando el teléfono ORIGINAL (antes de editar)
+    const telOriginal = (socio?.telefono || socio?.whatsapp || '').replace(/\D/g, '');
+    const nombreOriginal = socio?.nombre?.trim().toLowerCase() ?? '';
+    if (telOriginal || nombreOriginal) {
+      // Buscar la solicitud exacta: mismo teléfono original Y mismo nombre original
+      let query = supabase.from('solicitudes').select('id,nombre');
+      if (telOriginal) {
+        query = query.or(`telefono.ilike.%${telOriginal}%,whatsapp.ilike.%${telOriginal}%`);
+      }
+      const { data: sols } = await query;
+      // Filtrar por nombre original para no tocar otras tiendas del mismo teléfono
+      const solsFiltradas = nombreOriginal
+        ? (sols?.filter(s => s.nombre?.trim().toLowerCase() === nombreOriginal) ?? [])
+        : (sols ?? []);
+      if (solsFiltradas.length) {
+        await Promise.all(solsFiltradas.map(s =>
+          supabase.from('solicitudes').update({
+            nombre:          nombre.trim(),
+            ciudad:          ciudad.trim(),
+            telefono:        telefono.trim()    || null,
+            whatsapp:        whatsapp.trim()    || null,
+            redes:           web.trim()         || null,
+            direccion:       direccion.trim()   || null,
+            descripcion:     descripcion.trim() || null,
+            subcategoria_id: subcatSelId ?? null,
+          }).eq('id', s.id)
+        ));
+      }
+    }
 
     // Guardar galería de productos (con título y precio)
     const itemsSubidos = await Promise.all(
       galeriaItems.map(async (item, i) => ({
-        socio_id:  id,
+        socio_id:  resolvedId,
         imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
         imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
         imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
@@ -307,8 +401,12 @@ export default function EditarMiNegocioScreen() {
     );
 
     // Borrar todos los items existentes y re-insertar
-    await supabase.from('galeria_items').delete().eq('socio_id', id);
+    await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
     if (itemsSubidos.length > 0) await supabase.from('galeria_items').insert(itemsSubidos);
+
+    // Actualizar teléfono en AsyncStorage para que la búsqueda siga funcionando
+    const nuevoTel = telefono.trim() || whatsapp.trim();
+    if (nuevoTel) await AsyncStorage.setItem('socio_telefono', nuevoTel);
 
     setGuardando(false);
     Alert.alert('¡Listo!', 'Tu perfil fue actualizado.', [{ text: 'OK', onPress: () => router.replace('/socios') }]);
@@ -508,22 +606,84 @@ export default function EditarMiNegocioScreen() {
         <Text style={[styles.seccion, { color: Colors.textMuted }]}>Información de mi tienda</Text>
 
         {([
-          { label: 'Nombre de mi tienda *', value: nombre, set: setNombre, placeholder: 'Nombre' },
-          { label: 'Teléfono', value: telefono, set: setTelefono, placeholder: '0414-0000000', keyboard: 'phone-pad' },
-          { label: 'WhatsApp', value: whatsapp, set: setWhatsapp, placeholder: '0414-0000000', keyboard: 'phone-pad' },
-          { label: 'Sitio web', value: web, set: setWeb, placeholder: 'www.ejemplo.com' },
-          { label: 'Dirección', value: direccion, set: setDireccion, placeholder: 'Av. Principal, local 1…' },
-        ] as any[]).map(({ label, value, set, placeholder, keyboard }) => (
+          { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza' },
+          { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
+          { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
+          { label: 'Redes',                value: web,       set: setWeb,       placeholder: 'Ej: @minegocio' },
+          { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
+          { label: 'Descripción',          value: descripcion, set: setDescripcion, placeholder: 'Breve descripción de tu negocio…', multiline: true },
+        ] as any[]).map(({ label, value, set, placeholder, keyboard, multiline }) => (
           <View key={label} style={styles.campo}>
             <Text style={[styles.label, { color: Colors.textMuted }]}>{label}</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, color: Colors.text }]}
+              style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, color: Colors.text }, multiline && { height: 80, textAlignVertical: 'top' }]}
               value={value} onChangeText={set}
               placeholder={placeholder} placeholderTextColor={Colors.textMuted}
               keyboardType={keyboard ?? 'default'}
+              multiline={multiline ?? false}
             />
           </View>
         ))}
+
+        {/* Selector Ciudad → Categoría */}
+        <View style={styles.campo}>
+          <Text style={[styles.label, { color: Colors.textMuted }]}>Ciudad</Text>
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+            onPress={() => { setDropCiudad(v => !v); setDropSubcat(false); }}
+            activeOpacity={0.8}>
+            <Text style={{ color: ciudadSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
+              {ciudadSelId ? (ciudades.find(c => c.id === ciudadSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una ciudad…'}
+            </Text>
+            <Ionicons name={dropCiudad ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          {dropCiudad && (
+            <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+              {ciudades.map(c => (
+                <TouchableOpacity key={c.id}
+                  style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
+                  onPress={() => {
+                    setCiudadSelId(c.id);
+                    setCiudad(c.nombre);
+                    setSubcatSelId(null);
+                    setDropCiudad(false);
+                  }}>
+                  <Text style={{ color: c.id === ciudadSelId ? Colors.accent : Colors.text, fontWeight: c.id === ciudadSelId ? '700' : '400' }}>{c.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {ciudadSelId && (
+          <View style={styles.campo}>
+            <Text style={[styles.label, { color: Colors.textMuted }]}>Categoría</Text>
+            <TouchableOpacity
+              style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); }}
+              activeOpacity={0.8}>
+              <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
+                {subcatSelId ? (subcatsFiltradas.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
+              </Text>
+              <Ionicons name={dropSubcat ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+            {dropSubcat && (
+              <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+                {subcatsFiltradas.length === 0 ? (
+                  <View style={styles.dropdownItem}>
+                    <Text style={{ color: Colors.textMuted }}>Sin categorías para esta ciudad</Text>
+                  </View>
+                ) : subcatsFiltradas.map(s => (
+                  <TouchableOpacity key={s.id}
+                    style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
+                    onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); }}>
+                    <Text style={{ color: s.id === subcatSelId ? Colors.accent : Colors.text, fontWeight: s.id === subcatSelId ? '700' : '400' }}>{s.nombre}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.btnGuardar, { backgroundColor: guardando ? Colors.border : Colors.accent }]}
@@ -727,6 +887,15 @@ function makeStyles(Colors: any) { return StyleSheet.create({
     borderRadius: Radius.md, borderWidth: 1,
     paddingHorizontal: Spacing.md, paddingVertical: 12,
     fontSize: FontSize.md,
+  },
+
+  dropdownList: {
+    borderWidth: 1, borderRadius: Radius.md, marginTop: 4,
+    overflow: 'hidden', zIndex: 99,
+  },
+  dropdownItem: {
+    paddingHorizontal: Spacing.md, paddingVertical: 12,
+    borderBottomWidth: 1,
   },
 
   btnGuardar: {

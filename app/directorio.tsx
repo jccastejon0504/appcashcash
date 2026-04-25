@@ -594,7 +594,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   breadcrumbItem: { fontSize: FontSize.sm, fontWeight: '600' },
 
-  searchWrap: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, zIndex: 10 },
+  searchWrap: { paddingHorizontal: Spacing.sm, paddingTop: Spacing.md, zIndex: 10 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: Spacing.md, paddingVertical: 10,
@@ -603,7 +603,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   searchInput: { flex: 1, fontSize: FontSize.md, padding: 0 },
 
   dropdown: {
-    position: 'absolute', top: '100%', left: Spacing.lg, right: Spacing.lg,
+    position: 'absolute', top: '100%', left: Spacing.sm, right: Spacing.sm,
     borderRadius: Radius.md, borderWidth: 1,
     shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     elevation: 8, zIndex: 100,
@@ -619,7 +619,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   reintentarBtn: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: Radius.md },
   reintentarText:{ fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
 
-  body: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 40 },
+  body: { padding: Spacing.sm, gap: Spacing.sm, paddingBottom: 40 },
 
   itemRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
@@ -635,14 +635,14 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   itemNombre: { flex: 1, fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
 
   grilla: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 4,
   },
   miniCard: {
-    width: '47%', borderRadius: Radius.lg,
+    width: '49%', borderRadius: 16,
     borderWidth: 1, overflow: 'hidden',
   },
   miniCardImg: { width: '100%', height: 100 },
-  miniCardBody: { padding: Spacing.sm },
+  miniCardBody: { padding: 8 },
   miniCardNombre: { fontSize: FontSize.sm, fontWeight: '700' },
   miniCardDir:    { fontSize: 11, marginTop: 2 },
   badge: {

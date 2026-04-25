@@ -326,11 +326,17 @@
     </div>
 
     <div class="nav-section">Configuración</div>
+    <div class="nav-item" data-section="ubicaciones">
+      <span class="icon">📍</span> Ciudades y Categorías
+    </div>
     <div class="nav-item" data-section="metodos">
       <span class="icon">💳</span> Métodos de Pago
     </div>
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
+    </div>
+    <div class="nav-item" data-section="reglas">
+      <span class="icon">⚙️</span> Reglas de Registro
     </div>
   </nav>
 
@@ -389,9 +395,9 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Negocio</th><th>Plan</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr>
+              <tr><th>Negocio</th><th>Plan</th><th>Monto</th><th>Estado</th><th>Fecha</th><th>Vencimiento</th></tr>
             </thead>
-            <tbody id="dash-solicitudes"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+            <tbody id="dash-solicitudes"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -399,119 +405,328 @@
 
     <!-- ══ OFERTAS ═════════════════════════════════════════ -->
     <div class="section" id="section-ofertas">
+
+      <!-- Fila 1: Visibilidad + Precios base -->
+      <div class="grid-2" style="margin-bottom:20px">
+
+        <!-- Plan Gratis -->
+        <div class="card">
+          <div class="card-header"><h2>Plan Gratis</h2></div>
+          <div class="card-body">
+            <div class="toggle-row">
+              <span>Visible en la app</span>
+              <label class="toggle">
+                <input type="checkbox" id="vis-gratis" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="form-grid" style="margin-top:18px">
+              <div class="form-group">
+                <label>Inicio período gratis</label>
+                <input type="date" id="gratis-fecha-inicio" />
+              </div>
+              <div class="form-group">
+                <label>Fin período gratis</label>
+                <input type="date" id="gratis-fecha-fin" />
+              </div>
+            </div>
+            <div style="margin-top:18px;display:flex;align-items:center;gap:12px">
+              <button class="btn btn-primary" onclick="guardarPlanGratis()">Guardar</button>
+              <span class="msg" id="msg-gratis"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visibilidad de planes pagos -->
+        <div class="card">
+          <div class="card-header"><h2>Visibilidad en la app</h2></div>
+          <div class="card-body">
+            <div class="toggle-row">
+              <span>Plan Básico</span>
+              <label class="toggle">
+                <input type="checkbox" id="vis-basico" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row" style="margin-top:14px">
+              <span>Plan Pro</span>
+              <label class="toggle">
+                <input type="checkbox" id="vis-pro" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div style="margin-top:18px;display:flex;align-items:center;gap:12px">
+              <button class="btn btn-primary" onclick="guardarVisibilidad()">Guardar visibilidad</button>
+              <span class="msg" id="msg-visibilidad"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Precios base -->
+        <div class="card">
+          <div class="card-header"><h2>Precios base</h2></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Básico mensual ($)</label>
+                <input type="number" id="precio-base-basico-mensual" step="0.01" placeholder="15" />
+              </div>
+              <div class="form-group">
+                <label>Básico anual ($)</label>
+                <input type="number" id="precio-base-basico-anual" step="0.01" placeholder="150" />
+              </div>
+              <div class="form-group">
+                <label>Pro mensual ($)</label>
+                <input type="number" id="precio-base-pro-mensual" step="0.01" placeholder="30" />
+              </div>
+              <div class="form-group">
+                <label>Pro anual ($)</label>
+                <input type="number" id="precio-base-pro-anual" step="0.01" placeholder="300" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:8px">
+              <label>Texto promocional en la app</label>
+              <textarea id="texto-promo" placeholder="¡Únete hoy y obtén beneficios exclusivos!"></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+              <button class="btn btn-primary" onclick="guardarPreciosBase()">Guardar precios</button>
+              <span class="msg" id="msg-precios"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Fila 2: 4 cards de ofertas -->
       <div class="grid-2">
 
-        <!-- Mensual -->
+        <!-- Básico · Mensual -->
         <div class="card">
           <div class="card-header">
-            <h2>Plan Mensual</h2>
-            <span class="badge badge-gray" id="badge-mensual">Sin oferta</span>
+            <h2>Plan Básico · Mensual</h2>
+            <span class="badge badge-gray" id="badge-basico-mensual">Sin oferta</span>
           </div>
           <div class="card-body">
-            <div class="preview-oferta" id="preview-mensual">
+            <div class="preview-oferta" id="preview-basico-mensual">
               <p class="preview-default">$15 / mes</p>
             </div>
-            <form id="form-mensual">
-              <input type="hidden" id="id-mensual" />
+            <form id="form-basico-mensual">
+              <input type="hidden" id="id-basico-mensual" />
               <div class="form-group" style="margin-bottom:12px">
-                <label>Descripción / Tagline</label>
-                <textarea id="descripcion-mensual" placeholder="Todo lo que necesitas para empezar"></textarea>
+                <label>Tagline</label>
+                <textarea id="descripcion-basico-mensual" placeholder="Todo lo que necesitas para empezar"></textarea>
               </div>
               <div class="form-grid">
                 <div class="form-group">
                   <label>Precio original ($)</label>
-                  <input type="number" id="precio-original-mensual" placeholder="15" step="0.01" />
+                  <input type="number" id="precio-basico-mensual" step="0.01" placeholder="15" />
                 </div>
                 <div class="form-group">
                   <label>Descuento (%)</label>
-                  <input type="number" id="descuento-mensual" placeholder="79" min="0" max="99" />
+                  <input type="number" id="descuento-basico-mensual" min="0" max="99" placeholder="30" />
                 </div>
                 <div class="form-group">
-                  <label>Precio oferta ($) — auto</label>
-                  <input type="number" id="precio-oferta-mensual" placeholder="3.15" step="0.01" />
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-basico-mensual" step="0.01" placeholder="10.50" />
                 </div>
                 <div class="form-group">
                   <label>Meses gratis</label>
-                  <input type="number" id="meses-mensual" placeholder="3" min="0" />
+                  <input type="number" id="meses-basico-mensual" min="0" placeholder="0" />
                 </div>
                 <div class="form-group">
                   <label>Fecha inicio</label>
-                  <input type="date" id="inicio-mensual" />
+                  <input type="date" id="inicio-basico-mensual" />
                 </div>
                 <div class="form-group">
                   <label>Fecha fin</label>
-                  <input type="date" id="fin-mensual" />
+                  <input type="date" id="fin-basico-mensual" />
                 </div>
               </div>
               <div class="toggle-row" style="margin-top:12px">
                 <span>Oferta activa</span>
                 <label class="toggle">
-                  <input type="checkbox" id="activo-mensual" />
+                  <input type="checkbox" id="activo-basico-mensual" />
                   <span class="slider"></span>
                 </label>
               </div>
-              <div class="msg" id="msg-mensual"></div>
+              <div class="msg" id="msg-basico-mensual"></div>
               <div class="btn-row">
-                <button type="submit" class="btn btn-primary" id="btn-mensual">Guardar</button>
-                <button type="button" class="btn btn-danger" id="btn-borrar-mensual" style="display:none">Eliminar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-basico-mensual" style="display:none" onclick="borrarOferta('basico_mensual')">Eliminar</button>
               </div>
             </form>
           </div>
         </div>
 
-        <!-- Anual -->
+        <!-- Básico · Anual -->
         <div class="card">
           <div class="card-header">
-            <h2>Plan Anual</h2>
-            <span class="badge badge-gray" id="badge-anual">Sin oferta</span>
+            <h2>Plan Básico · Anual</h2>
+            <span class="badge badge-gray" id="badge-basico-anual">Sin oferta</span>
           </div>
           <div class="card-body">
-            <div class="preview-oferta" id="preview-anual">
+            <div class="preview-oferta" id="preview-basico-anual">
               <p class="preview-default">$150 / año</p>
             </div>
-            <form id="form-anual">
-              <input type="hidden" id="id-anual" />
+            <form id="form-basico-anual">
+              <input type="hidden" id="id-basico-anual" />
               <div class="form-group" style="margin-bottom:12px">
-                <label>Descripción / Tagline</label>
-                <textarea id="descripcion-anual" placeholder="Más herramientas y potencia para crecer"></textarea>
+                <label>Tagline</label>
+                <textarea id="descripcion-basico-anual" placeholder="Más ahorro pagando al año"></textarea>
               </div>
               <div class="form-grid">
                 <div class="form-group">
                   <label>Precio original ($)</label>
-                  <input type="number" id="precio-original-anual" placeholder="150" step="0.01" />
+                  <input type="number" id="precio-basico-anual" step="0.01" placeholder="150" />
                 </div>
                 <div class="form-group">
                   <label>Descuento (%)</label>
-                  <input type="number" id="descuento-anual" placeholder="80" min="0" max="99" />
+                  <input type="number" id="descuento-basico-anual" min="0" max="99" placeholder="30" />
                 </div>
                 <div class="form-group">
-                  <label>Precio oferta ($) — auto</label>
-                  <input type="number" id="precio-oferta-anual" placeholder="30" step="0.01" />
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-basico-anual" step="0.01" placeholder="105" />
                 </div>
                 <div class="form-group">
                   <label>Meses gratis</label>
-                  <input type="number" id="meses-anual" placeholder="3" min="0" />
+                  <input type="number" id="meses-basico-anual" min="0" placeholder="0" />
                 </div>
                 <div class="form-group">
                   <label>Fecha inicio</label>
-                  <input type="date" id="inicio-anual" />
+                  <input type="date" id="inicio-basico-anual" />
                 </div>
                 <div class="form-group">
                   <label>Fecha fin</label>
-                  <input type="date" id="fin-anual" />
+                  <input type="date" id="fin-basico-anual" />
                 </div>
               </div>
               <div class="toggle-row" style="margin-top:12px">
                 <span>Oferta activa</span>
                 <label class="toggle">
-                  <input type="checkbox" id="activo-anual" />
+                  <input type="checkbox" id="activo-basico-anual" />
                   <span class="slider"></span>
                 </label>
               </div>
-              <div class="msg" id="msg-anual"></div>
+              <div class="msg" id="msg-basico-anual"></div>
               <div class="btn-row">
-                <button type="submit" class="btn btn-primary" id="btn-anual">Guardar</button>
-                <button type="button" class="btn btn-danger" id="btn-borrar-anual" style="display:none">Eliminar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-basico-anual" style="display:none" onclick="borrarOferta('basico_anual')">Eliminar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Pro · Mensual -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Plan Pro · Mensual</h2>
+            <span class="badge badge-gray" id="badge-pro-mensual">Sin oferta</span>
+          </div>
+          <div class="card-body">
+            <div class="preview-oferta" id="preview-pro-mensual">
+              <p class="preview-default">$30 / mes</p>
+            </div>
+            <form id="form-pro-mensual">
+              <input type="hidden" id="id-pro-mensual" />
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Tagline</label>
+                <textarea id="descripcion-pro-mensual" placeholder="Todo lo premium mes a mes"></textarea>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Precio original ($)</label>
+                  <input type="number" id="precio-pro-mensual" step="0.01" placeholder="30" />
+                </div>
+                <div class="form-group">
+                  <label>Descuento (%)</label>
+                  <input type="number" id="descuento-pro-mensual" min="0" max="99" placeholder="30" />
+                </div>
+                <div class="form-group">
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-pro-mensual" step="0.01" placeholder="21" />
+                </div>
+                <div class="form-group">
+                  <label>Meses gratis</label>
+                  <input type="number" id="meses-pro-mensual" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha inicio</label>
+                  <input type="date" id="inicio-pro-mensual" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha fin</label>
+                  <input type="date" id="fin-pro-mensual" />
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-top:12px">
+                <span>Oferta activa</span>
+                <label class="toggle">
+                  <input type="checkbox" id="activo-pro-mensual" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="msg" id="msg-pro-mensual"></div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-pro-mensual" style="display:none" onclick="borrarOferta('pro_mensual')">Eliminar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Pro · Anual -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Plan Pro · Anual</h2>
+            <span class="badge badge-gray" id="badge-pro-anual">Sin oferta</span>
+          </div>
+          <div class="card-body">
+            <div class="preview-oferta" id="preview-pro-anual">
+              <p class="preview-default">$300 / año</p>
+            </div>
+            <form id="form-pro-anual">
+              <input type="hidden" id="id-pro-anual" />
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Tagline</label>
+                <textarea id="descripcion-pro-anual" placeholder="Lo mejor del Pro con máximo ahorro"></textarea>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Precio original ($)</label>
+                  <input type="number" id="precio-pro-anual" step="0.01" placeholder="300" />
+                </div>
+                <div class="form-group">
+                  <label>Descuento (%)</label>
+                  <input type="number" id="descuento-pro-anual" min="0" max="99" placeholder="30" />
+                </div>
+                <div class="form-group">
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-pro-anual" step="0.01" placeholder="210" />
+                </div>
+                <div class="form-group">
+                  <label>Meses gratis</label>
+                  <input type="number" id="meses-pro-anual" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha inicio</label>
+                  <input type="date" id="inicio-pro-anual" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha fin</label>
+                  <input type="date" id="fin-pro-anual" />
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-top:12px">
+                <span>Oferta activa</span>
+                <label class="toggle">
+                  <input type="checkbox" id="activo-pro-anual" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="msg" id="msg-pro-anual"></div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-pro-anual" style="display:none" onclick="borrarOferta('pro_anual')">Eliminar</button>
               </div>
             </form>
           </div>
@@ -525,7 +740,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Plan</th><th>Descripción</th><th>Precio orig.</th><th>Precio oferta</th><th>Descuento</th><th>Meses gratis</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr>
+              <tr><th>Plan</th><th>Tagline</th><th>Precio orig.</th><th>Precio oferta</th><th>Descuento</th><th>Meses gratis</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr>
             </thead>
             <tbody id="historial-body"><tr><td colspan="9" class="loading">Cargando…</td></tr></tbody>
           </table>
@@ -548,13 +763,8 @@
             <button class="btn btn-outline btn-sm" onclick="cargarSolicitudes()">Actualizar</button>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Negocio</th><th>Ciudad</th><th>Plan</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr>
-            </thead>
-            <tbody id="tabla-solicitudes"><tr><td colspan="10" class="loading">Cargando…</td></tr></tbody>
-          </table>
+        <div id="lista-solicitudes" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <p class="loading">Cargando…</p>
         </div>
       </div>
     </div>
@@ -569,11 +779,135 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Teléfono</th><th>WhatsApp</th><th>Dirección</th><th>Destacado</th><th>Vence</th><th>Estado</th></tr>
+              <tr><th>Nombre</th><th>Teléfono</th><th>WhatsApp</th><th>Redes / Web</th><th>Ciudad</th><th>Dirección</th><th>Destacado</th><th>Vence</th><th>Estado</th><th></th></tr>
             </thead>
             <tbody id="tabla-socios"><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal editar socio -->
+    <div id="modal-editar-socio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;padding:24px 16px">
+      <div style="background:var(--card);border-radius:16px;max-width:560px;margin:0 auto;padding:28px;position:relative">
+        <button onclick="cerrarModalSocio()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">✕</button>
+        <h3 style="font-size:17px;font-weight:800;margin-bottom:20px">Editar Tienda</h3>
+        <input type="hidden" id="edit-socio-id" />
+        <input type="hidden" id="edit-socio-telefono-original" />
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Nombre</label>
+            <input type="text" id="edit-socio-nombre" />
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" id="edit-socio-telefono" />
+          </div>
+          <div class="form-group">
+            <label>WhatsApp</label>
+            <input type="text" id="edit-socio-whatsapp" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Redes / Web</label>
+            <input type="text" id="edit-socio-redes" />
+          </div>
+          <div class="form-group">
+            <label>Ciudad</label>
+            <input type="text" id="edit-socio-ciudad" />
+          </div>
+          <div class="form-group">
+            <label>Dirección</label>
+            <input type="text" id="edit-socio-direccion" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Descripción</label>
+            <textarea id="edit-socio-descripcion" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Plan</label>
+            <select id="edit-socio-plan">
+              <option value="gratis">Gratis</option>
+              <option value="basico">Básico</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fecha vencimiento</label>
+            <input type="date" id="edit-socio-vencimiento" />
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="edit-socio-destacado" />
+              Destacado ⭐
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="edit-socio-activo" />
+              Activo
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+          <button class="btn btn-primary" onclick="guardarSocio()">Guardar cambios</button>
+          <button class="btn btn-outline" onclick="cerrarModalSocio()">Cancelar</button>
+          <span class="msg" id="msg-editar-socio"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ESTADOS Y CIUDADES ════════════════════════════════ -->
+    <div class="section" id="section-ubicaciones">
+      <div class="grid-2">
+
+        <!-- Ciudades (categorías) -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Ciudades</h2>
+            <button class="btn btn-primary btn-sm" onclick="abrirFormEstado()">+ Agregar</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div id="form-estado" style="display:none;padding:16px;border-bottom:1px solid var(--border);background:#f8f9fb">
+              <div class="form-group">
+                <label>Nombre del estado</label>
+                <input type="text" id="input-estado" placeholder="Ej: Lara" />
+              </div>
+              <input type="hidden" id="input-estado-id" />
+              <div class="msg" id="msg-estado"></div>
+              <div class="btn-row">
+                <button class="btn btn-primary btn-sm" onclick="guardarEstado()">Guardar</button>
+                <button class="btn btn-outline btn-sm" onclick="cerrarFormEstado()">Cancelar</button>
+              </div>
+            </div>
+            <div id="lista-estados" style="display:flex;flex-direction:column"></div>
+          </div>
+        </div>
+
+        <!-- Categoría (subcategorías) -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Categoría <span id="label-estado-sel" style="font-weight:400;font-size:13px;color:var(--muted)">— selecciona una ciudad</span></h2>
+            <button class="btn btn-primary btn-sm" id="btn-agregar-ciudad" style="display:none" onclick="abrirFormCiudad()">+ Agregar</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div id="form-ciudad" style="display:none;padding:16px;border-bottom:1px solid var(--border);background:#f8f9fb">
+              <div class="form-group">
+                <label>Nombre de la ciudad</label>
+                <input type="text" id="input-ciudad" placeholder="Ej: Barquisimeto" />
+              </div>
+              <input type="hidden" id="input-ciudad-id" />
+              <div class="msg" id="msg-ciudad"></div>
+              <div class="btn-row">
+                <button class="btn btn-primary btn-sm" onclick="guardarCiudad()">Guardar</button>
+                <button class="btn btn-outline btn-sm" onclick="cerrarFormCiudad()">Cancelar</button>
+              </div>
+            </div>
+            <div id="lista-ciudades" style="display:flex;flex-direction:column">
+              <p style="padding:20px;color:var(--muted);text-align:center;font-size:13px">Selecciona una ciudad para ver sus categorías</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -650,6 +984,36 @@
       </div>
     </div>
 
+    <!-- ══ REGLAS DE REGISTRO ════════════════════════════════ -->
+    <div class="section" id="section-reglas">
+      <div class="card">
+        <div class="card-header">
+          <h2>Reglas de Registro</h2>
+        </div>
+        <div style="padding:20px;max-width:480px;display:flex;flex-direction:column;gap:20px">
+
+          <!-- Límite de tiendas por cliente -->
+          <div>
+            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Límite de tiendas por cliente</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              Número máximo de tiendas que un mismo número de teléfono puede registrar. Valor entre 1 y 100.
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <input type="number" id="cfg-limite-tiendas" min="1" max="100" value="100"
+                style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(-1)">−</button>
+                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(1)">+</button>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="guardarLimiteTiendas()">Guardar</button>
+              <span id="msg-limite-tiendas" style="font-size:12px"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -664,8 +1028,10 @@
     ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
+    ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
     terminos:     { title: 'Términos y Condiciones',   sub: 'Texto legal que se muestra en la app' },
+    reglas:       { title: 'Reglas de Registro',       sub: 'Límites y restricciones para nuevos socios' },
   };
 
   const TERMINOS_DEFAULT = `1. Aceptación de los Términos
@@ -725,8 +1091,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'socios')      cargarSocios();
+    if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
     if (id === 'terminos')    cargarTerminos();
+    if (id === 'reglas')      cargarReglas();
   }
 
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -750,10 +1118,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function cargarDashboard() {
     const [{ count: cSocios }, { count: cPend }, { data: dOfertas }, { count: cMet }, { data: dSol }] = await Promise.all([
       db.from('socios_comerciales').select('*', { count: 'exact', head: true }).or('activo.is.null,activo.eq.true'),
-      db.from('solicitudes_socios').select('*', { count: 'exact', head: true }).eq('estado', 'pendiente'),
+      db.from('solicitudes').select('*', { count: 'exact', head: true }).eq('estado', 'pendiente'),
       db.from('planes_ofertas').select('*').eq('activo', true),
       db.from('metodos_pago').select('*', { count: 'exact', head: true }).eq('activo', true),
-      db.from('solicitudes_socios').select('*').order('created_at', { ascending: false }).limit(5),
+      db.from('solicitudes').select('*').order('created_at', { ascending: false }).limit(5),
     ]);
 
     document.getElementById('stat-socios').textContent    = cSocios ?? '—';
@@ -762,45 +1130,72 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('stat-metodos').textContent   = cMet ?? '—';
 
     const tbody = document.getElementById('dash-solicitudes');
-    if (!dSol?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>Sin solicitudes aún</p></td></tr>'; return; }
+    if (!dSol?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty"><p>Sin solicitudes aún</p></td></tr>'; return; }
     tbody.innerHTML = dSol.map(s => `
       <tr>
         <td><b>${s.nombre}</b></td>
-        <td>${s.plan === 'mensual' ? 'Mensual' : 'Anual'}</td>
+        <td>${({gratis:'Gratis',basico_mensual:'Básico / Mes',basico_anual:'Básico / Año',pro_mensual:'Pro / Mes',pro_anual:'Pro / Año'})[s.plan] ?? s.plan ?? '—'}</td>
         <td>${fmt(s.monto)}</td>
         <td><span class="badge status-${s.estado ?? 'pendiente'}">${s.estado ?? 'pendiente'}</span></td>
         <td>${fmtFecha(s.created_at)}</td>
+        <td>${s.fecha_vencimiento ? fmtFecha(s.fecha_vencimiento) : '—'}</td>
       </tr>`).join('');
   }
 
   // ── Ofertas ───────────────────────────────────────────────────────────────
 
+  const PLANES = ['basico-mensual', 'basico-anual', 'pro-mensual', 'pro-anual'];
+  const PLAN_LABELS = {
+    'basico-mensual': 'Plan Básico · Mensual',
+    'basico-anual':   'Plan Básico · Anual',
+    'pro-mensual':    'Plan Pro · Mensual',
+    'pro-anual':      'Plan Pro · Anual',
+  };
+  const PLAN_DEFAULT = {
+    'basico-mensual': '$15 / mes',
+    'basico-anual':   '$150 / año',
+    'pro-mensual':    '$30 / mes',
+    'pro-anual':      '$300 / año',
+  };
+  const PLAN_SUFFIX = {
+    'basico-mensual': '/mes',
+    'basico-anual':   '/año',
+    'pro-mensual':    '/mes',
+    'pro-anual':      '/año',
+  };
+
+  function planDbKey(p) { return p.replace(/-/g, '_'); }
+
   function calcularOferta(plan) {
-    const orig = parseFloat(document.getElementById(`precio-original-${plan}`).value);
+    const orig = parseFloat(document.getElementById(`precio-${plan}`).value);
     const pct  = parseFloat(document.getElementById(`descuento-${plan}`).value);
     if (!isNaN(orig) && !isNaN(pct) && pct > 0 && pct < 100)
       document.getElementById(`precio-oferta-${plan}`).value = (orig * (1 - pct / 100)).toFixed(2);
   }
 
-  ['mensual','anual'].forEach(plan => {
-    document.getElementById(`precio-original-${plan}`).addEventListener('input', () => calcularOferta(plan));
+  PLANES.forEach(plan => {
+    document.getElementById(`precio-${plan}`).addEventListener('input', () => calcularOferta(plan));
     document.getElementById(`descuento-${plan}`).addEventListener('input', () => calcularOferta(plan));
+    document.getElementById(`form-${plan}`).addEventListener('submit', e => guardarOferta(plan, e));
   });
 
-  function renderPreview(plan, o) {
+  function renderPreview(plan, o, precioBase) {
     const box   = document.getElementById(`preview-${plan}`);
     const badge = document.getElementById(`badge-${plan}`);
-    const per   = plan === 'mensual' ? '/mes' : '/año';
-    const def   = plan === 'mensual' ? '$15 / mes' : '$150 / año';
     if (!o) {
       box.className = 'preview-oferta';
-      box.innerHTML = `<p class="preview-default">${def}</p>`;
+      const per = PLAN_SUFFIX[plan];
+      const mostrar = precioBase
+        ? `<p class="preview-price"><sup>$</sup>${parseFloat(precioBase).toFixed(2)}<small>${per}</small></p>`
+        : `<p class="preview-default">${PLAN_DEFAULT[plan]}</p>`;
+      box.innerHTML = mostrar;
       badge.textContent = 'Sin oferta'; badge.className = 'badge badge-gray';
       return;
     }
     badge.textContent = o.activo ? 'Activa' : 'Inactiva';
     badge.className   = o.activo ? 'badge badge-green' : 'badge badge-gray';
     box.className     = o.activo ? 'preview-oferta activa' : 'preview-oferta';
+    const per = PLAN_SUFFIX[plan];
     box.innerHTML = `
       ${o.descuento_pct ? `<div class="preview-badge">-${o.descuento_pct}%</div>` : ''}
       ${o.descripcion   ? `<p class="preview-desc">${o.descripcion}</p>` : ''}
@@ -811,31 +1206,65 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   function fillOfertaForm(plan, o) {
-    document.getElementById(`id-${plan}`).value              = o?.id ?? '';
-    document.getElementById(`descripcion-${plan}`).value     = o?.descripcion ?? '';
-    document.getElementById(`precio-original-${plan}`).value = o?.precio_original ?? '';
-    document.getElementById(`descuento-${plan}`).value       = o?.descuento_pct ?? '';
-    document.getElementById(`precio-oferta-${plan}`).value   = o?.precio_oferta ?? '';
-    document.getElementById(`meses-${plan}`).value           = o?.meses_gratis ?? '';
-    document.getElementById(`inicio-${plan}`).value          = o?.fecha_inicio ?? '';
-    document.getElementById(`fin-${plan}`).value             = o?.fecha_fin ?? '';
-    document.getElementById(`activo-${plan}`).checked        = o?.activo ?? false;
+    document.getElementById(`id-${plan}`).value            = o?.id ?? '';
+    document.getElementById(`descripcion-${plan}`).value   = o?.descripcion ?? '';
+    document.getElementById(`precio-${plan}`).value        = o?.precio_original ?? '';
+    document.getElementById(`descuento-${plan}`).value     = o?.descuento_pct ?? '';
+    document.getElementById(`precio-oferta-${plan}`).value = o?.precio_oferta ?? '';
+    document.getElementById(`meses-${plan}`).value         = o?.meses_gratis ?? '';
+    document.getElementById(`inicio-${plan}`).value        = o?.fecha_inicio ?? '';
+    document.getElementById(`fin-${plan}`).value           = o?.fecha_fin ?? '';
+    document.getElementById(`activo-${plan}`).checked      = o?.activo ?? false;
     document.getElementById(`btn-borrar-${plan}`).style.display = o ? 'inline-flex' : 'none';
   }
 
   async function cargarOfertas() {
+    // Cargar config_app (visibilidad + precios base + texto promo)
+    const { data: configs } = await db.from('config_app').select('clave,valor')
+      .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
+                    'gratis_fecha_inicio','gratis_fecha_fin',
+                    'precio_base_basico_mensual','precio_base_basico_anual',
+                    'precio_base_pro_mensual','precio_base_pro_anual','texto_promocional']);
+    let preciosBase = {};
+    if (configs) {
+      const cfg = Object.fromEntries(configs.map(c => [c.clave, c.valor]));
+      document.getElementById('vis-gratis').checked      = cfg.plan_gratis_visible !== 'false';
+      document.getElementById('vis-basico').checked      = cfg.plan_basico_visible !== 'false';
+      document.getElementById('vis-pro').checked         = cfg.plan_pro_visible    !== 'false';
+      document.getElementById('gratis-fecha-inicio').value = cfg.gratis_fecha_inicio ?? '';
+      document.getElementById('gratis-fecha-fin').value    = cfg.gratis_fecha_fin   ?? '';
+      document.getElementById('precio-base-basico-mensual').value = cfg.precio_base_basico_mensual ?? '';
+      document.getElementById('precio-base-basico-anual').value   = cfg.precio_base_basico_anual   ?? '';
+      document.getElementById('precio-base-pro-mensual').value    = cfg.precio_base_pro_mensual    ?? '';
+      document.getElementById('precio-base-pro-anual').value      = cfg.precio_base_pro_anual      ?? '';
+      document.getElementById('texto-promo').value                = cfg.texto_promocional          ?? '';
+      preciosBase = {
+        'basico-mensual': cfg.precio_base_basico_mensual ?? '',
+        'basico-anual':   cfg.precio_base_basico_anual   ?? '',
+        'pro-mensual':    cfg.precio_base_pro_mensual    ?? '',
+        'pro-anual':      cfg.precio_base_pro_anual      ?? '',
+      };
+    }
+
+    // Cargar ofertas
     const { data } = await db.from('planes_ofertas').select('*').order('created_at', { ascending: false });
     if (!data) return;
-    const m = data.find(o => o.plan === 'mensual') ?? null;
-    const a = data.find(o => o.plan === 'anual')   ?? null;
-    fillOfertaForm('mensual', m); renderPreview('mensual', m);
-    fillOfertaForm('anual',   a); renderPreview('anual',   a);
+
+    PLANES.forEach(plan => {
+      const key = planDbKey(plan);
+      const o = data.find(x => x.plan === key) ?? null;
+      fillOfertaForm(plan, o);
+      // Si el precio original del formulario está vacío, usar el precio base configurado
+      const campoPrecio = document.getElementById(`precio-${plan}`);
+      if (!campoPrecio.value && preciosBase[plan]) campoPrecio.value = preciosBase[plan];
+      renderPreview(plan, o, preciosBase[plan]);
+    });
 
     const tbody = document.getElementById('historial-body');
     if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin historial</p></td></tr>'; return; }
     tbody.innerHTML = data.map(o => `
       <tr>
-        <td><b>${o.plan === 'mensual' ? 'Mensual' : 'Anual'}</b></td>
+        <td><b>${PLAN_LABELS[o.plan.replace(/_/g,'-')] ?? o.plan}</b></td>
         <td>${o.descripcion ?? '—'}</td>
         <td>${o.precio_original ? '$' + Number(o.precio_original).toFixed(2) : '—'}</td>
         <td>${o.precio_oferta   ? '$' + Number(o.precio_oferta).toFixed(2)   : '—'}</td>
@@ -847,13 +1276,90 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       </tr>`).join('');
   }
 
+  async function guardarPlanGratis() {
+    const msg = document.getElementById('msg-gratis');
+    const claves = [
+      ['plan_gratis_visible', String(document.getElementById('vis-gratis').checked)],
+      ['gratis_fecha_inicio', document.getElementById('gratis-fecha-inicio').value],
+      ['gratis_fecha_fin',    document.getElementById('gratis-fecha-fin').value],
+    ];
+    try {
+      for (const [clave, valor] of claves) {
+        const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
+        if (error) throw new Error(`${clave}: ${error.message}`);
+      }
+      msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+      setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message; msg.className = 'msg err';
+    }
+  }
+
+  async function guardarVisibilidad() {
+    const msg = document.getElementById('msg-visibilidad');
+    const claves = [
+      ['plan_basico_visible', 'vis-basico'],
+      ['plan_pro_visible',    'vis-pro'],
+    ];
+    try {
+      for (const [clave, elId] of claves) {
+        const valor = String(document.getElementById(elId).checked);
+        const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
+        if (error) throw new Error(`${clave}: ${error.message}`);
+      }
+      msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+      setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message; msg.className = 'msg err';
+    }
+  }
+
+  async function guardarPreciosBase() {
+    const claves = [
+      ['precio_base_basico_mensual', 'precio-base-basico-mensual'],
+      ['precio_base_basico_anual',   'precio-base-basico-anual'],
+      ['precio_base_pro_mensual',    'precio-base-pro-mensual'],
+      ['precio_base_pro_anual',      'precio-base-pro-anual'],
+      ['texto_promocional',          'texto-promo'],
+    ];
+    const msg = document.getElementById('msg-precios');
+    try {
+      for (const [clave, elId] of claves) {
+        const valor = document.getElementById(elId).value.trim();
+        if (!valor) continue;
+        const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
+        if (error) throw new Error(`${clave}: ${error.message}`);
+      }
+      msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+      setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
+      // Propagar precios base a los campos precio-original y al preview de cada plan
+      const mapa = {
+        'precio-base-basico-mensual': 'basico-mensual',
+        'precio-base-basico-anual':   'basico-anual',
+        'precio-base-pro-mensual':    'pro-mensual',
+        'precio-base-pro-anual':      'pro-anual',
+      };
+      for (const [baseId, plan] of Object.entries(mapa)) {
+        const val = document.getElementById(baseId).value.trim();
+        if (val) {
+          document.getElementById(`precio-${plan}`).value = val;
+          // Actualizar preview solo si no hay oferta activa
+          const idOferta = document.getElementById(`id-${plan}`).value;
+          if (!idOferta) renderPreview(plan, null, val);
+        }
+      }
+    } catch (err) {
+      alert('Error al guardar precios: ' + err.message);
+    }
+  }
+
   async function guardarOferta(plan, e) {
     e.preventDefault();
-    const btn = document.getElementById(`btn-${plan}`);
+    const btn = e.submitter ?? document.querySelector(`#form-${plan} [type=submit]`);
     btn.disabled = true; btn.textContent = 'Guardando…';
 
     const id              = document.getElementById(`id-${plan}`).value;
-    const precio_original = parseFloat(document.getElementById(`precio-original-${plan}`).value) || null;
+    const precio_original = parseFloat(document.getElementById(`precio-${plan}`).value) || null;
     const precio_oferta   = parseFloat(document.getElementById(`precio-oferta-${plan}`).value) || null;
     const descuento_pct   = parseInt(document.getElementById(`descuento-${plan}`).value) || null;
     const meses_gratis    = parseInt(document.getElementById(`meses-${plan}`).value) || 0;
@@ -867,7 +1373,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       btn.disabled = false; btn.textContent = 'Guardar'; return;
     }
 
-    const payload = { plan, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
+    const dbPlan  = planDbKey(plan);
+    const payload = { plan: dbPlan, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
     const { error } = id
       ? await db.from('planes_ofertas').update(payload).eq('id', id)
       : await db.from('planes_ofertas').insert(payload);
@@ -878,61 +1385,565 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     await cargarOfertas();
   }
 
-  async function borrarOferta(plan) {
+  async function borrarOferta(dbPlan) {
+    const plan = dbPlan.replace(/_/g, '-');
     const id = document.getElementById(`id-${plan}`).value;
-    if (!id || !confirm(`¿Eliminar oferta del plan ${plan}?`)) return;
+    if (!id || !confirm(`¿Eliminar oferta "${PLAN_LABELS[plan]}"?`)) return;
     await db.from('planes_ofertas').delete().eq('id', id);
     showMsg(`msg-${plan}`, 'Eliminada.', 'ok');
     await cargarOfertas();
   }
 
-  document.getElementById('form-mensual').addEventListener('submit', e => guardarOferta('mensual', e));
-  document.getElementById('form-anual').addEventListener('submit', e => guardarOferta('anual', e));
-  document.getElementById('btn-borrar-mensual').addEventListener('click', () => borrarOferta('mensual'));
-  document.getElementById('btn-borrar-anual').addEventListener('click', () => borrarOferta('anual'));
-
   // ── Solicitudes ───────────────────────────────────────────────────────────
+
+  let _ciudadesSol = [];
+  let _catsSol     = [];
 
   async function cargarSolicitudes() {
     const filtro = document.getElementById('filtro-solicitudes').value;
-    let q = db.from('solicitudes_socios').select('*').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*,subcategorias(id,nombre,categoria_id)').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
-    const { data } = await q;
 
-    const tbody = document.getElementById('tabla-solicitudes');
-    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty"><p>Sin solicitudes</p></td></tr>'; return; }
-    tbody.innerHTML = data.map(s => `
-      <tr>
-        <td><b>${s.nombre}</b></td>
-        <td>${s.ciudad ?? '—'}</td>
-        <td>${s.plan === 'mensual' ? 'Mensual' : 'Anual'}</td>
-        <td>${fmt(s.monto)}</td>
-        <td>${s.metodo_pago ?? '—'}</td>
-        <td style="font-family:monospace">${s.referencia ?? '—'}</td>
-        <td>${s.tipo ?? 'nueva'}</td>
-        <td><span class="badge status-${s.estado ?? 'pendiente'}">${s.estado ?? 'pendiente'}</span></td>
-        <td>${fmtFecha(s.created_at)}</td>
-        <td style="display:flex;gap:6px">
-          ${s.estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" onclick="cambiarEstado('${s.id}','aprobado')">✓</button>` : ''}
-          ${s.estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger"  onclick="cambiarEstado('${s.id}','rechazado')">✗</button>` : ''}
-          ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline">🧾</a>` : ''}
-        </td>
-      </tr>`).join('');
+    const [{ data, error }, { data: ciu }, { data: cats }] = await Promise.all([
+      q,
+      db.from('categorias').select('id,nombre').order('orden'),
+      db.from('subcategorias').select('id,nombre,categoria_id').order('nombre'),
+    ]);
+    _ciudadesSol = ciu ?? [];
+    _catsSol     = cats ?? [];
+
+    const lista = document.getElementById('lista-solicitudes');
+    if (error) { lista.innerHTML = `<p style="color:red;padding:20px;text-align:center">Error: ${error.message}</p>`; return; }
+    if (!data?.length) { lista.innerHTML = '<p class="empty" style="text-align:center;padding:20px;color:var(--muted)">Sin solicitudes</p>'; return; }
+
+    lista.innerHTML = data.map(s => {
+      const estado       = s.estado ?? 'pendiente';
+      const colorBorde   = estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
+      const uid          = s.id.replace(/-/g,'').slice(0,8);
+      const ciudadActual = s.subcategorias?.categoria_id ?? '';
+      const catActual    = s.subcategoria_id ?? '';
+      const catsDeCiudad = ciudadActual ? _catsSol.filter(c => c.categoria_id === ciudadActual) : [];
+
+      const optCiudades = _ciudadesSol.map(c =>
+        `<option value="${c.id}"${ciudadActual === c.id ? ' selected' : ''}>${c.nombre}</option>`
+      ).join('');
+      const optCats = catsDeCiudad.map(c =>
+        `<option value="${c.id}"${catActual === c.id ? ' selected' : ''}>${c.nombre}</option>`
+      ).join('');
+
+      return `
+      <div style="border:1px solid ${colorBorde};border-radius:12px;overflow:hidden;background:var(--bg)">
+        <!-- Cabecera -->
+        <div style="display:flex;align-items:center;background:var(--card);gap:10px;padding:12px 16px">
+          <div onclick="toggleSol('${uid}')" style="flex:1;min-width:0;cursor:pointer;user-select:none">
+            <div style="font-weight:800;font-size:15px">${s.nombre ?? '—'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">
+              📅 ${fmtFecha(s.created_at)}
+              ${s.fecha_vencimiento ? ` · Vence: ${fmtFecha(s.fecha_vencimiento)}` : ''}
+            </div>
+          </div>
+          <span class="badge status-${estado}">${estado}</span>
+          ${estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" style="background:#dcfce7;color:#16a34a;border-color:#16a34a;white-space:nowrap" onclick="event.stopPropagation();cambiarEstado('${s.id}','aprobado')">✓ Aprobar</button>` : ''}
+          ${estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger" style="white-space:nowrap" onclick="event.stopPropagation();cambiarEstado('${s.id}','rechazado')">✗ Rechazar</button>` : ''}
+          <span onclick="toggleSol('${uid}')" id="arrow-${uid}" style="font-size:12px;color:var(--muted);transition:transform .2s;cursor:pointer">▼</span>
+        </div>
+        <!-- Detalle (colapsable) -->
+        <div id="sol-${uid}" style="display:none">
+          <!-- Campos del cliente -->
+          <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div style="grid-column:1/-1;font-size:11px;color:var(--muted)">${fmtFecha(s.created_at)} · ${s.tipo ?? 'nueva'}</div>
+            ${s.subcategorias?.nombre ? `<div style="grid-column:1/-1">🏷️ <b>Categoría asignada:</b> ${s.subcategorias.nombre}</div>` : ''}
+            ${s.telefono   ? `<div>📞 <b>Tel:</b> ${s.telefono}</div>` : ''}
+            ${s.whatsapp   ? `<div>💬 <b>WA:</b> ${s.whatsapp}</div>` : ''}
+            ${s.redes      ? `<div style="grid-column:1/-1">🌐 <b>Redes:</b> ${s.redes}</div>` : ''}
+            ${s.ciudad     ? `<div>📍 <b>Ciudad:</b> ${s.ciudad}</div>` : ''}
+            ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
+            ${s.descripcion? `<div style="grid-column:1/-1;color:var(--muted);font-style:italic">"${s.descripcion}"</div>` : ''}
+            <div style="grid-column:1/-1;margin-top:4px">
+              <button class="btn btn-sm btn-outline" onclick="toggleEditSol('${uid}')">✏️ Editar datos</button>
+            </div>
+          </div>
+          <!-- Editar datos solicitud -->
+          <div id="edit-sol-${uid}" style="display:none;padding:14px 16px;border-top:1px solid var(--border);background:#f8f9fb">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="esol-nombre-${uid}" value="${(s.nombre??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group">
+                <label>Ciudad</label>
+                <input type="text" id="esol-ciudad-${uid}" value="${(s.ciudad??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" id="esol-telefono-${uid}" value="${(s.telefono??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group">
+                <label>WhatsApp</label>
+                <input type="text" id="esol-whatsapp-${uid}" value="${(s.whatsapp??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label>Redes / Web</label>
+                <input type="text" id="esol-redes-${uid}" value="${(s.redes??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label>Dirección</label>
+                <input type="text" id="esol-direccion-${uid}" value="${(s.direccion??'').replace(/"/g,'&quot;')}" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label>Descripción</label>
+                <textarea id="esol-descripcion-${uid}" rows="2">${s.descripcion??''}</textarea>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+              <button class="btn btn-primary btn-sm" onclick="guardarEditSol('${s.id}','${uid}')">Guardar cambios</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleEditSol('${uid}')">Cancelar</button>
+              <span id="msg-edit-sol-${uid}" style="font-size:12px"></span>
+            </div>
+          </div>
+          <!-- Asignar ciudad y categoría -->
+          <div style="padding:12px 16px;border-top:1px solid var(--border);background:#f8f9fb;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Asignar:</span>
+            <select id="sel-ciudad-${uid}" onchange="filtrarCatsSol('${uid}')"
+              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff">
+              <option value="">— Ciudad —</option>
+              ${optCiudades}
+            </select>
+            <select id="sel-cat-${uid}"
+              style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;background:#fff">
+              <option value="">— Categoría —</option>
+              ${optCats}
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="asignarCategoriaSol('${s.id}','${uid}')">Guardar</button>
+            <span id="msg-asignar-${uid}" style="font-size:12px"></span>
+          </div>
+          <!-- Fotos -->
+          ${renderFotosSol(s, uid)}
+          <!-- Plan + fechas -->
+          <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;font-size:12px;background:#f8f9fb">
+            <div>
+              <span style="color:var(--muted);font-weight:700">Plan</span><br>
+              <span style="font-weight:800;font-size:13px">${s.plan ? (s.plan.charAt(0).toUpperCase()+s.plan.slice(1)) : '—'}${s.periodo ? ' · '+s.periodo : ''}</span>
+            </div>
+            <div>
+              <span style="color:var(--muted);font-weight:700">Aprobado</span><br>
+              <span>${s.fecha_aprobacion ? fmtFecha(s.fecha_aprobacion) : '—'}</span>
+            </div>
+            <div>
+              <span style="color:var(--muted);font-weight:700">Vence</span><br>
+              <span style="${s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date() ? 'color:#ef4444;font-weight:700' : ''}">${s.fecha_vencimiento ? fmtFecha(s.fecha_vencimiento) : '—'}</span>
+            </div>
+          </div>
+          <!-- Pago y acciones -->
+          <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;background:var(--card)">
+            <span class="badge badge-gray">${fmt(s.monto ?? 0)}</span>
+            ${s.metodo_pago ? `<span style="color:var(--muted)">${s.metodo_pago}</span>` : ''}
+            ${s.referencia  ? `<span style="font-family:monospace;color:var(--muted)">Ref: ${s.referencia}</span>` : ''}
+            <div style="margin-left:auto;display:flex;gap:6px">
+              ${estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();cambiarEstado('${s.id}','aprobado')">✓ Aprobar</button>` : ''}
+              ${estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger"  onclick="event.stopPropagation();cambiarEstado('${s.id}','rechazado')">✗ Rechazar</button>` : ''}
+              ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline">🧾 Comprobante</a>` : ''}
+              <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="event.stopPropagation();eliminarSolicitud('${s.id}')">🗑 Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
-  async function cambiarEstado(id, estado) {
-    await db.from('solicitudes_socios').update({ estado }).eq('id', id);
+  function renderFotosSol(s, uid) {
+    const slots = Math.min({ gratis: 0, basico: 6, pro: 11 }[s.plan] ?? 0, 11);
+    const estiloImg = (w) => `width:${w}px;height:${w}px;object-fit:cover;border-radius:8px;border:1px solid var(--border)`;
+    const estiloPlaceholder = (w) => `width:${w}px;height:${w}px;border-radius:8px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px;background:#fafafa`;
+    const btnSubir = (campo) => `<label style="cursor:pointer;font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:5px;padding:3px 7px;white-space:nowrap">Subir<input type="file" accept="image/*" style="display:none" onchange="subirFotoSol('${s.id}','${uid}','${campo}',this)"></label>`;
+
+    // Portada
+    let html = `<div style="padding:14px 16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:10px">FOTOS</div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">Portada</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${s.imagen
+            ? `<img id="img-sol-${uid}-imagen" src="${s.imagen}" style="${estiloImg(80)}">`
+            : `<div id="placeholder-sol-${uid}-imagen" style="${estiloPlaceholder(80)}">📷</div>`}
+          ${btnSubir('imagen')}
+        </div>
+      </div>`;
+
+    if (slots > 0) {
+      html += `<div><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">Galería (${slots} fotos)</div><div style="display:flex;flex-wrap:wrap;gap:8px">`;
+      for (let i = 0; i < slots; i++) {
+        const campo = `imagen${i + 2}`;
+        const url   = s[campo];
+        html += `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+          ${url
+            ? `<img id="img-sol-${uid}-${campo}" src="${url}" style="${estiloImg(64)}">`
+            : `<div id="placeholder-sol-${uid}-${campo}" style="${estiloPlaceholder(64)}">+</div>`}
+          ${btnSubir(campo)}
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  async function subirFotoSol(solId, uid, campo, input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.disabled = true;
+    const label = input.parentElement;
+    if (label.childNodes[0]) label.childNodes[0].textContent = '…';
+
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = `solicitudes/${solId}_${campo}_${Date.now()}.${ext}`;
+    const { error: upErr } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      alert('Error al subir: ' + upErr.message);
+      input.disabled = false;
+      if (label.childNodes[0]) label.childNodes[0].textContent = 'Subir';
+      return;
+    }
+    const { data: { publicUrl } } = db.storage.from('socios comerciales').getPublicUrl(path);
+    await db.from('solicitudes').update({ [campo]: publicUrl }).eq('id', solId);
+
+    const w = campo === 'imagen' ? 80 : 64;
+    const imgId = `img-sol-${uid}-${campo}`;
+    const existing = document.getElementById(imgId);
+    if (existing) {
+      existing.src = publicUrl + '?t=' + Date.now();
+    } else {
+      const placeholder = document.getElementById(`placeholder-sol-${uid}-${campo}`);
+      if (placeholder) {
+        const img = document.createElement('img');
+        img.id = imgId;
+        img.src = publicUrl;
+        img.style.cssText = `width:${w}px;height:${w}px;object-fit:cover;border-radius:8px;border:1px solid var(--border)`;
+        placeholder.replaceWith(img);
+      }
+    }
+    if (label.childNodes[0]) label.childNodes[0].textContent = '✓';
+    input.disabled = false;
+  }
+
+  function filtrarCatsSol(uid) {
+    const ciudadId = document.getElementById(`sel-ciudad-${uid}`).value;
+    const cats     = ciudadId ? _catsSol.filter(c => c.categoria_id === ciudadId) : [];
+    const sel      = document.getElementById(`sel-cat-${uid}`);
+    sel.innerHTML  = '<option value="">— Categoría —</option>' +
+      cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+  }
+
+  async function asignarCategoriaSol(solId, uid) {
+    const subcategoriaId = document.getElementById(`sel-cat-${uid}`).value || null;
+    const msg = document.getElementById(`msg-asignar-${uid}`);
+
+    // Actualizar en solicitudes
+    const { error } = await db.from('solicitudes').update({ subcategoria_id: subcategoriaId }).eq('id', solId);
+    if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
+
+    // Propagar a socios_comerciales usando teléfono + nombre de la solicitud
+    const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', solId).single();
+    if (sol) {
+      const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+      if (tel) {
+        const { data: socios } = await db.from('socios_comerciales')
+          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+        const mismo = socios?.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+        if (mismo) {
+          await db.from('socios_comerciales').update({ subcategoria_id: subcategoriaId }).eq('id', mismo.id);
+        }
+      }
+    }
+
+    msg.style.color = 'var(--green)'; msg.textContent = '✓ Guardado';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+
+  function toggleEditSol(uid) {
+    const el = document.getElementById(`edit-sol-${uid}`);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function guardarEditSol(solId, uid) {
+    const msg = document.getElementById(`msg-edit-sol-${uid}`);
+    const payload = {
+      nombre:      document.getElementById(`esol-nombre-${uid}`).value.trim()      || null,
+      ciudad:      document.getElementById(`esol-ciudad-${uid}`).value.trim()      || null,
+      telefono:    document.getElementById(`esol-telefono-${uid}`).value.trim()    || null,
+      whatsapp:    document.getElementById(`esol-whatsapp-${uid}`).value.trim()    || null,
+      redes:       document.getElementById(`esol-redes-${uid}`).value.trim()       || null,
+      direccion:   document.getElementById(`esol-direccion-${uid}`).value.trim()   || null,
+      descripcion: document.getElementById(`esol-descripcion-${uid}`).value.trim() || null,
+    };
+    const { error } = await db.from('solicitudes').update(payload).eq('id', solId);
+    if (error) { msg.style.color='var(--red)'; msg.textContent='Error: '+error.message; return; }
+
+    // Propagar cambios a socios_comerciales si existe el socio
+    const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', solId).single();
+    if (sol) {
+      const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g,'');
+      if (tel) {
+        const { data: socios } = await db.from('socios_comerciales')
+          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+        // buscar por nombre anterior (antes de editar) o por el nuevo
+        const mismo = socios?.find(s =>
+          s.nombre?.trim().toLowerCase() === (sol.nombre??'').trim().toLowerCase() ||
+          s.nombre?.trim().toLowerCase() === (payload.nombre??'').trim().toLowerCase()
+        );
+        if (mismo) {
+          await db.from('socios_comerciales').update({
+            nombre:      payload.nombre,
+            ciudad:      payload.ciudad,
+            telefono:    payload.telefono,
+            whatsapp:    payload.whatsapp,
+            web:         payload.redes,
+            direccion:   payload.direccion,
+            descripcion: payload.descripcion,
+          }).eq('id', mismo.id);
+        }
+      }
+    }
+
+    msg.style.color='var(--green)'; msg.textContent='✓ Guardado';
+    setTimeout(() => { toggleEditSol(uid); cargarSolicitudes(); }, 1200);
+  }
+
+  function toggleSol(uid) {
+    const body  = document.getElementById(`sol-${uid}`);
+    const arrow = document.getElementById(`arrow-${uid}`);
+    const open  = body.style.display === 'none';
+    body.style.display  = open ? 'block' : 'none';
+    arrow.style.transform = open ? 'rotate(180deg)' : '';
+  }
+
+  async function eliminarSolicitud(id) {
+    if (!confirm('¿Eliminar esta solicitud? También se eliminará la tienda de socios activos si existe.')) return;
+    const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', id).single();
+    if (sol) {
+      const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+      if (tel) {
+        const { data: socios } = await db.from('socios_comerciales')
+          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+        const mismo = socios?.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+        if (mismo) await db.from('socios_comerciales').delete().eq('id', mismo.id);
+      }
+    }
+    await db.from('solicitudes').delete().eq('id', id);
     cargarSolicitudes();
   }
 
+  async function cambiarEstado(id, estado) {
+    await db.from('solicitudes').update({ estado }).eq('id', id);
+
+    if (estado === 'aprobado') {
+      const { data: sol } = await db.from('solicitudes').select('*').eq('id', id).single();
+      if (sol) {
+        // Calcular fecha de vencimiento
+        const hoy = new Date();
+        let fechaVenc = null;
+        if (sol.plan === 'gratis') {
+          const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
+          if (cfg?.valor) fechaVenc = new Date(cfg.valor).toISOString();
+        } else if (sol.periodo === 'mensual') {
+          fechaVenc = new Date(hoy.setMonth(hoy.getMonth() + 1)).toISOString();
+        } else if (sol.periodo === 'anual') {
+          fechaVenc = new Date(hoy.setFullYear(hoy.getFullYear() + 1)).toISOString();
+        }
+
+        // Guardar fecha_aprobacion y fecha_vencimiento en la solicitud
+        await db.from('solicitudes').update({
+          fecha_aprobacion: new Date().toISOString(),
+          fecha_vencimiento: fechaVenc,
+        }).eq('id', id);
+
+        // Verificar si ya existe el mismo negocio (mismo teléfono Y mismo nombre)
+        const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+        let socioId = null;
+        if (tel) {
+          const { data: exist } = await db.from('socios_comerciales')
+            .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
+          const mismo = exist?.find(e => e.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
+          if (mismo) socioId = mismo.id;
+        }
+
+        if (socioId) {
+          const { error: errUpd } = await db.from('socios_comerciales')
+            .update({ web: sol.redes, ciudad: sol.ciudad, fecha_vencimiento: fechaVenc, plan: sol.plan, activo: true, subcategoria_id: sol.subcategoria_id })
+            .eq('id', socioId);
+          if (errUpd) { alert('Error al actualizar socio: ' + errUpd.message); return; }
+        } else {
+          const { error: errIns } = await db.from('socios_comerciales').insert({
+            nombre:            sol.nombre,
+            telefono:          sol.telefono,
+            whatsapp:          sol.whatsapp,
+            web:               sol.redes,
+            ciudad:            sol.ciudad,
+            direccion:         sol.direccion,
+            descripcion:       sol.descripcion,
+            plan:              sol.plan,
+            imagen:            sol.imagen,
+            imagen2:           sol.imagen2,
+            imagen3:           sol.imagen3,
+            imagen4:           sol.imagen4,
+            imagen5:           sol.imagen5,
+            imagen6:           sol.imagen6,
+            imagen7:           sol.imagen7,
+            imagen8:           sol.imagen8,
+            imagen9:           sol.imagen9,
+            imagen10:          sol.imagen10,
+            imagen11:          sol.imagen11,
+            imagen12:          sol.imagen12,
+            fecha_vencimiento: fechaVenc,
+            subcategoria_id:   sol.subcategoria_id,
+            activo:            true,
+          });
+          if (errIns) { alert('Error al crear socio: ' + errIns.message); return; }
+        }
+      }
+    }
+
+    const uid = id.replace(/-/g,'').slice(0,8);
+    await cargarSolicitudes();
+    cargarSocios();
+    // Re-abrir la ficha que estaba abierta
+    const body  = document.getElementById(`sol-${uid}`);
+    const arrow = document.getElementById(`arrow-${uid}`);
+    if (body)  { body.style.display = 'block'; }
+    if (arrow) { arrow.style.transform = 'rotate(180deg)'; }
+  }
+
   document.getElementById('filtro-solicitudes').addEventListener('change', cargarSolicitudes);
+
+  // ── Estados y Ciudades ────────────────────────────────────────────────────
+
+  let estadoSelId   = null;
+  let estadoSelNom  = '';
+
+  async function cargarEstados() {
+    const { data, error } = await db.from('categorias').select('id,nombre,orden').order('orden');
+    const lista = document.getElementById('lista-estados');
+    if (error) { lista.innerHTML = `<p style="padding:16px;color:red">${error.message}</p>`; return; }
+    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin estados aún</p>'; return; }
+    lista.innerHTML = data.map(e => `
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:${estadoSelId===e.id?'#f0ecff':''}"
+           id="fila-estado-${e.id}" onclick="seleccionarEstado('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">
+        <span style="flex:1;font-weight:600;font-size:14px">${e.nombre}</span>
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editarEstado('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">✏️</button>
+        <button class="btn btn-sm btn-danger"  onclick="event.stopPropagation();eliminarEstado('${e.id}')">🗑</button>
+      </div>`).join('');
+  }
+
+  function seleccionarEstado(id, nombre) {
+    estadoSelId  = id;
+    estadoSelNom = nombre;
+    document.getElementById('label-estado-sel').textContent = `— ${nombre}`;
+    document.getElementById('btn-agregar-ciudad').style.display = '';
+    document.querySelectorAll('[id^="fila-estado-"]').forEach(el => el.style.background = '');
+    const fila = document.getElementById(`fila-estado-${id}`);
+    if (fila) fila.style.background = '#f0ecff';
+    cargarCiudades();
+  }
+
+  function abrirFormEstado(id, nombre) {
+    document.getElementById('input-estado-id').value = id ?? '';
+    document.getElementById('input-estado').value    = nombre ?? '';
+    document.getElementById('form-estado').style.display = '';
+    document.getElementById('input-estado').focus();
+  }
+  function cerrarFormEstado() {
+    document.getElementById('form-estado').style.display = 'none';
+    document.getElementById('input-estado').value = '';
+    document.getElementById('input-estado-id').value = '';
+  }
+  function editarEstado(id, nombre) { abrirFormEstado(id, nombre); }
+
+  async function guardarEstado() {
+    const nombre = document.getElementById('input-estado').value.trim();
+    const id     = document.getElementById('input-estado-id').value;
+    if (!nombre) { showMsg('msg-estado','Escribe un nombre','error'); return; }
+    let error;
+    if (id) {
+      ({ error } = await db.from('categorias').update({ nombre }).eq('id', id));
+    } else {
+      const { data: last } = await db.from('categorias').select('orden').order('orden',{ascending:false}).limit(1);
+      const orden = (last?.[0]?.orden ?? 0) + 1;
+      ({ error } = await db.from('categorias').insert({ nombre, orden }));
+    }
+    if (error) { showMsg('msg-estado', error.message, 'error'); return; }
+    cerrarFormEstado();
+    cargarEstados();
+  }
+
+  async function eliminarEstado(id) {
+    if (!confirm('¿Eliminar este estado? También se eliminarán todas sus ciudades.')) return;
+    await db.from('subcategorias').delete().eq('categoria_id', id);
+    await db.from('categorias').delete().eq('id', id);
+    if (estadoSelId === id) {
+      estadoSelId = null;
+      document.getElementById('label-estado-sel').textContent = '— selecciona un estado';
+      document.getElementById('btn-agregar-ciudad').style.display = 'none';
+      document.getElementById('lista-ciudades').innerHTML = '<p style="padding:20px;color:var(--muted);text-align:center;font-size:13px">Selecciona un estado para ver sus ciudades</p>';
+    }
+    cargarEstados();
+  }
+
+  async function cargarCiudades() {
+    if (!estadoSelId) return;
+    const { data, error } = await db.from('subcategorias').select('id,nombre,orden').eq('categoria_id', estadoSelId).order('nombre');
+    const lista = document.getElementById('lista-ciudades');
+    if (error) { lista.innerHTML = `<p style="padding:16px;color:red">${error.message}</p>`; return; }
+    if (!data?.length) { lista.innerHTML = '<p style="padding:16px;color:var(--muted);text-align:center;font-size:13px">Sin ciudades para este estado</p>'; return; }
+    lista.innerHTML = data.map(c => `
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+        <span style="flex:1;font-size:14px">${c.nombre}</span>
+        <button class="btn btn-sm btn-outline" onclick="editarCiudad('${c.id}','${c.nombre.replace(/'/g,"\\'")}')">✏️</button>
+        <button class="btn btn-sm btn-danger"  onclick="eliminarCiudad('${c.id}')">🗑</button>
+      </div>`).join('');
+  }
+
+  function abrirFormCiudad(id, nombre) {
+    document.getElementById('input-ciudad-id').value = id ?? '';
+    document.getElementById('input-ciudad').value    = nombre ?? '';
+    document.getElementById('form-ciudad').style.display = '';
+    document.getElementById('input-ciudad').focus();
+  }
+  function cerrarFormCiudad() {
+    document.getElementById('form-ciudad').style.display = 'none';
+    document.getElementById('input-ciudad').value = '';
+    document.getElementById('input-ciudad-id').value = '';
+  }
+  function editarCiudad(id, nombre) { abrirFormCiudad(id, nombre); }
+
+  async function guardarCiudad() {
+    const nombre = document.getElementById('input-ciudad').value.trim();
+    const id     = document.getElementById('input-ciudad-id').value;
+    if (!nombre) { showMsg('msg-ciudad','Escribe un nombre','error'); return; }
+    if (!estadoSelId) return;
+    let error;
+    if (id) {
+      ({ error } = await db.from('subcategorias').update({ nombre }).eq('id', id));
+    } else {
+      ({ error } = await db.from('subcategorias').insert({ nombre, categoria_id: estadoSelId }));
+    }
+    if (error) { showMsg('msg-ciudad', error.message, 'error'); return; }
+    cerrarFormCiudad();
+    cargarCiudades();
+  }
+
+  async function eliminarCiudad(id) {
+    if (!confirm('¿Eliminar esta ciudad?')) return;
+    await db.from('subcategorias').delete().eq('id', id);
+    cargarCiudades();
+  }
 
   // ── Socios activos ────────────────────────────────────────────────────────
 
   async function cargarSocios() {
     const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true').order('nombre');
     const tbody = document.getElementById('tabla-socios');
-    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty"><p>Sin socios</p></td></tr>'; return; }
+    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; return; }
     tbody.innerHTML = data.map(s => {
       const hoy = new Date();
       const venc = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
@@ -945,12 +1956,98 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <td><b>${s.nombre}</b></td>
           <td>${s.telefono ?? '—'}</td>
           <td>${s.whatsapp ?? '—'}</td>
+          <td>${s.redes ?? '—'}</td>
+          <td>${s.ciudad ?? '—'}</td>
           <td>${s.direccion ?? '—'}</td>
           <td>${s.destacado ? '⭐' : '—'}</td>
           <td>${vencBadge}</td>
           <td><span class="badge ${s.activo !== false ? 'badge-green' : 'badge-gray'}">${s.activo !== false ? 'Activo' : 'Inactivo'}</span></td>
+          <td style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-outline" onclick='abrirModalSocio(${JSON.stringify(s).replace(/'/g,"&#39;")})'>✏️</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="eliminarSocio('${s.id}','${s.nombre?.replace(/'/g,'')}')">🗑</button>
+          </td>
         </tr>`;
     }).join('');
+  }
+
+  function abrirModalSocio(s) {
+    document.getElementById('edit-socio-id').value                   = s.id;
+    document.getElementById('edit-socio-telefono-original').value    = s.telefono ?? '';
+    document.getElementById('edit-socio-nombre').value                  = s.nombre ?? '';
+    document.getElementById('edit-socio-nombre').dataset.original       = s.nombre ?? '';
+    document.getElementById('edit-socio-telefono').value    = s.telefono    ?? '';
+    document.getElementById('edit-socio-whatsapp').value    = s.whatsapp    ?? '';
+    document.getElementById('edit-socio-redes').value       = s.web         ?? '';
+    document.getElementById('edit-socio-ciudad').value      = s.ciudad      ?? '';
+    document.getElementById('edit-socio-direccion').value   = s.direccion   ?? '';
+    document.getElementById('edit-socio-descripcion').value = s.descripcion ?? '';
+    document.getElementById('edit-socio-plan').value        = s.plan        ?? 'gratis';
+    document.getElementById('edit-socio-vencimiento').value = s.fecha_vencimiento ? s.fecha_vencimiento.slice(0,10) : '';
+    document.getElementById('edit-socio-destacado').checked = s.destacado   ?? false;
+    document.getElementById('edit-socio-activo').checked    = s.activo      !== false;
+    document.getElementById('msg-editar-socio').textContent = '';
+    document.getElementById('modal-editar-socio').style.display = 'block';
+  }
+
+  function cerrarModalSocio() {
+    document.getElementById('modal-editar-socio').style.display = 'none';
+  }
+
+  async function guardarSocio() {
+    const id  = document.getElementById('edit-socio-id').value;
+    const msg = document.getElementById('msg-editar-socio');
+    const venc = document.getElementById('edit-socio-vencimiento').value;
+    const payload = {
+      nombre:            document.getElementById('edit-socio-nombre').value.trim(),
+      telefono:          document.getElementById('edit-socio-telefono').value.trim() || null,
+      whatsapp:          document.getElementById('edit-socio-whatsapp').value.trim() || null,
+      web:               document.getElementById('edit-socio-redes').value.trim()    || null,
+      ciudad:            document.getElementById('edit-socio-ciudad').value.trim()   || null,
+      direccion:         document.getElementById('edit-socio-direccion').value.trim()|| null,
+      descripcion:       document.getElementById('edit-socio-descripcion').value.trim() || null,
+      plan:              document.getElementById('edit-socio-plan').value,
+      fecha_vencimiento: venc ? new Date(venc).toISOString() : null,
+      destacado:         document.getElementById('edit-socio-destacado').checked,
+      activo:            document.getElementById('edit-socio-activo').checked,
+    };
+    const { error } = await db.from('socios_comerciales').update(payload).eq('id', id);
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
+
+    // Propagar cambios a solicitudes (por teléfono original o nombre original)
+    const telOriginal    = document.getElementById('edit-socio-telefono-original').value;
+    const nombreOriginal = document.getElementById('edit-socio-nombre').dataset.original ?? payload.nombre;
+    const solPayload = {
+      nombre:            payload.nombre,
+      telefono:          payload.telefono,
+      whatsapp:          payload.whatsapp,
+      redes:             payload.web,
+      ciudad:            payload.ciudad,
+      direccion:         payload.direccion,
+      descripcion:       payload.descripcion,
+      plan:              payload.plan,
+      fecha_vencimiento: payload.fecha_vencimiento,
+    };
+    // Intentar por teléfono primero, si no hay resultado intentar por nombre
+    if (telOriginal) {
+      const { data: found } = await db.from('solicitudes').select('id').eq('telefono', telOriginal).limit(1);
+      if (found?.length) {
+        await db.from('solicitudes').update(solPayload).eq('telefono', telOriginal);
+      } else {
+        await db.from('solicitudes').update(solPayload).ilike('nombre', nombreOriginal);
+      }
+    } else {
+      await db.from('solicitudes').update(solPayload).ilike('nombre', nombreOriginal);
+    }
+
+    msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+    setTimeout(() => cerrarModalSocio(), 1200);
+    cargarSocios();
+  }
+
+  async function eliminarSocio(id, nombre) {
+    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    await db.from('socios_comerciales').delete().eq('id', id);
+    cargarSocios();
   }
 
   // ── Métodos de pago ───────────────────────────────────────────────────────
@@ -1053,6 +2150,29 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     await db.from('config_app').delete().eq('clave', 'terminos_condiciones');
     showMsg('terminos', 'Eliminado. La app usará el texto predeterminado.', 'ok');
     await cargarTerminos();
+  }
+
+  // ── Reglas de Registro ───────────────────────────────────────────────────
+
+  async function cargarReglas() {
+    const { data } = await db.from('config_app').select('valor').eq('clave','limite_tiendas_por_cliente').single();
+    const val = data?.valor ? parseInt(data.valor) : 3;
+    document.getElementById('cfg-limite-tiendas').value = Math.min(10, Math.max(1, val));
+  }
+
+  function ajustarLimite(delta) {
+    const input = document.getElementById('cfg-limite-tiendas');
+    const nuevo = Math.min(100, Math.max(1, (parseInt(input.value) || 100) + delta));
+    input.value = nuevo;
+  }
+
+  async function guardarLimiteTiendas() {
+    const msg   = document.getElementById('msg-limite-tiendas');
+    const valor = String(Math.min(100, Math.max(1, parseInt(document.getElementById('cfg-limite-tiendas').value) || 100)));
+    const { error } = await db.from('config_app').upsert({ clave: 'limite_tiendas_por_cliente', valor }, { onConflict: 'clave' });
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
+    setTimeout(() => msg.textContent = '', 2500);
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

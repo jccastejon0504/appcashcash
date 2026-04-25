@@ -32,6 +32,7 @@ const METODOS: { key: MetodoPago; label: string; icon: string }[] = [
   { key: 'usdt',      label: 'USDT TRC20', icon: 'wallet-outline' },
 ];
 
+
 export default function UnirseSocioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
@@ -47,11 +48,12 @@ export default function UnirseSocioScreen() {
   const [tasaBCV,           setTasaBCV]           = useState<number | null>(null);
 
   type Oferta = { precio_original: number | null; precio_oferta: number; descuento_pct: number | null; meses_gratis: number };
-  const [ofertas,     setOfertas]     = useState<Partial<Record<PlanKey, Oferta>>>({});
-  const [textoPlan,   setTextoPlan]   = useState('');
+  const [ofertas,          setOfertas]          = useState<Partial<Record<PlanKey, Oferta>>>({});
+  const [textoPlan,        setTextoPlan]        = useState('');
+  const [gratisMeses,      setGratisMeses]      = useState<number | null>(null);
   const [preciosBase, setPreciosBase] = useState<Record<PlanKey, number>>({
     basico_mensual: 15, basico_anual: 150,
-    pro_mensual:    25, pro_anual:    250,
+    pro_mensual:    30, pro_anual:    300,
   });
 
   // Paso 1 – Información
@@ -62,6 +64,20 @@ export default function UnirseSocioScreen() {
   const [redes,       setRedes]       = useState('');
   const [direccion,   setDireccion]   = useState('');
   const [descripcion, setDescripcion] = useState('');
+
+  // Selector ciudad → categoría
+  type CiudadItem     = { id: string; nombre: string };
+  type SubcatItem     = { id: string; nombre: string; categoria_id: string };
+  const [ciudades,      setCiudades]      = useState<CiudadItem[]>([]);
+  const [subcategorias, setSubcategorias] = useState<SubcatItem[]>([]);
+  const [ciudadSelId,   setCiudadSelId]   = useState<string | null>(null);
+  const [subcatSelId,   setSubcatSelId]   = useState<string | null>(null);
+  const [dropCiudad,    setDropCiudad]    = useState(false);
+  const [dropSubcat,    setDropSubcat]    = useState(false);
+  const subcatsFiltradas = useMemo(
+    () => ciudadSelId ? subcategorias.filter(s => s.categoria_id === ciudadSelId) : [],
+    [ciudadSelId, subcategorias]
+  );
 
   // Paso 2 – Plan
   const [plan,    setPlan]    = useState<Plan>('basico');
@@ -80,10 +96,15 @@ export default function UnirseSocioScreen() {
   const planKey: PlanKey | null = plan !== 'gratis' ? `${plan}_${periodo}` as PlanKey : null;
   const ofertaActual = planKey ? ofertas[planKey] : null;
   const precio       = planKey ? (ofertaActual?.precio_oferta ?? preciosBase[planKey]) : 0;
-  const totalPasos   = plan === 'gratis' ? 3 : 4;
-  const esPasoFinal  = (plan === 'gratis' && paso === 3) || paso === 4;
+  const totalPasos   = precio === 0 ? 3 : 4;
+  const esPasoFinal  = (precio === 0 && paso === 3) || (precio > 0 && paso === 4);
 
   useEffect(() => {
+    supabase.from('categorias').select('id,nombre').order('orden')
+      .then(({ data }) => { if (data) setCiudades(data as CiudadItem[]); });
+    supabase.from('subcategorias').select('id,nombre,categoria_id').order('nombre')
+      .then(({ data }) => { if (data) setSubcategorias(data as SubcatItem[]); });
+
     // Tasa BCV desde cache
     getItem<{ usd: number }>('bcv_cache').then(c => { if (c?.usd) setTasaBCV(c.usd); });
 
@@ -98,10 +119,7 @@ export default function UnirseSocioScreen() {
       if (!data) return;
       const map: Partial<Record<PlanKey, Oferta>> = {};
       data.forEach((o: any) => {
-        if (o.plan && o.periodo) {
-          const key = `${o.plan}_${o.periodo}` as PlanKey;
-          map[key] = o;
-        }
+        if (o.plan) map[o.plan as PlanKey] = o;
       });
       setOfertas(map);
     });
@@ -109,23 +127,37 @@ export default function UnirseSocioScreen() {
     supabase.from('config_app').select('clave,valor')
       .in('clave', [
         'texto_planes',
-        'precio_basico_mensual', 'precio_basico_anual',
-        'precio_pro_mensual',    'precio_pro_anual',
-        'plan_gratis_visible',   'plan_basico_visible',   'plan_pro_visible',
+        'precio_base_basico_mensual', 'precio_base_basico_anual',
+        'precio_base_pro_mensual',    'precio_base_pro_anual',
+        'plan_gratis_visible',        'plan_basico_visible',   'plan_pro_visible',
+        'gratis_fecha_inicio',        'gratis_fecha_fin',
       ])
       .then(({ data }) => {
         if (!data) return;
         const map: Record<string, string> = {};
         data.forEach((r: any) => { map[r.clave] = r.valor; });
         if (map.texto_planes) setTextoPlan(map.texto_planes);
-        setPlanGratisVisible(map.plan_gratis_visible === 'true');
-        setPlanBasicoVisible(map.plan_basico_visible !== 'false');
-        setPlanProVisible(map.plan_pro_visible === 'true');
+        const gratisVis = map.plan_gratis_visible === 'true';
+        const basicoVis = map.plan_basico_visible !== 'false';
+        const proVis    = map.plan_pro_visible === 'true';
+        setPlanGratisVisible(gratisVis);
+        setPlanBasicoVisible(basicoVis);
+        setPlanProVisible(proVis);
+        // Ajustar plan seleccionado al primer plan visible
+        if (basicoVis) setPlan('basico');
+        else if (proVis) setPlan('pro');
+        else if (gratisVis) setPlan('gratis');
+        if (map.gratis_fecha_inicio && map.gratis_fecha_fin) {
+          const inicio = new Date(map.gratis_fecha_inicio);
+          const fin    = new Date(map.gratis_fecha_fin);
+          const meses  = (fin.getFullYear() - inicio.getFullYear()) * 12 + (fin.getMonth() - inicio.getMonth());
+          setGratisMeses(meses > 0 ? meses : null);
+        }
         setPreciosBase({
-          basico_mensual: parseFloat(map.precio_basico_mensual) || 15,
-          basico_anual:   parseFloat(map.precio_basico_anual)   || 150,
-          pro_mensual:    parseFloat(map.precio_pro_mensual)     || 25,
-          pro_anual:      parseFloat(map.precio_pro_anual)       || 250,
+          basico_mensual: map.precio_base_basico_mensual != null ? parseFloat(map.precio_base_basico_mensual) : 15,
+          basico_anual:   map.precio_base_basico_anual   != null ? parseFloat(map.precio_base_basico_anual)   : 150,
+          pro_mensual:    map.precio_base_pro_mensual    != null ? parseFloat(map.precio_base_pro_mensual)    : 30,
+          pro_anual:      map.precio_base_pro_anual      != null ? parseFloat(map.precio_base_pro_anual)      : 300,
         });
       });
   }, []);
@@ -185,6 +217,46 @@ export default function UnirseSocioScreen() {
   const enviar = async () => {
     setGuardando(true);
 
+    // Verificar duplicado y límite de tiendas por cliente
+    const tel = (telefono.trim() || whatsapp.trim()).replace(/\D/g, '');
+    if (tel) {
+      const [{ data: solExist }, { data: socioExist }, { data: cfgLimite }] = await Promise.all([
+        supabase.from('solicitudes')
+          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+          .in('estado', ['pendiente', 'aprobado']),
+        supabase.from('socios_comerciales')
+          .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+          .eq('activo', true),
+        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
+      ]);
+
+      const nombreLower = nombre.trim().toLowerCase();
+      const dupSol   = solExist?.find(s => s.nombre?.trim().toLowerCase() === nombreLower);
+      const dupSocio = socioExist?.find(s => s.nombre?.trim().toLowerCase() === nombreLower);
+      if (dupSol || dupSocio) {
+        setGuardando(false);
+        Alert.alert('Tienda ya registrada', 'Ya existe una tienda con este nombre y teléfono.');
+        return;
+      }
+
+      // Verificar límite de tiendas por teléfono
+      const limite = cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100;
+      const totalTiendas = (solExist?.length ?? 0) + (socioExist?.length ?? 0);
+      // Contar únicas (pueden solaparse entre tablas por el mismo registro)
+      const idsUnicos = new Set([
+        ...(solExist ?? []).map(s => s.nombre?.trim().toLowerCase()),
+        ...(socioExist ?? []).map(s => s.nombre?.trim().toLowerCase()),
+      ]);
+      if (idsUnicos.size >= limite) {
+        setGuardando(false);
+        Alert.alert(
+          'Límite alcanzado',
+          `Este número ya tiene ${idsUnicos.size} tienda${idsUnicos.size > 1 ? 's' : ''} registrada${idsUnicos.size > 1 ? 's' : ''}. El límite permitido es ${limite}.`
+        );
+        return;
+      }
+    }
+
     const urlComprobante = comprobante ? await subirImagen(comprobante, 'comprobante') : null;
     const urlPortada     = portada     ? await subirImagen(portada, 'portada')         : null;
 
@@ -194,22 +266,23 @@ export default function UnirseSocioScreen() {
         uri ? subirImagen(uri, `foto${i + 2}`) : Promise.resolve(null)
       )
     );
-    // Pad to 11 slots (imagen2–imagen12)
-    const gal: (string | null)[] = [...urlsGaleria, ...Array(11 - galeriaSlots).fill(null)];
+    // Pad to 11 slots (imagen2–imagen12); slice in case plan pro sends 12
+    const gal: (string | null)[] = [...urlsGaleria.slice(0, 11), ...Array(Math.max(0, 11 - galeriaSlots)).fill(null)];
 
-    const { error } = await supabase.from('solicitudes_socios').insert({
-      nombre:      nombre.trim(),
-      ciudad:      ciudad.trim(),
-      telefono:    telefono.trim() || null,
-      whatsapp:    whatsapp.trim() || null,
-      redes:       redes.trim() || null,
-      direccion:   direccion.trim() || null,
-      descripcion: descripcion.trim() || null,
+    const { error } = await supabase.from('solicitudes').insert({
+      nombre:          nombre.trim(),
+      ciudad:          ciudad.trim(),
+      telefono:        telefono.trim() || null,
+      whatsapp:        whatsapp.trim() || null,
+      redes:           redes.trim() || null,
+      direccion:       direccion.trim() || null,
+      descripcion:     descripcion.trim() || null,
+      subcategoria_id: subcatSelId ?? null,
       plan,
-      periodo:     plan !== 'gratis' ? periodo : null,
-      metodo_pago: plan !== 'gratis' ? metodo  : null,
-      referencia:  plan !== 'gratis' ? referencia.trim() : null,
-      monto:       plan !== 'gratis' ? precio  : 0,
+      periodo:     precio > 0 ? periodo : null,
+      metodo_pago: precio > 0 ? metodo  : null,
+      referencia:  precio > 0 ? referencia.trim() : '',
+      monto:       precio,
       imagen:      urlPortada,
       imagen2:     gal[0],
       imagen3:     gal[1],
@@ -222,7 +295,7 @@ export default function UnirseSocioScreen() {
       imagen10:    gal[8],
       imagen11:    gal[9],
       imagen12:    gal[10],
-      comprobante: plan !== 'gratis' ? urlComprobante : null,
+      comprobante: precio > 0 ? urlComprobante : null,
     });
 
     setGuardando(false);
@@ -241,10 +314,9 @@ export default function UnirseSocioScreen() {
 
       {([
         { label: 'Nombre de mi tienda *', value: nombre,    set: setNombre,    placeholder: 'Ej: Panadería La Esperanza' },
-        { label: 'Ciudad *',             value: ciudad,    set: setCiudad,    placeholder: 'Ej: Barquisimeto, Caracas…' },
         { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
         { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
-        { label: 'Redes sociales',       value: redes,     set: setRedes,     placeholder: 'Ej: @minegocio' },
+        { label: 'Redes',                value: redes,     set: setRedes,     placeholder: 'Ej: @minegocio' },
         { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
       ] as any[]).map(({ label, value, set, placeholder, keyboard }) => (
         <View key={label} style={styles.campo}>
@@ -257,6 +329,62 @@ export default function UnirseSocioScreen() {
           />
         </View>
       ))}
+
+      {/* Selector Ciudad */}
+      <View style={styles.campo}>
+        <Text style={[styles.label, { color: Colors.textMuted }]}>Ciudad *</Text>
+        <TouchableOpacity
+          style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+          onPress={() => { setDropCiudad(v => !v); setDropSubcat(false); }}
+          activeOpacity={0.8}>
+          <Text style={{ color: ciudadSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
+            {ciudadSelId ? (ciudades.find(c => c.id === ciudadSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una ciudad…'}
+          </Text>
+          <Ionicons name={dropCiudad ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
+        {dropCiudad && (
+          <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+            {ciudades.map(c => (
+              <TouchableOpacity key={c.id}
+                style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
+                onPress={() => { setCiudadSelId(c.id); setCiudad(c.nombre); setSubcatSelId(null); setDropCiudad(false); }}>
+                <Text style={{ color: c.id === ciudadSelId ? Colors.accent : Colors.text, fontWeight: c.id === ciudadSelId ? '700' : '400' }}>{c.nombre}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Selector Categoría (solo si hay ciudad seleccionada) */}
+      {ciudadSelId && (
+        <View style={styles.campo}>
+          <Text style={[styles.label, { color: Colors.textMuted }]}>Categoría</Text>
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+            onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); }}
+            activeOpacity={0.8}>
+            <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
+              {subcatSelId ? (subcatsFiltradas.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
+            </Text>
+            <Ionicons name={dropSubcat ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          {dropSubcat && (
+            <View style={[styles.dropdownList, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+              {subcatsFiltradas.length === 0 ? (
+                <View style={styles.dropdownItem}>
+                  <Text style={{ color: Colors.textMuted }}>Sin categorías para esta ciudad</Text>
+                </View>
+              ) : subcatsFiltradas.map(s => (
+                <TouchableOpacity key={s.id}
+                  style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
+                  onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); }}>
+                  <Text style={{ color: s.id === subcatSelId ? Colors.accent : Colors.text, fontWeight: s.id === subcatSelId ? '700' : '400' }}>{s.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.campo}>
         <Text style={[styles.label, { color: Colors.textMuted }]}>Descripción breve</Text>
@@ -336,7 +464,12 @@ export default function UnirseSocioScreen() {
                   ? 'Perfil + 1 foto de portada'
                   : `Perfil + galería de ${p.galSlots} fotos`}
               </Text>
-              {meses > 0 && (
+              {p.free && gratisMeses != null && gratisMeses > 0 && (
+                <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700' }}>
+                  {gratisMeses} {gratisMeses === 1 ? 'mes' : 'meses'} gratis
+                </Text>
+              )}
+              {!p.free && meses > 0 && (
                 <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700' }}>
                   +{meses} mes{meses !== 1 ? 'es' : ''} gratis
                 </Text>
@@ -589,20 +722,18 @@ export default function UnirseSocioScreen() {
         {paso === 3 && renderPaso3()}
         {paso === 4 && renderPaso4()}
         {paso === 5 && renderPaso5()}
-      </ScrollView>
 
-      {paso < 5 && (
-        <View style={[styles.footer, { backgroundColor: Colors.card, borderTopColor: Colors.border }]}>
+        {paso < 5 && (
           <TouchableOpacity
-            style={[styles.btnSiguiente, { backgroundColor: pasoValido() ? Colors.accent : Colors.border }]}
+            style={[styles.btnSiguiente, { backgroundColor: pasoValido() ? Colors.accent : Colors.border, marginTop: Spacing.lg }]}
             onPress={siguiente} disabled={!pasoValido() || guardando}>
             {guardando
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.btnSiguienteText}>{esPasoFinal ? 'Enviar solicitud' : 'Siguiente'}</Text>
             }
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -634,6 +765,12 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     fontSize: FontSize.md,
   },
   inputMulti:    { minHeight: 80, textAlignVertical: 'top', paddingTop: 12 },
+  dropdownList: {
+    borderWidth: 1, borderRadius: Radius.md, marginTop: 4, overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingHorizontal: Spacing.md, paddingVertical: 13, borderBottomWidth: 1,
+  },
 
   /* Toggle período */
   toggleWrap: {
@@ -714,11 +851,6 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   avisoTexto:    { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
 
-  /* Footer */
-  footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: Spacing.lg, borderTopWidth: 1,
-  },
   btnSiguiente: {
     borderRadius: Radius.lg, paddingVertical: 15,
     alignItems: 'center', justifyContent: 'center',

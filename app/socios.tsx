@@ -8,6 +8,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,7 +23,8 @@ export default function SociosScreen() {
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
   const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
-  const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null }[]>([]);
+  const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null }[]>([]);
+  const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
   const [submenu,          setSubmenu]          = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,      setBusqueda]      = useState('');
@@ -66,23 +68,56 @@ export default function SociosScreen() {
     });
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const cargarMisSocios = async () => {
       const enviada = await AsyncStorage.getItem('solicitud_socio_enviada');
       if (enviada === 'true') setYaEnvioSolicitud(true);
       const telefono = await AsyncStorage.getItem('socio_telefono');
       if (!telefono) return;
       const tel = telefono.replace(/\D/g, '');
-      const { data } = await supabase
-        .from('socios_comerciales')
-        .select('id, nombre, imagen')
-        .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
-        .order('nombre', { ascending: true });
-      if (data && data.length > 0)
-        setMisSocios(data as { id: string; nombre: string; imagen: string | null }[]);
+
+      type MiSocio = { id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; telefono?: string | null; whatsapp?: string | null };
+
+      // Cargar IDs guardados previamente y el límite en paralelo
+      const idsRaw = await AsyncStorage.getItem('mis_socios_ids');
+      const idsGuardados: string[] = idsRaw ? JSON.parse(idsRaw) : [];
+
+      // Buscar por teléfono actual + por IDs guardados + límite, todo en paralelo
+      const promesas: Promise<any>[] = [
+        supabase
+          .from('socios_comerciales')
+          .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
+          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`),
+        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
+      ];
+      if (idsGuardados.length > 0) {
+        promesas.push(
+          supabase
+            .from('socios_comerciales')
+            .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
+            .in('id', idsGuardados)
+        );
+      }
+
+      const [{ data: porTel }, { data: cfgLimite }, porIdRes] = await Promise.all(promesas);
+      setLimiteTiendas(cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100);
+
+      // Unir resultados por teléfono e IDs, sin duplicados
+      const mapaResultados = new Map<string, MiSocio>();
+      for (const s of [...(porTel ?? []), ...(porIdRes?.data ?? [])]) {
+        mapaResultados.set(s.id, s as MiSocio);
+      }
+      const resultado = Array.from(mapaResultados.values())
+        .sort((a, b) => a.nombre?.localeCompare(b.nombre ?? '') ?? 0);
+
+      // Guardar todos los IDs encontrados (acumulativo, nunca borra)
+      const todosIds = Array.from(new Set([...idsGuardados, ...resultado.map(s => s.id)]));
+      await AsyncStorage.setItem('mis_socios_ids', JSON.stringify(todosIds));
+
+      setMisSocios(resultado);
     };
     cargarMisSocios();
-  }, []);
+  }, []));
 
   const destacados = useMemo(() => {
     let lista = socios.filter(s => s.destacado);
@@ -157,8 +192,8 @@ export default function SociosScreen() {
       )}
       <View style={styles.miniCardBody}>
         <Text style={[styles.miniCardNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-        {s.direccion ? (
-          <Text style={[styles.miniCardDir, { color: Colors.textMuted }]} numberOfLines={1}>{s.direccion}</Text>
+        {(s.ciudad || s.direccion) ? (
+          <Text style={[styles.miniCardDir, { color: Colors.textMuted }]} numberOfLines={1}>{s.ciudad || s.direccion}</Text>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -445,28 +480,42 @@ export default function SociosScreen() {
           <View style={{ marginTop: Spacing.sm, gap: 8 }}>
 
             {/* Negocios aprobados detectados automáticamente */}
-            {misSocios.map(s => (
-              <TouchableOpacity key={s.id}
-                onPress={() => { setSubmenu(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
-                activeOpacity={0.85}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' }}>
-                {/* Miniatura */}
-                {s.imagen ? (
-                  <Image source={{ uri: s.imagen }} style={{ width: 54, height: 54 }} resizeMode="cover" />
-                ) : (
-                  <View style={{ width: 54, height: 54, backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="storefront-outline" size={22} color={Colors.accent} />
+            {misSocios.map(s => {
+              const vencida = s.fecha_vencimiento
+                ? new Date(s.fecha_vencimiento).getTime() < Date.now()
+                : false;
+              const mesVenc = s.fecha_vencimiento
+                ? new Date(s.fecha_vencimiento).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+                : null;
+              return (
+                <TouchableOpacity key={s.id}
+                  onPress={() => { setSubmenu(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
+                  activeOpacity={0.85}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: vencida ? '#ef4444' : Colors.border, overflow: 'hidden' }}>
+                  {/* Miniatura */}
+                  {s.imagen ? (
+                    <Image source={{ uri: s.imagen }} style={{ width: 54, height: 54 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: 54, height: 54, backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="storefront-outline" size={22} color={Colors.accent} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
+                    {vencida && mesVenc ? (
+                      <Text style={{ color: '#ef4444', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>
+                        ⚠ Vencida · {mesVenc}
+                      </Text>
+                    ) : (
+                      <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar mi tienda · subir imágenes</Text>
+                    )}
                   </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
-                  <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar mi tienda · subir imágenes</Text>
-                </View>
-                <View style={{ backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 8, marginRight: 10, borderRadius: Radius.md }}>
-                  <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={{ backgroundColor: vencida ? '#ef4444' : Colors.accent, paddingHorizontal: 12, paddingVertical: 8, marginRight: 10, borderRadius: Radius.md }}>
+                    <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
 
             {/* Si no hay negocios aún */}
             {misSocios.length === 0 && (
@@ -479,14 +528,16 @@ export default function SociosScreen() {
               </View>
             )}
 
-            {/* Registrar nuevo negocio */}
-            <TouchableOpacity
-              onPress={() => { setSubmenu(false); router.push('/unirse-socio'); }}
-              activeOpacity={0.8}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
-              <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
-              <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
-            </TouchableOpacity>
+            {/* Registrar nuevo negocio — solo si no se alcanzó el límite */}
+            {misSocios.length < limiteTiendas && (
+              <TouchableOpacity
+                onPress={() => { setSubmenu(false); router.push('/unirse-socio'); }}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
+                <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
+                <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
+              </TouchableOpacity>
+            )}
 
           </View>
         )}
@@ -591,31 +642,32 @@ export default function SociosScreen() {
 
               {/* Cards horizontales: solo cuando NO hay filtro activo */}
               {!subcatFiltro && destacados.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.destacadosRow}>
-                  {destacados.map(s => (
-                    <TouchableOpacity key={s.id} style={[styles.cardDestacado, { backgroundColor: Colors.card, borderColor: Colors.border }]} onPress={() => setSocioModal(s)} activeOpacity={0.85}>
-                      {s.imagen ? (
-                        <Image source={{ uri: s.imagen }} style={styles.cardDestacadoImg} resizeMode="cover" />
-                      ) : (
-                        <View style={[styles.cardDestacadoImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
-                          <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
-                        </View>
-                      )}
-                      <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-                      {s.whatsapp ? (
-                        <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
-                          <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
-                          <Text style={[styles.cardDestacadoBtnText, { color: '#25D366' }]}>WhatsApp</Text>
-                        </TouchableOpacity>
-                      ) : s.telefono ? (
-                        <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
-                          <Ionicons name="call-outline" size={13} color={Colors.success} />
-                          <Text style={[styles.cardDestacadoBtnText, { color: Colors.success }]}>Llamar</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                    {destacados.map(s => (
+                      <TouchableOpacity key={s.id} style={[styles.cardDestacado, { width: '49%', backgroundColor: Colors.card, borderColor: Colors.border }]} onPress={() => setSocioModal(s)} activeOpacity={0.85}>
+                        {s.imagen ? (
+                          <Image source={{ uri: s.imagen }} style={styles.cardDestacadoImg} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.cardDestacadoImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
+                            <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
+                          </View>
+                        )}
+                        <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
+                        {s.ciudad ? <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1, paddingHorizontal: 8 }} numberOfLines={1}>{s.ciudad}</Text> : null}
+                        {s.whatsapp ? (
+                          <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
+                            <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+                            <Text style={[styles.cardDestacadoBtnText, { color: '#25D366' }]}>WhatsApp</Text>
+                          </TouchableOpacity>
+                        ) : s.telefono ? (
+                          <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
+                            <Ionicons name="call-outline" size={13} color={Colors.success} />
+                            <Text style={[styles.cardDestacadoBtnText, { color: Colors.success }]}>Llamar</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
               )}
             </View>
           )}
@@ -671,7 +723,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   directorioBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.md },
   directorioBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
 
-  searchWrap: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, zIndex: 10 },
+  searchWrap: { paddingHorizontal: Spacing.sm, paddingTop: Spacing.md, zIndex: 10 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: Spacing.md, paddingVertical: 10,
@@ -692,22 +744,22 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   reintentarBtn:  { paddingHorizontal: 24, paddingVertical: 10, borderRadius: Radius.md },
   reintentarText: { fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
 
-  body: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 40 },
+  body: { padding: Spacing.sm, gap: Spacing.sm, paddingBottom: 40 },
 
   seccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   seccionTitulo: { fontSize: FontSize.sm, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
 
   // Destacados horizontal
-  destacadosRow: { gap: Spacing.md, paddingBottom: Spacing.sm },
+  destacadosRow: { gap: 10, paddingBottom: 4, paddingHorizontal: 2 },
   cardDestacado: {
-    width: 150, borderRadius: Radius.lg, borderWidth: 1,
-    overflow: 'hidden', gap: 6, paddingBottom: Spacing.sm,
+    width: 155, borderRadius: 16, borderWidth: 1,
+    overflow: 'hidden', gap: 5, paddingBottom: 10,
   },
   cardDestacadoImg:      { width: '100%', height: 100 },
   cardDestacadoNombre:   { fontSize: FontSize.sm, fontWeight: '700', paddingHorizontal: 8 },
   cardDestacadoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    marginHorizontal: 8, paddingVertical: 6, borderRadius: Radius.md, borderWidth: 1,
+    marginHorizontal: 8, paddingVertical: 6, borderRadius: 10, borderWidth: 1,
   },
   cardDestacadoBtnText:  { fontSize: 11, fontWeight: '700' },
 
@@ -720,13 +772,13 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   badgeDestacadoText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
   // Grilla 2 columnas
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   miniCard: {
-    width: '47%', borderRadius: Radius.lg, borderWidth: 1,
+    width: '49%', borderRadius: 16, borderWidth: 1,
     overflow: 'hidden',
   },
-  miniCardImg:    { width: '100%', height: 110 },
-  miniCardBody:   { padding: Spacing.sm, gap: 2 },
+  miniCardImg:    { width: '100%', height: 100 },
+  miniCardBody:   { padding: 8, gap: 2 },
   miniCardNombre: { fontSize: FontSize.sm, fontWeight: '700' },
   miniCardDir:    { fontSize: 11 },
 
@@ -747,14 +799,14 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   modalContent: {
     borderTopLeftRadius: Radius.lg * 2, borderTopRightRadius: Radius.lg * 2,
-    maxHeight: '75%', overflow: 'hidden',
+    overflow: 'hidden',
   },
   modalCerrar: {
     position: 'absolute', top: 16, right: 16, zIndex: 10,
     padding: 6, borderRadius: 99,
   },
-  modalImagen:            { width: '100%', height: 200 },
-  modalImagenPlaceholder: { width: '100%', height: 160, alignItems: 'center', justifyContent: 'center' },
+  modalImagen:            { width: '100%', height: 300 },
+  modalImagenPlaceholder: { width: '100%', height: 260, alignItems: 'center', justifyContent: 'center' },
   modalBody:              { padding: Spacing.lg, paddingBottom: 40 },
   modalNombre:            { fontSize: FontSize.xl, fontWeight: '800' },
 

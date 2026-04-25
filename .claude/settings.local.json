@@ -55,7 +55,10 @@
       "Bash(export PATH=\"$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH\")",
       "Bash(./gradlew assembleDebug)",
       "Bash(mkdir -p \"F:/Proyectos app/CalculadoraBCVApp/admin\")",
-      "Bash(mkdir -p \"F:/Proyectos app/CalculadoraBCVApp/scripts\")"
+      "Bash(mkdir -p \"F:/Proyectos app/CalculadoraBCVApp/scripts\")",
+      "Bash(ls app/*.tsx)",
+      "Read(//f/Proyectos app/**)",
+      "Bash(dir \"F:/Proyectos app/\")"
     ]
   }
 }
