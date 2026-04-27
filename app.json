@@ -43,6 +43,12 @@
       "expo-font",
       "@react-native-community/datetimepicker",
       "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite acceder a tu ubicación para mostrar comercios cercanos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

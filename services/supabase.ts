@@ -48,4 +48,6 @@ export type SocioComercial = {
   destacado: boolean;
   activo: boolean | null;
   fecha_vencimiento: string | null;
+  ciudad: string | null;
+  descripcion: string | null;
 };

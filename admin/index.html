@@ -335,9 +335,6 @@
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
     </div>
-    <div class="nav-item" data-section="reglas">
-      <span class="icon">⚙️</span> Reglas de Registro
-    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -405,6 +402,31 @@
 
     <!-- ══ OFERTAS ═════════════════════════════════════════ -->
     <div class="section" id="section-ofertas">
+
+      <!-- Reglas de Registro (primer bloque) -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h2>Reglas de Registro</h2>
+        </div>
+        <div style="padding:20px;max-width:480px;display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Límite de tiendas por cliente</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              Número máximo de tiendas que un mismo número de teléfono puede registrar. Valor entre 1 y 100.
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <input type="number" id="cfg-limite-tiendas" min="1" max="100" value="100"
+                style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(-1)">−</button>
+                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(1)">+</button>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="guardarLimiteTiendas()">Guardar</button>
+              <span id="msg-limite-tiendas" style="font-size:12px"></span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Fila 1: Visibilidad + Precios base -->
       <div class="grid-2" style="margin-bottom:20px">
@@ -783,6 +805,18 @@
         <div class="card-header">
           <h2>Solicitudes de membresía</h2>
           <div style="display:flex;gap:8px;align-items:center">
+            <!-- Buscador con autocompletado -->
+            <div style="position:relative">
+              <div style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:6px;padding:5px 10px;background:var(--bg);font-size:12px;height:30px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="buscar-solicitudes" type="text" placeholder="Buscar…"
+                  style="border:none;outline:none;background:transparent;font-size:12px;width:160px;color:var(--text)"
+                  oninput="filtrarSolicitudesLocal()" autocomplete="off" />
+                <button id="btn-limpiar-busq-sol" onclick="limpiarBusqSol()" style="display:none;border:none;background:none;cursor:pointer;padding:0;line-height:1;color:var(--muted);font-size:13px">✕</button>
+              </div>
+              <!-- Sugerencias autocompletado -->
+              <div id="sug-solicitudes" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px #0002;z-index:200;overflow:hidden;max-height:220px;overflow-y:auto"></div>
+            </div>
             <select id="filtro-solicitudes" style="width:auto;padding:6px 10px;font-size:12px">
               <option value="">Todas</option>
               <option value="pendiente">Pendientes</option>
@@ -1017,35 +1051,6 @@
       </div>
     </div>
 
-    <!-- ══ REGLAS DE REGISTRO ════════════════════════════════ -->
-    <div class="section" id="section-reglas">
-      <div class="card">
-        <div class="card-header">
-          <h2>Reglas de Registro</h2>
-        </div>
-        <div style="padding:20px;max-width:480px;display:flex;flex-direction:column;gap:20px">
-
-          <!-- Límite de tiendas por cliente -->
-          <div>
-            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Límite de tiendas por cliente</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-              Número máximo de tiendas que un mismo número de teléfono puede registrar. Valor entre 1 y 100.
-            </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-              <input type="number" id="cfg-limite-tiendas" min="1" max="100" value="100"
-                style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(-1)">−</button>
-                <button class="btn btn-outline btn-sm" onclick="ajustarLimite(1)">+</button>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="guardarLimiteTiendas()">Guardar</button>
-              <span id="msg-limite-tiendas" style="font-size:12px"></span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
 
   </div><!-- /content -->
 </div><!-- /main -->
@@ -1064,7 +1069,6 @@
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
     terminos:     { title: 'Términos y Condiciones',   sub: 'Texto legal que se muestra en la app' },
-    reglas:       { title: 'Reglas de Registro',       sub: 'Límites y restricciones para nuevos socios' },
   };
 
   const TERMINOS_DEFAULT = `1. Aceptación de los Términos
@@ -1127,7 +1131,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
     if (id === 'terminos')    cargarTerminos();
-    if (id === 'reglas')      cargarReglas();
   }
 
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -1252,6 +1255,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   async function cargarOfertas() {
+    cargarReglas();   // carga el límite de tiendas que ahora vive en este mismo módulo
     // Cargar config_app (visibilidad + precios base + texto promo)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
@@ -1439,7 +1443,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarSolicitudes() {
     const filtro = document.getElementById('filtro-solicitudes').value;
-    let q = db.from('solicitudes').select('*,subcategorias(id,nombre)').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
 
     const [{ data, error }, { data: cats }, { data: ciu }] = await Promise.all([
@@ -1458,6 +1462,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const estado       = s.estado ?? 'pendiente';
       const colorBorde   = estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
       const uid          = s.id.replace(/-/g,'').slice(0,8);
+      const catNombre    = _catsSol.find(c => c.id === s.subcategoria_id)?.nombre ?? null;
       const catActual    = s.subcategoria_id ?? '';
       const ciudadActual = s.ciudad ?? '';
       const optCats      = _catsSol.map(c =>
@@ -1467,8 +1472,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         `<option value="${c.nombre}"${ciudadActual === c.nombre ? ' selected' : ''}>${c.nombre}</option>`
       ).join('');
 
+      const _tel = (s.telefono || s.whatsapp || '').replace(/\D/g,'');
       return `
-      <div style="border:1px solid ${colorBorde};border-radius:12px;overflow:hidden;background:var(--bg)">
+      <div style="border:1px solid ${colorBorde};border-radius:12px;overflow:hidden;background:var(--bg)"
+        data-sol-nombre="${(s.nombre ?? '').replace(/"/g,'&quot;')}"
+        data-sol-ciudad="${(s.ciudad ?? '').replace(/"/g,'&quot;')}"
+        data-sol-plan="${(s.plan ?? '').replace(/"/g,'&quot;')}"
+        data-sol-tel="${_tel}">
         <!-- Cabecera -->
         <div style="display:flex;align-items:center;background:var(--card);gap:10px;padding:12px 16px">
           <div onclick="toggleSol('${uid}')" style="flex:1;min-width:0;cursor:pointer;user-select:none">
@@ -1488,7 +1498,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <!-- Campos del cliente -->
           <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
             <div style="grid-column:1/-1;font-size:11px;color:var(--muted)">${fmtFecha(s.created_at)} · ${s.tipo ?? 'nueva'}</div>
-            ${s.subcategorias?.nombre ? `<div style="grid-column:1/-1">🏷️ <b>Categoría asignada:</b> ${s.subcategorias.nombre}</div>` : ''}
+            ${catNombre ? `<div style="grid-column:1/-1">🏷️ <b>Categoría asignada:</b> ${catNombre}</div>` : ''}
             ${s.telefono   ? `<div>📞 <b>Tel:</b> ${s.telefono}</div>` : ''}
             ${s.whatsapp   ? `<div>💬 <b>WA:</b> ${s.whatsapp}</div>` : ''}
             ${s.redes      ? `<div style="grid-column:1/-1">🌐 <b>Redes:</b> ${s.redes}</div>` : ''}
@@ -1605,6 +1615,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         </div>
       </div>`;
     }).join('');
+
+    // Limpiar buscador al recargar
+    const inputBusq = document.getElementById('buscar-solicitudes');
+    if (inputBusq) inputBusq.value = '';
+    const btnLimpiar = document.getElementById('btn-limpiar-busq-sol');
+    if (btnLimpiar) btnLimpiar.style.display = 'none';
 
     // Cargar estados de bloqueo para solicitudes aprobadas
     const aprobadas = data.filter(s => s.estado === 'aprobado');
@@ -1869,7 +1885,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
 
     msg.style.color='var(--green)'; msg.textContent='✓ Guardado';
-    setTimeout(() => { toggleEditSol(uid); cargarSolicitudes(); }, 1200);
+    setTimeout(() => { cargarSolicitudes(); }, 1200);
   }
 
   function toggleSol(uid) {
@@ -1941,7 +1957,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     cargarSolicitudes();
   }
 
+  const _procesandoEstado = new Set();
   async function cambiarEstado(id, estado) {
+    if (_procesandoEstado.has(id)) return;
+    _procesandoEstado.add(id);
+    // Deshabilitar botones de esa solicitud mientras procesa
+    document.querySelectorAll(`[onclick*="cambiarEstado('${id}'"]`).forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+    try {
     await db.from('solicitudes').update({ estado }).eq('id', id);
 
     if (estado === 'aprobado') {
@@ -2037,17 +2059,37 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           // Guardar el ID del nuevo socio en la solicitud para que ediciones futuras lo encuentren directamente
           if (nuevoSocio?.id) {
             await db.from('solicitudes').update({ socio_id: nuevoSocio.id }).eq('id', id);
+            // Crear galería de productos desde galeria_data (registrado en la app)
+            if (sol.galeria_data) {
+              try {
+                const items = JSON.parse(sol.galeria_data);
+                const rows = items
+                  .filter(it => it.imagen || it.titulo)
+                  .map((it, idx) => ({
+                    socio_id:  nuevoSocio.id,
+                    imagen:    it.imagen    || null,
+                    imagen2:   null,
+                    imagen3:   null,
+                    titulo:    it.titulo    || null,
+                    precio:    it.precio    ? parseFloat(it.precio)    || null : null,
+                    precio_bs: it.precio_bs ? parseFloat(it.precio_bs) || null : null,
+                    orden:     idx,
+                  }));
+                if (rows.length > 0) await db.from('galeria_items').insert(rows);
+              } catch(e) { /* galeria_data inválido, ignorar */ }
+            }
           }
         }
 
-        // Si es renovación: limpiar solicitudes y socios_comerciales vencidos del mismo negocio
-        if (sol.tipo === 'renovacion') {
-          // ── 1. Eliminar solicitudes viejas ────────────────────────────────
+        // ── Limpiar solicitudes y socios_comerciales vencidos del mismo negocio ──
+        // Corre siempre (renovacion O nueva), protegido por nombre exacto
+        {
+          // ── 1. Eliminar solicitudes viejas del mismo negocio ─────────────
           let solsViejas = [];
 
           if (sol.socio_id) {
             const { data: porSocioId } = await db.from('solicitudes')
-              .select('id,fecha_vencimiento,tipo')
+              .select('id,nombre,fecha_vencimiento,tipo,estado')
               .eq('socio_id', sol.socio_id)
               .neq('id', id);
             if (porSocioId?.length) solsViejas = porSocioId;
@@ -2055,24 +2097,25 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
           if (!solsViejas.length && tel) {
             const { data: porTel } = await db.from('solicitudes')
-              .select('id,nombre,fecha_vencimiento,tipo')
+              .select('id,nombre,fecha_vencimiento,tipo,estado')
               .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
               .neq('id', id);
+            // Solo solicitudes del mismo negocio (nombre exacto)
             solsViejas = (porTel ?? []).filter(s =>
               s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase()
             );
           }
 
-          const aEliminarSols = solsViejas.filter(s => {
-            const vencida = s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date();
-            return vencida || s.tipo !== 'renovacion';
-          });
+          // Eliminar las ya aprobadas (superadas por esta nueva aprobación) o rechazadas
+          const aEliminarSols = solsViejas.filter(s =>
+            s.estado === 'aprobado' || s.estado === 'rechazado'
+          );
           for (const vieja of aEliminarSols) {
             await db.from('solicitudes').delete().eq('id', vieja.id);
           }
 
           // ── 2. Eliminar socios_comerciales vencidos del mismo negocio ─────
-          // Antes de eliminarlos, rescatar sus datos hacia el registro activo
+          // IMPORTANTE: filtrar también por nombre para no borrar otras tiendas con el mismo teléfono
           if (socioId && tel) {
             const { data: sociosViejos } = await db.from('socios_comerciales')
               .select('*')
@@ -2080,21 +2123,23 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
               .neq('id', socioId);
 
             const ahora = new Date();
-            const vencidos = (sociosViejos ?? [])
-              .filter(s => s.fecha_vencimiento && new Date(s.fecha_vencimiento) < ahora);
+            const vencidos = (sociosViejos ?? []).filter(s =>
+              s.fecha_vencimiento &&
+              new Date(s.fecha_vencimiento) < ahora &&
+              // Solo eliminar si es el mismo negocio (nombre exacto) — evita borrar otras tiendas con el mismo teléfono
+              s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase()
+            );
 
             if (vencidos.length) {
-              // Tomar el más reciente como fuente de datos
+              // Rescatar datos del más reciente antes de eliminarlo
               const fuente = vencidos.sort((a, b) =>
                 new Date(b.fecha_vencimiento) - new Date(a.fecha_vencimiento)
               )[0];
 
-              // Obtener el registro activo actual
               const { data: activo } = await db.from('socios_comerciales')
                 .select('*').eq('id', socioId).single();
 
               if (activo && fuente) {
-                // Copiar al activo solo los campos que estén vacíos/null
                 const camposRescate = [
                   'whatsapp','web','ciudad','direccion','descripcion','subcategoria_id',
                   'imagen','imagen2','imagen3','imagen4','imagen5','imagen6',
@@ -2109,7 +2154,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
                 }
               }
 
-              // Ahora sí eliminar los vencidos
               for (const v of vencidos) {
                 await db.from('socios_comerciales').delete().eq('id', v.id);
               }
@@ -2127,9 +2171,68 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const arrow = document.getElementById(`arrow-${uid}`);
     if (body)  { body.style.display = 'block'; }
     if (arrow) { arrow.style.transform = 'rotate(180deg)'; }
+    } finally {
+      _procesandoEstado.delete(id);
+    }
   }
 
   document.getElementById('filtro-solicitudes').addEventListener('change', cargarSolicitudes);
+
+  // ── Buscador solicitudes ──────────────────────────────────────────────────
+
+  function filtrarSolicitudesLocal() {
+    const q = document.getElementById('buscar-solicitudes').value.trim().toLowerCase();
+    document.getElementById('btn-limpiar-busq-sol').style.display = q ? 'inline' : 'none';
+
+    // Mostrar/ocultar cards
+    const cards = document.querySelectorAll('#lista-solicitudes > div[data-sol-nombre]');
+    cards.forEach(card => {
+      const haystack = card.dataset.solNombre + ' ' + (card.dataset.solCiudad || '') + ' ' + (card.dataset.solPlan || '') + ' ' + (card.dataset.solTel || '');
+      card.style.display = (!q || haystack.toLowerCase().includes(q)) ? '' : 'none';
+    });
+
+    // Sugerencias
+    const sugBox = document.getElementById('sug-solicitudes');
+    if (!q) { sugBox.style.display = 'none'; return; }
+    const items = new Set();
+    cards.forEach(card => {
+      const haystack = card.dataset.solNombre + '|' + (card.dataset.solCiudad || '') + '|' + (card.dataset.solPlan || '');
+      haystack.split('|').forEach(part => {
+        if (part && part.toLowerCase().includes(q)) items.add(part);
+      });
+    });
+    if (!items.size) { sugBox.style.display = 'none'; return; }
+    sugBox.innerHTML = Array.from(items).slice(0, 8).map(s =>
+      `<div onclick="aplicarBusqSol('${s.replace(/'/g,"\\'")}')" style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">${resaltarCoincidencia(s, q)}</div>`
+    ).join('');
+    sugBox.style.display = 'block';
+  }
+
+  function resaltarCoincidencia(texto, q) {
+    const idx = texto.toLowerCase().indexOf(q);
+    if (idx < 0) return texto;
+    return texto.slice(0, idx) + `<b style="color:var(--accent)">${texto.slice(idx, idx + q.length)}</b>` + texto.slice(idx + q.length);
+  }
+
+  function aplicarBusqSol(texto) {
+    document.getElementById('buscar-solicitudes').value = texto;
+    document.getElementById('sug-solicitudes').style.display = 'none';
+    filtrarSolicitudesLocal();
+  }
+
+  function limpiarBusqSol() {
+    document.getElementById('buscar-solicitudes').value = '';
+    document.getElementById('btn-limpiar-busq-sol').style.display = 'none';
+    document.getElementById('sug-solicitudes').style.display = 'none';
+    document.querySelectorAll('#lista-solicitudes > div[data-sol-nombre]').forEach(c => c.style.display = '');
+  }
+
+  // Cerrar sugerencias al hacer clic fuera
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#sug-solicitudes') && !e.target.closest('#buscar-solicitudes')) {
+      document.getElementById('sug-solicitudes').style.display = 'none';
+    }
+  });
 
   // ── Estados y Ciudades ────────────────────────────────────────────────────
 
@@ -2444,9 +2547,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { error } = await db.from('socios_comerciales').update(payload).eq('id', id);
     if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
 
-    // Propagar cambios a solicitudes (por teléfono original o nombre original)
-    const telOriginal    = document.getElementById('edit-socio-telefono-original').value;
-    const nombreOriginal = document.getElementById('edit-socio-nombre').dataset.original ?? payload.nombre;
+    // Propagar cambios a la solicitud vinculada (solo por socio_id para evitar afectar otras tiendas con mismo teléfono)
     const solPayload = {
       nombre:            payload.nombre,
       telefono:          payload.telefono,
@@ -2458,17 +2559,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       plan:              payload.plan,
       fecha_vencimiento: payload.fecha_vencimiento,
     };
-    // Intentar por teléfono primero, si no hay resultado intentar por nombre
-    if (telOriginal) {
-      const { data: found } = await db.from('solicitudes').select('id').eq('telefono', telOriginal).limit(1);
-      if (found?.length) {
-        await db.from('solicitudes').update(solPayload).eq('telefono', telOriginal);
-      } else {
-        await db.from('solicitudes').update(solPayload).ilike('nombre', nombreOriginal);
-      }
-    } else {
-      await db.from('solicitudes').update(solPayload).ilike('nombre', nombreOriginal);
-    }
+    await db.from('solicitudes').update(solPayload).eq('socio_id', id);
 
     msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
     setTimeout(() => cerrarModalSocio(), 1200);

@@ -344,7 +344,13 @@ export default function CalculadoraBCVScreen() {
           <Pressable style={{ flex: 1 }} onPress={() => setConfigVisible(false)} />
           <View style={[s.configSheet, { backgroundColor: T.card, borderColor: T.border }]}>
             <View style={[s.configHandle, { backgroundColor: T.border }]} />
-            <Text style={[s.configTitle, { color: T.text }]}>Apariencia</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[s.configTitle, { color: T.text, flex: 1 }]}>Apariencia</Text>
+              <Pressable onPress={() => setConfigVisible(false)} hitSlop={8}
+                style={{ padding: 6, borderRadius: 20, backgroundColor: T.cardAlt }}>
+                <Ionicons name="close" size={18} color={T.textMuted} />
+              </Pressable>
+            </View>
             <ScrollView ref={configScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md }}>
 
             {/* Toggle claro / oscuro */}

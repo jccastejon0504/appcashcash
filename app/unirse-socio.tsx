@@ -17,6 +17,7 @@ type Plan      = 'gratis' | 'basico' | 'pro';
 type Periodo   = 'mensual' | 'anual';
 type PlanKey   = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 type MetodoPago = 'pagomovil' | 'zelle' | 'usdt';
+type GaleriaItemLocal = { imagen: string | null; titulo: string; precio: string; precio_bs: string; };
 
 const PLAN_GALERIA: Record<Plan, number> = { gratis: 3, basico: 6, pro: 12 };
 
@@ -81,8 +82,9 @@ export default function UnirseSocioScreen() {
   const [periodo, setPeriodo] = useState<Periodo>('mensual');
 
   // Paso 3 – Fotos
-  const [portada,  setPortada]  = useState<string | null>(null);
-  const [galeria,  setGaleria]  = useState<(string | null)[]>(Array(12).fill(null));
+  const [portada,     setPortada]     = useState<string | null>(null);
+  const emptyGalItem = (): GaleriaItemLocal => ({ imagen: null, titulo: '', precio: '', precio_bs: '' });
+  const [galeriaData, setGaleriaData] = useState<GaleriaItemLocal[]>(Array(12).fill(null).map(emptyGalItem));
 
   // Paso 4 – Pago (solo planes pagos)
   const [metodo,      setMetodo]      = useState<MetodoPago>('pagomovil');
@@ -257,14 +259,18 @@ export default function UnirseSocioScreen() {
     const urlComprobante = comprobante ? await subirImagen(comprobante, 'comprobante') : null;
     const urlPortada     = portada     ? await subirImagen(portada, 'portada')         : null;
 
+    // Subir catálogo de productos (galería con título/precio)
     const galeriaSlots = PLAN_GALERIA[plan];
-    const urlsGaleria  = await Promise.all(
-      galeria.slice(0, galeriaSlots).map((uri, i) =>
-        uri ? subirImagen(uri, `foto${i + 2}`) : Promise.resolve(null)
-      )
+    const catalogoSubido = await Promise.all(
+      galeriaData.slice(0, galeriaSlots).map(async (item, i) => ({
+        imagen:    item.imagen ? await subirImagen(item.imagen, `catalogo${i + 1}`) : null,
+        titulo:    item.titulo.trim() || null,
+        precio:    item.precio || null,
+        precio_bs: item.precio_bs || null,
+      }))
     );
-    // Pad to 11 slots (imagen2–imagen12); slice in case plan pro sends 12
-    const gal: (string | null)[] = [...urlsGaleria.slice(0, 11), ...Array(Math.max(0, 11 - galeriaSlots)).fill(null)];
+    const galeriaDataJson = catalogoSubido.some(it => it.imagen || it.titulo)
+      ? JSON.stringify(catalogoSubido) : null;
 
     const { error } = await supabase.from('solicitudes').insert({
       nombre:          nombre.trim(),
@@ -276,23 +282,13 @@ export default function UnirseSocioScreen() {
       descripcion:     descripcion.trim() || null,
       subcategoria_id: subcatSelId ?? null,
       plan,
-      periodo:     precio > 0 ? periodo : null,
-      metodo_pago: precio > 0 ? metodo  : null,
-      referencia:  precio > 0 ? referencia.trim() : '',
-      monto:       precio,
-      imagen:      urlPortada,
-      imagen2:     gal[0],
-      imagen3:     gal[1],
-      imagen4:     gal[2],
-      imagen5:     gal[3],
-      imagen6:     gal[4],
-      imagen7:     gal[5],
-      imagen8:     gal[6],
-      imagen9:     gal[7],
-      imagen10:    gal[8],
-      imagen11:    gal[9],
-      imagen12:    gal[10],
-      comprobante: precio > 0 ? urlComprobante : null,
+      periodo:      precio > 0 ? periodo : null,
+      metodo_pago:  precio > 0 ? metodo  : null,
+      referencia:   precio > 0 ? referencia.trim() : '',
+      monto:        precio,
+      imagen:       urlPortada,
+      galeria_data: galeriaDataJson,
+      comprobante:  precio > 0 ? urlComprobante : null,
     });
 
     setGuardando(false);
@@ -517,11 +513,12 @@ export default function UnirseSocioScreen() {
         {([
           'Perfil visible en el Directorio',
           'Foto de portada de tu negocio',
-          'Galería de 3 fotos para mostrar tus productos',
-          plan !== 'gratis' && `Galería ampliada de ${plan === 'basico' ? 6 : 12} fotos`,
-          plan !== 'gratis' && 'Botones de llamada, WhatsApp y Web',
-          plan !== 'gratis' && 'Apareces en búsquedas por categoría',
-          plan === 'pro'    && 'Posición destacada en búsquedas',
+          plan === 'gratis'  && 'Galería de 3 fotos para mostrar tus productos',
+          plan === 'basico'  && 'Galería de 6 fotos para mostrar tus productos',
+          plan === 'pro'     && 'Galería de 12 fotos para mostrar tus productos',
+          plan !== 'gratis'  && 'Botones de llamada, WhatsApp y Web',
+          plan !== 'gratis'  && 'Apareces en búsquedas por categoría',
+          plan === 'pro'     && 'Posición destacada en búsquedas',
         ] as (string|boolean)[]).filter(Boolean).map((b, i) => (
           <View key={i} style={styles.beneficioFila}>
             <Ionicons name="checkmark-circle" size={15} color={Colors.success} />
@@ -538,7 +535,7 @@ export default function UnirseSocioScreen() {
       <View style={styles.pasoContainer}>
         <Text style={[styles.pasoTitulo, { color: Colors.text }]}>Fotos de tu negocio</Text>
         <Text style={[styles.pasoSub, { color: Colors.textMuted }]}>
-          {`Portada + hasta ${galeriaSlots} fotos en galería`}
+          {`Portada + ${galeriaSlots} artículo${galeriaSlots !== 1 ? 's' : ''} en catálogo`}
         </Text>
 
         {/* Portada */}
@@ -564,30 +561,75 @@ export default function UnirseSocioScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Galería (solo planes pagos) */}
+        {/* Catálogo de productos */}
         {galeriaSlots > 0 && (
           <View style={styles.campo}>
-            <Text style={[styles.label, { color: Colors.textMuted }]}>Galería ({galeriaSlots} fotos)</Text>
-            <View style={styles.galeriaGrid}>
-              {Array.from({ length: galeriaSlots }, (_, i) => (
-                <TouchableOpacity key={i}
-                  style={[styles.galeriaSlotGrid, { borderColor: Colors.border, backgroundColor: Colors.card }]}
-                  onPress={() => pickImage(u => setGaleria(prev => { const n = [...prev]; n[i] = u; return n; }))}
-                  activeOpacity={0.8}>
-                  {galeria[i] ? (
-                    <>
-                      <Image source={{ uri: galeria[i]! }} style={styles.galeriaImg} resizeMode="cover" />
-                      <TouchableOpacity style={[styles.quitarBtn, { backgroundColor: Colors.card }]}
-                        onPress={() => setGaleria(prev => { const n = [...prev]; n[i] = null; return n; })}>
-                        <Ionicons name="close" size={12} color={Colors.text} />
+            <Text style={[styles.label, { color: Colors.textMuted }]}>
+              Catálogo de productos ({galeriaSlots} artículos)
+            </Text>
+            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: -2, marginBottom: 4, lineHeight: 15 }}>
+              Opcional — puedes completar o editar esto después desde tu panel
+            </Text>
+            {Array.from({ length: galeriaSlots }, (_, i) => {
+              const item = galeriaData[i];
+              return (
+                <View key={i} style={[styles.catalogoCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+                  {/* Imagen del artículo */}
+                  <TouchableOpacity
+                    style={[styles.catalogoImagen, { borderColor: item.imagen ? Colors.accent : Colors.border, backgroundColor: Colors.background }]}
+                    onPress={() => pickImage(uri => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], imagen: uri }; return n; }))}
+                    activeOpacity={0.8}>
+                    {item.imagen ? (
+                      <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <Ionicons name="camera" size={22} color={Colors.textMuted} />
+                    )}
+                    {item.imagen && (
+                      <TouchableOpacity
+                        style={{ position: 'absolute', top: 3, right: 3, backgroundColor: Colors.card, borderRadius: 99, padding: 2 }}
+                        onPress={() => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], imagen: null }; return n; })}>
+                        <Ionicons name="close" size={11} color={Colors.text} />
                       </TouchableOpacity>
-                    </>
-                  ) : (
-                    <Ionicons name="add" size={22} color={Colors.textMuted} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Campos */}
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 8, fontSize: FontSize.sm }]}
+                      value={item.titulo}
+                      onChangeText={t => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], titulo: t }; return n; })}
+                      placeholder="Nombre / Referencia"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TextInput
+                        style={[styles.input, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 8, fontSize: FontSize.sm }]}
+                        value={item.precio}
+                        onChangeText={v => setGaleriaData(prev => {
+                          const n = [...prev];
+                          const bs = tasaBCV && v && !isNaN(parseFloat(v))
+                            ? (parseFloat(v) * tasaBCV).toFixed(2) : n[i].precio_bs;
+                          n[i] = { ...n[i], precio: v, precio_bs: bs };
+                          return n;
+                        })}
+                        placeholder="Precio $"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="decimal-pad"
+                      />
+                      <TextInput
+                        style={[styles.input, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 8, fontSize: FontSize.sm }]}
+                        value={item.precio_bs}
+                        onChangeText={v => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], precio_bs: v }; return n; })}
+                        placeholder={tasaBCV ? `Bs (${tasaBCV.toFixed(0)})` : 'Precio Bs'}
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
       </View>
@@ -836,7 +878,15 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     width: '31%', aspectRatio: 1, borderRadius: Radius.md, borderWidth: 1.5,
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  galeriaImg:  { width: '100%', height: '100%' },
+  galeriaImg: { width: '100%', height: '100%' },
+  catalogoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: Radius.lg, borderWidth: 1, padding: 10,
+  },
+  catalogoImagen: {
+    width: 80, height: 80, borderRadius: Radius.md, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+  },
   quitarBtn: {
     position: 'absolute', top: 5, right: 5,
     borderRadius: 99, padding: 3,

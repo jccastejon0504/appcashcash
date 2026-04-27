@@ -347,9 +347,20 @@ export default function EditarMiNegocioScreen() {
         orden:     i,
       }))
     );
-    await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
     if (itemsSubidos.length > 0) {
-      const { data } = await supabase.from('galeria_items').insert(itemsSubidos).select();
+      const { data, error: insErr } = await supabase.from('galeria_items').insert(itemsSubidos).select();
+      if (insErr) {
+        setGuardandoCat(false);
+        Alert.alert('Error al guardar', insErr.message);
+        return;
+      }
+      // Insert exitoso: borrar los viejos (los que no son los recién insertados)
+      const newIds = (data ?? []).map((d: any) => d.id);
+      if (newIds.length > 0) {
+        await supabase.from('galeria_items').delete()
+          .eq('socio_id', resolvedId)
+          .not('id', 'in', `(${newIds.join(',')})`);
+      }
       if (data) setGaleriaItems(data.map((d: any) => ({
         id:        d.id,
         imagen:    d.imagen    ?? '',
@@ -361,6 +372,7 @@ export default function EditarMiNegocioScreen() {
         orden:     d.orden     ?? 0,
       })));
     } else {
+      await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
       setGaleriaItems([]);
     }
     setGuardandoCat(false);
@@ -446,9 +458,23 @@ export default function EditarMiNegocioScreen() {
       }))
     );
 
-    // Borrar todos los items existentes y re-insertar
-    await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
-    if (itemsSubidos.length > 0) await supabase.from('galeria_items').insert(itemsSubidos);
+    // Re-insertar galería: insertar primero, borrar viejos solo si el insert fue exitoso
+    if (itemsSubidos.length > 0) {
+      const { data: galData, error: galErr } = await supabase.from('galeria_items').insert(itemsSubidos).select('id');
+      if (galErr) {
+        setGuardando(false);
+        Alert.alert('Error al guardar galería', galErr.message);
+        return;
+      }
+      const newIds = (galData ?? []).map((d: any) => d.id);
+      if (newIds.length > 0) {
+        await supabase.from('galeria_items').delete()
+          .eq('socio_id', resolvedId)
+          .not('id', 'in', `(${newIds.join(',')})`);
+      }
+    } else {
+      await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
+    }
 
     // Actualizar teléfono en AsyncStorage para que la búsqueda siga funcionando
     const nuevoTel = telefono.trim() || whatsapp.trim();
