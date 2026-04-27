@@ -61,7 +61,8 @@
       "Bash(dir \"F:/Proyectos app/\")",
       "Bash(grep -n \"<\\\\\\\\\\\\\\\\\" \"F:\\\\Proyectos app\\\\CalculadoraBCVApp\\\\admin\\\\index.html\")",
       "Bash(grep -n \"<\\\\\\\\\\\\b\" \"F:\\\\Proyectos app\\\\CalculadoraBCVApp\\\\admin\\\\index.html\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(grep *)"
     ]
   }
 }

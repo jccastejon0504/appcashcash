@@ -97,6 +97,7 @@ export default function EditarMiNegocioScreen() {
   const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
   const [guardandoCat,    setGuardandoCat]    = useState(false);
   const [tasaBCV,         setTasaBCV]         = useState<number | null>(null);
+  const [galeriaLoadedAt, setGaleriaLoadedAt] = useState(0);
 
   useEffect(() => {
     const cargar = async () => {
@@ -176,16 +177,19 @@ export default function EditarMiNegocioScreen() {
       // Cargar galería con título y precio
       supabase.from('galeria_items').select('*').eq('socio_id', socioId).order('orden')
         .then(({ data }) => {
-          if (data) setGaleriaItems(data.map((d: any) => ({
-            id:        d.id,
-            imagen:    d.imagen    ?? '',
-            imagen2:   d.imagen2   ?? '',
-            imagen3:   d.imagen3   ?? '',
-            titulo:    d.titulo    ?? '',
-            precio:    d.precio    ?? '',
-            precio_bs: d.precio_bs ?? '',
-            orden:     d.orden     ?? 0,
-          })));
+          if (data) {
+            setGaleriaItems(data.map((d: any) => ({
+              id:        d.id,
+              imagen:    d.imagen    ?? '',
+              imagen2:   d.imagen2   ?? '',
+              imagen3:   d.imagen3   ?? '',
+              titulo:    d.titulo    ?? '',
+              precio:    d.precio    ?? '',
+              precio_bs: d.precio_bs ?? '',
+              orden:     d.orden     ?? 0,
+            })));
+            setGaleriaLoadedAt(Date.now()); // dispara auto-fill de Bs si la tasa ya está lista
+          }
         });
     };
     cargar();
@@ -321,7 +325,8 @@ export default function EditarMiNegocioScreen() {
     });
   }, [resolvedId]));
 
-  // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs
+  // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs.
+  // Se ejecuta cuando carga la tasa O cuando carga la galería (lo que llegue después).
   useEffect(() => {
     if (!tasaBCV) return;
     setGaleriaItems(prev => prev.map(item => {
@@ -331,7 +336,7 @@ export default function EditarMiNegocioScreen() {
       }
       return item;
     }));
-  }, [tasaBCV]);
+  }, [tasaBCV, galeriaLoadedAt]);
 
   const guardarCatalogo = async () => {
     setGuardandoCat(true);

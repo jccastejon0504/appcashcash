@@ -49,6 +49,7 @@ export default function SociosScreen() {
   const [buscandoUbicacion,   setBuscandoUbicacion]   = useState(false);
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
+  const [modalInfo,     setModalInfo]     = useState(false);
   type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null };
   const [galeriaItems,   setGaleriaItems]   = useState<ItemGaleria[]>([]);
   const [productoModal,  setProductoModal]  = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
@@ -841,6 +842,112 @@ export default function SociosScreen() {
     );
   };
 
+  const renderModalInfo = () => {
+    const secciones = [
+      {
+        icono: 'storefront-outline',
+        titulo: '🏪 Directorio de Comercios',
+        texto: 'Explora tiendas y negocios locales de tu ciudad. Contáctales por WhatsApp, llama directamente, consulta la dirección en Google Maps y navega su catálogo de productos con precios en $ y Bs.',
+        subsecciones: [
+          { sub: '🔍 Buscar', desc: 'Toca la lupa (abajo a la derecha) para buscar por nombre de tienda, categoría, ciudad o descripción. Aparecen sugerencias automáticas mientras escribes.' },
+          { sub: '⭐ Destacados', desc: 'Los negocios con plan Pro aparecen primero. Toca "Destacados → Categoría" para filtrar por rubro (panadería, ropa, repuestos, etc.).' },
+          { sub: '📍 Filtro de ubicación', desc: 'Toca el ícono ⚙️ (arriba a la derecha) para filtrar por ciudad y radio en kilómetros. Puedes previsualizar el área en el mapa integrado.' },
+          { sub: '🏬 Perfil de negocio', desc: 'Toca cualquier tarjeta para ver el perfil completo: foto de portada, descripción, catálogo de artículos y botones de contacto.' },
+          { sub: '🗂️ Catálogo', desc: 'Los negocios publican artículos con foto, nombre y precio. Toca un artículo para verlo ampliado y consultar al vendedor directo por WhatsApp.' },
+        ],
+      },
+      {
+        icono: 'people-outline',
+        titulo: '🏪 Mis Tiendas',
+        texto: 'Si tienes un negocio aprobado, aparece aquí automáticamente al detectar tu número de teléfono. Toca "Abrir" para editar tu perfil en cualquier momento.',
+        subsecciones: [
+          { sub: '📱 Detección automática', desc: 'Al abrir la app con el número que registraste, tus tiendas aprobadas aparecen de inmediato sin necesidad de iniciar sesión.' },
+          { sub: '🏪 Múltiples tiendas', desc: 'Puedes tener más de una tienda registrada con el mismo número, hasta el límite permitido por el administrador.' },
+          { sub: '⚠️ Membresía vencida', desc: 'Si tu membresía venció, la tarjeta se muestra en rojo. Entra a editar y renueva desde el panel para que tu negocio vuelva a aparecer en el directorio.' },
+        ],
+      },
+      {
+        icono: 'person-add-outline',
+        titulo: '➕ Registrar una Tienda',
+        texto: 'Toca "Registrar nueva tienda" dentro del menú "Mis tiendas". Completa el formulario en 3 o 4 pasos según el plan que elijas y envía tu solicitud. El equipo de CashCach la revisará y te avisará por WhatsApp.',
+        subsecciones: [
+          { sub: '🆓 Plan Gratis', desc: 'Perfil visible en el directorio con foto de portada y galería de hasta 3 productos. Sin costo.' },
+          { sub: '⭐ Plan Básico', desc: 'Galería de hasta 6 productos, botones de WhatsApp / llamada / web, y apareces en búsquedas por categoría.' },
+          { sub: '🚀 Plan Pro', desc: 'Todo lo del Básico más galería de 12 productos y posición destacada al inicio del directorio.' },
+          { sub: '📋 Proceso de aprobación', desc: 'Una vez enviada la solicitud, el equipo verifica los datos (y el pago si aplica) y activa tu perfil. Normalmente en pocas horas.' },
+        ],
+      },
+      {
+        icono: 'create-outline',
+        titulo: '✏️ Editar mi Tienda',
+        texto: 'Desde el panel de edición puedes mantener tu perfil siempre actualizado.',
+        subsecciones: [
+          { sub: '🖼️ Portada', desc: 'Sube o cambia la foto principal de tu negocio. Es lo primero que ven los clientes.' },
+          { sub: '🗂️ Catálogo', desc: 'Agrega artículos con foto (hasta 3 fotos por artículo), nombre y precio en $ y Bs. El precio en Bs se calcula automáticamente con la tasa del día.' },
+          { sub: '📝 Datos', desc: 'Actualiza nombre, teléfono, WhatsApp, redes sociales, dirección, ciudad y categoría cuando lo necesites.' },
+          { sub: '🔒 Campos bloqueados', desc: 'El nombre y teléfono pueden estar bloqueados por el administrador para evitar cambios no autorizados. Si necesitas modificarlos, contáctanos.' },
+          { sub: '🔄 Renovar membresía', desc: 'Antes de que venza tu plan, toca "Renovar membresía", elige el plan y período, realiza el pago y envía el comprobante. El equipo activa la renovación manualmente.' },
+        ],
+      },
+    ];
+
+    return (
+      <Modal visible={modalInfo} animationType="slide" transparent={false} onRequestClose={() => setModalInfo(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.card }}>
+            <TouchableOpacity onPress={() => setModalInfo(false)} style={{ padding: 4 }}>
+              <Ionicons name="arrow-back" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.text }}>¿Cómo funciona Mi Tienda?</Text>
+              <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Guía del directorio de comercios</Text>
+            </View>
+            <View style={{ backgroundColor: Colors.accent + '22', borderRadius: 99, padding: 8 }}>
+              <Ionicons name="storefront" size={22} color={Colors.accent} />
+            </View>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            {secciones.map((sec, si) => (
+              <View key={si} style={{ borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card, overflow: 'hidden' }}>
+                {/* Cabecera de sección */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: Colors.accent + '10', borderBottomWidth: sec.subsecciones ? 1 : 0, borderBottomColor: Colors.border }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent + '22', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name={sec.icono as any} size={18} color={Colors.accent} />
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: Colors.text }}>{sec.titulo}</Text>
+                </View>
+
+                {/* Descripción principal */}
+                <View style={{ padding: 14, paddingTop: 12 }}>
+                  <Text style={{ fontSize: 13, color: Colors.textMuted, lineHeight: 20 }}>{sec.texto}</Text>
+                </View>
+
+                {/* Subsecciones */}
+                {sec.subsecciones && (
+                  <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
+                    {sec.subsecciones.map((s, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: Colors.background, borderRadius: 10, padding: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text, minWidth: 130 }}>{s.sub}</Text>
+                        <Text style={{ flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 18 }}>{s.desc}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {/* Footer */}
+            <View style={{ alignItems: 'center', paddingTop: 8, gap: 4 }}>
+              <Text style={{ fontSize: 11, color: Colors.textMuted }}>CashCach · Directorio de Comercios Venezuela</Text>
+              <Text style={{ fontSize: 10, color: Colors.textMuted + '88' }}>¿Tienes un negocio? ¡Regístralo gratis hoy!</Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       {renderModal()}
@@ -1175,6 +1282,14 @@ export default function SociosScreen() {
         </ScrollView>
       )}
 
+      {/* FAB info — arriba del de búsqueda */}
+      <TouchableOpacity
+        onPress={() => setModalInfo(true)}
+        activeOpacity={0.85}
+        style={{ position: 'absolute', bottom: 92, right: 30, width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.accent + '66', alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}>
+        <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
+      </TouchableOpacity>
+
       {/* FAB búsqueda / cerrar modal */}
       <TouchableOpacity
         onPress={() => {
@@ -1185,6 +1300,8 @@ export default function SociosScreen() {
         style={{ position: 'absolute', bottom: 28, right: 24, width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
         <Ionicons name={busqueda ? 'close' : 'search'} size={24} color="#fff" />
       </TouchableOpacity>
+
+      {renderModalInfo()}
     </SafeAreaView>
   );
 }
