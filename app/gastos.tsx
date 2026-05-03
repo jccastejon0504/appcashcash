@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable,
+  StyleSheet, SafeAreaView, ScrollView, Alert, Modal, Pressable, Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
@@ -11,6 +13,26 @@ import { getItem, setItem } from '@/services/storage';
 
 type Periodo = 'semana' | 'mes' | 'año';
 type TipoMovimiento = 'ingreso' | 'gasto';
+type CarTab = 'aceite' | 'llantas';
+type TipoLlanta = 'alineacion' | 'rotacion' | 'balanceo';
+
+type CambioAceite = {
+  id: string;
+  fecha: string;
+  kmActual: number;
+  producto: string;
+  kmProximo: number;
+  fechaProximo?: string;
+  filtroAire: boolean;
+  filtroGasolina: boolean;
+};
+
+type ServicioLlanta = {
+  id: string;
+  tipo: TipoLlanta;
+  fecha: string;
+  km: number;
+};
 
 type GastoFijo = {
   id: string;
@@ -29,6 +51,8 @@ type Movimiento = {
 const STORAGE_KEY      = 'ingresos_gastos_data';
 const BCV_CACHE_KEY    = 'bcv_cache';
 const GASTOS_FIJOS_KEY = 'gastos_fijos_data';
+const ACEITE_KEY       = 'cambios_aceite_data';
+const LLANTAS_KEY      = 'servicios_llantas_data';
 
 const MESES = [
   'enero','febrero','marzo','abril','mayo','junio',
@@ -82,14 +106,37 @@ export default function GastosScreen() {
   const [modalGastosFijos,  setModalGastosFijos]  = useState(false);
   const [editGastoFijo,     setEditGastoFijo]     = useState<{ id?: string; nombre: string; monto: string; moneda: 'usd' | 'bs' } | null>(null);
 
+  // Módulos de botones superiores
+  const [modalReporte, setModalReporte] = useState(false);
+  const [modalCar,     setModalCar]     = useState(false);
+  const [modalInfo,    setModalInfo]    = useState(false);
+  const [carTab,       setCarTab]       = useState<CarTab>('aceite');
+
+  // Car — Aceite
+  const [cambiosAceite,    setCambiosAceite]    = useState<CambioAceite[]>([]);
+  const [formAceite,       setFormAceite]       = useState<{
+    kmActual: string; producto: string; kmProximo: string;
+    fechaProximo: Date | null; filtroAire: boolean; filtroGasolina: boolean;
+  } | null>(null);
+  const [showDatePickerAceite,  setShowDatePickerAceite]  = useState(false);
+  const [ultimoCambioExpanded, setUltimoCambioExpanded] = useState(false);
+
+  // Car — Llantas
+  const [serviciosLlantas, setServiciosLlantas] = useState<ServicioLlanta[]>([]);
+  const [formLlanta, setFormLlanta] = useState<{ tipo: TipoLlanta; km: string } | null>(null);
+
   useEffect(() => {
     (async () => {
       const data      = await getItem<Movimiento[]>(STORAGE_KEY);
       const bcvCache  = await getItem<{ usd: number }>(BCV_CACHE_KEY);
       const fijos     = await getItem<GastoFijo[]>(GASTOS_FIJOS_KEY);
+      const aceite    = await getItem<CambioAceite[]>(ACEITE_KEY);
+      const llantas   = await getItem<ServicioLlanta[]>(LLANTAS_KEY);
       if (data)     setMovimientos(data);
       if (bcvCache) setTasaBCV(bcvCache.usd);
       if (fijos)    setGastosFijos(fijos);
+      if (aceite)   setCambiosAceite(aceite);
+      if (llantas)  setServiciosLlantas(llantas);
     })();
   }, []);
 
@@ -203,6 +250,111 @@ export default function GastosScreen() {
 
   const totalFijos = gastosFijos.reduce((a, g) => a + g.monto, 0);
 
+  // ── Car: Aceite ───────────────────────────────────────────────────────────
+  const guardarAceite = async (data: CambioAceite[]) => {
+    setCambiosAceite(data);
+    await setItem(ACEITE_KEY, data);
+    console.log('[Aceite] guardado:', JSON.stringify(data[0]));
+  };
+
+  const programarNotificacionAceite = async (fechaProximo: Date, producto: string) => {
+    // Cancelar notificación anterior si existe
+    const idAnterior = await getItem<string>('aceite_notif_id');
+    if (idAnterior) await Notifications.cancelScheduledNotificationAsync(idAnterior).catch(() => {});
+
+    // Programar para las 9:00 AM del día indicado
+    const trigger = new Date(fechaProximo);
+    trigger.setHours(9, 0, 0, 0);
+
+    // Si la fecha ya pasó, no programar
+    if (trigger.getTime() <= Date.now()) return;
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🔧 Cambio de aceite',
+        body: `Hoy es el día de cambiar el aceite (${producto}). ¡No lo dejes pasar!`,
+        sound: 'default',
+        data: { tipo: 'aceite' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: trigger,
+        channelId: 'mantenimiento',
+      },
+    });
+    await setItem('aceite_notif_id', id);
+    console.log('[Notif] programada para:', trigger.toISOString(), 'id:', id);
+  };
+
+  const registrarCambioAceite = async () => {
+    if (!formAceite) return;
+    console.log('[Aceite] intentando guardar:', JSON.stringify(formAceite));
+    const kmA = parseFloat(formAceite.kmActual.replace(',', '.'));
+    const kmP = parseFloat(formAceite.kmProximo.replace(',', '.'));
+    console.log('[Aceite] kmA:', kmA, 'kmP:', kmP);
+    if (!formAceite.producto.trim())      { Alert.alert('Falta producto'); return; }
+    if (isNaN(kmA) || kmA <= 0)          { Alert.alert('Km actual inválido'); return; }
+    if (isNaN(kmP) || kmP <= kmA)        { Alert.alert('El próximo km debe ser mayor al actual'); return; }
+    const nuevo: CambioAceite = {
+      id: Date.now().toString(),
+      fecha: new Date().toISOString(),
+      kmActual: kmA,
+      producto: formAceite.producto.trim(),
+      kmProximo: kmP,
+      fechaProximo: formAceite.fechaProximo ? formAceite.fechaProximo.toISOString() : undefined,
+      filtroAire: formAceite.filtroAire,
+      filtroGasolina: formAceite.filtroGasolina,
+    };
+    await guardarAceite([nuevo, ...cambiosAceite]);
+    if (nuevo.fechaProximo) {
+      await programarNotificacionAceite(new Date(nuevo.fechaProximo), nuevo.producto);
+    }
+    setFormAceite(null);
+  };
+
+  const eliminarAceite = (id: string) => {
+    Alert.alert('Eliminar', '¿Quitar este registro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => guardarAceite(cambiosAceite.filter(c => c.id !== id)) },
+    ]);
+  };
+
+  // ── Car: Llantas ──────────────────────────────────────────────────────────
+  const guardarLlantas = async (data: ServicioLlanta[]) => {
+    setServiciosLlantas(data);
+    await setItem(LLANTAS_KEY, data);
+  };
+
+  const registrarServicioLlanta = async () => {
+    if (!formLlanta) return;
+    const km = parseFloat(formLlanta.km.replace(',', '.'));
+    if (isNaN(km) || km <= 0) { Alert.alert('Km inválido'); return; }
+    const nuevo: ServicioLlanta = {
+      id: Date.now().toString(),
+      tipo: formLlanta.tipo,
+      fecha: new Date().toISOString(),
+      km,
+    };
+    await guardarLlantas([nuevo, ...serviciosLlantas]);
+    setFormLlanta(null);
+  };
+
+  const eliminarLlanta = (id: string) => {
+    Alert.alert('Eliminar', '¿Quitar este registro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => guardarLlantas(serviciosLlantas.filter(s => s.id !== id)) },
+    ]);
+  };
+
+  const ultimoServicio = (tipo: TipoLlanta) =>
+    serviciosLlantas.filter(s => s.tipo === tipo)[0] ?? null;
+
+  const formatFechaCar = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch { return iso; }
+  };
+
   // ── Historial mensual ─────────────────────────────────────────────────────
   const [mesExpandido, setMesExpandido] = useState<string | null>(null);
 
@@ -290,6 +442,9 @@ export default function GastosScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Cartera</Text>
+        <TouchableOpacity style={styles.infoHeaderBtn} onPress={() => setModalInfo(true)}>
+          <Ionicons name="information-circle-outline" size={22} color={Colors.textMuted} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.fijoHeaderBtn} onPress={() => setModalGastosFijos(true)}>
           <Ionicons name="repeat-outline" size={15} color="#fff" />
           <Text style={styles.fijoHeaderBtnText}>Gastos Fijos</Text>
@@ -297,19 +452,20 @@ export default function GastosScreen() {
       </View>
 
 
-      {/* Selector de período */}
+      {/* Botones de módulos */}
       <View style={styles.periodoRow}>
-        {(['semana', 'mes', 'año'] as Periodo[]).map(p => (
-          <TouchableOpacity
-            key={p}
-            style={[styles.periodoBtn, periodo === p && styles.periodoBtnActive]}
-            onPress={() => setPeriodo(p)}
-          >
-            <Text style={[styles.periodoBtnText, periodo === p && styles.periodoBtnTextActive]}>
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity style={styles.modBtn} onPress={() => setModalReporte(true)}>
+          <Ionicons name="bar-chart-outline" size={15} color={Colors.blue} />
+          <Text style={styles.modBtnText}>Reporte</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.modBtn} onPress={() => { setCarTab('aceite'); setModalCar(true); }}>
+          <Ionicons name="car-outline" size={15} color={Colors.blue} />
+          <Text style={styles.modBtnText}>Car</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.modBtn, styles.modBtnDisabled]}>
+          <Ionicons name="ellipsis-horizontal" size={15} color={Colors.textMuted} />
+          <Text style={[styles.modBtnText, { color: Colors.textMuted }]}>Pronto</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -583,6 +739,52 @@ export default function GastosScreen() {
 
       </ScrollView>
 
+      {/* Modal Info */}
+      <Modal transparent visible={modalInfo} animationType="fade" onRequestClose={() => setModalInfo(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setModalInfo(false)}>
+          <Pressable style={[styles.modalCard, { gap: 16 }]} onPress={e => e.stopPropagation()}>
+            {/* Título */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="wallet-outline" size={22} color={Colors.accent} />
+              <Text style={{ fontSize: FontSize.lg, fontWeight: '900', color: Colors.text, flex: 1 }}>Mi Cartera</Text>
+              <TouchableOpacity onPress={() => setModalInfo(false)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Descripción */}
+            <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 }}>
+              Lleva el control de tus finanzas personales de forma sencilla y organizada.
+            </Text>
+
+            {/* Funciones */}
+            {[
+              { icon: 'add-circle-outline',   color: Colors.success, titulo: 'Ingresos y Gastos',    desc: 'Registra cada movimiento con descripción, monto y fecha. Visualiza el balance de la semana, mes o año.' },
+              { icon: 'repeat-outline',        color: Colors.accent,  titulo: 'Gastos Fijos',         desc: 'Define gastos recurrentes (alquiler, servicios, suscripciones) que se suman automáticamente a tu balance mensual.' },
+              { icon: 'bar-chart-outline',     color: Colors.blue,    titulo: 'Reporte Anual',        desc: 'Consulta un resumen mes a mes de todos tus ingresos y gastos a lo largo del año, con equivalente en Bs BCV.' },
+              { icon: 'car-outline',           color: '#f59e0b',      titulo: 'Módulo Car',           desc: 'Registra cambios de aceite, filtros y servicios de llantas (alineación, rotación, balanceo). Recibe notificación cuando se acerque la fecha del próximo mantenimiento.' },
+            ].map(item => (
+              <View key={item.titulo} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: item.color + '20', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={item.icon as any} size={17} color={item.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: FontSize.sm, fontWeight: '800', color: Colors.text, marginBottom: 2 }}>{item.titulo}</Text>
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 17 }}>{item.desc}</Text>
+                </View>
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={{ backgroundColor: Colors.accent, borderRadius: Radius.md, paddingVertical: 11, alignItems: 'center' }}
+              onPress={() => setModalInfo(false)}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.sm }}>Entendido</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Modal Gastos Fijos */}
       <Modal transparent visible={modalGastosFijos} animationType="slide" onRequestClose={() => { setEditGastoFijo(null); setModalGastosFijos(false); }}>
         <Pressable style={styles.modalOverlay} onPress={() => { setEditGastoFijo(null); setModalGastosFijos(false); }}>
@@ -782,6 +984,377 @@ export default function GastosScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ── Modal Reporte anual ──────────────────────────────────────────── */}
+      <Modal visible={modalReporte} animationType="slide" onRequestClose={() => setModalReporte(false)}>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => setModalReporte(false)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Reporte anual</Text>
+          </View>
+          <ScrollView contentContainerStyle={[styles.body, { paddingTop: Spacing.md }]}>
+            {(() => {
+              const hist = historialMensual();
+              if (hist.length === 0) return (
+                <View style={{ alignItems: 'center', padding: Spacing.xl, gap: 8 }}>
+                  <Ionicons name="bar-chart-outline" size={40} color={Colors.textMuted} />
+                  <Text style={{ color: Colors.textMuted, fontWeight: '600' }}>Sin movimientos registrados</Text>
+                </View>
+              );
+              return hist.map(mes => {
+                const expandido = mesExpandido === mes.key;
+                const balColor  = mes.balance >= 0 ? Colors.success : Colors.error;
+                const pct       = mes.totalIng > 0 ? Math.min(mes.totalGasto / mes.totalIng, 1) : 0;
+                return (
+                  <View key={mes.key} style={[styles.histCard, { marginBottom: Spacing.sm }]}>
+                    <TouchableOpacity style={styles.histCardHeader} onPress={() => setMesExpandido(expandido ? null : mes.key)} activeOpacity={0.7}>
+                      <View style={styles.histCardLeft}>
+                        <View style={[styles.histDot, { backgroundColor: balColor }]} />
+                        <Text style={styles.histMesLabel}>{mes.label}</Text>
+                        <Text style={styles.histCount}>{mes.lista.length} mov.</Text>
+                      </View>
+                      <View style={styles.histCardRight}>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.histBalance, { color: balColor }]}>
+                            {mes.balance >= 0 ? '+' : ''}${mes.balance.toFixed(2)}
+                          </Text>
+                          {tasaBCV && tasaBCV > 0 && (
+                            <Text style={[styles.balanceBs, { color: balColor }]}>
+                              {mes.balance >= 0 ? '' : '-'}{usdABs(Math.abs(mes.balance))}
+                            </Text>
+                          )}
+                        </View>
+                        <Ionicons name={expandido ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+                      </View>
+                    </TouchableOpacity>
+                    {mes.totalIng > 0 && (
+                      <View style={styles.histBarraWrap}>
+                        <View style={styles.histBarraFondo}>
+                          <View style={[styles.histBarraRelleno, { width: `${pct * 100}%` }]} />
+                        </View>
+                        <View style={styles.histBarraLabels}>
+                          <View style={{ gap: 1 }}>
+                            <View style={styles.histBarraChip}>
+                              <Ionicons name="arrow-down-circle" size={11} color={Colors.success} />
+                              <Text style={[styles.histBarraText, { color: Colors.success }]}>+${mes.totalIng.toFixed(2)}</Text>
+                            </View>
+                            {tasaBCV && tasaBCV > 0 && (
+                              <Text style={[styles.histBarraText, { color: Colors.success, opacity: 0.7, paddingLeft: 14 }]}>+{usdABs(mes.totalIng)}</Text>
+                            )}
+                          </View>
+                          <View style={{ gap: 1, alignItems: 'flex-end' }}>
+                            <View style={styles.histBarraChip}>
+                              <Ionicons name="arrow-up-circle" size={11} color={Colors.error} />
+                              <Text style={[styles.histBarraText, { color: Colors.error }]}>-${mes.totalGasto.toFixed(2)}</Text>
+                            </View>
+                            {tasaBCV && tasaBCV > 0 && (
+                              <Text style={[styles.histBarraText, { color: Colors.error, opacity: 0.7 }]}>-{usdABs(mes.totalGasto)}</Text>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                    {expandido && (
+                      <View style={styles.histDetalle}>
+                        {mes.lista.map((m, idx) => (
+                          <View key={m.id}>
+                            <FilaMovimiento m={m} />
+                            {idx < mes.lista.length - 1 && <View style={styles.separador} />}
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              });
+            })()}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Modal Car ───────────────────────────────────────────────────────── */}
+      <Modal visible={modalCar} animationType="slide" onRequestClose={() => { setModalCar(false); setFormAceite(null); setFormLlanta(null); }}>
+        <SafeAreaView style={styles.safe}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => { setModalCar(false); setFormAceite(null); setFormLlanta(null); }} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Mantenimiento</Text>
+          </View>
+
+          {/* Tabs aceite / llantas */}
+          <View style={styles.periodoRow}>
+            <TouchableOpacity style={[styles.modBtn, carTab === 'aceite' && styles.modBtnActive]} onPress={() => { setCarTab('aceite'); setFormAceite(null); setFormLlanta(null); }}>
+              <Ionicons name="water-outline" size={14} color={carTab === 'aceite' ? '#fff' : Colors.blue} />
+              <Text style={[styles.modBtnText, carTab === 'aceite' && { color: '#fff' }]}>Aceite & Filtros</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modBtn, carTab === 'llantas' && styles.modBtnActive]} onPress={() => { setCarTab('llantas'); setFormAceite(null); setFormLlanta(null); }}>
+              <Ionicons name="refresh-circle-outline" size={14} color={carTab === 'llantas' ? '#fff' : Colors.blue} />
+              <Text style={[styles.modBtnText, carTab === 'llantas' && { color: '#fff' }]}>Llantas</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={[styles.body, { paddingTop: Spacing.md }]} keyboardShouldPersistTaps="handled">
+
+            {/* ── TAB ACEITE ── */}
+            {carTab === 'aceite' && (
+              <>
+                {/* Último cambio */}
+                {cambiosAceite.length > 0 && (
+                  <>
+                    {/* Header con flecha y X */}
+                    <View style={styles.carInfoHeaderRow}>
+                      <View style={styles.carInfoHeader}>
+                        <Ionicons name="water" size={16} color={Colors.blue} />
+                        <Text style={styles.carInfoTitle}>Último cambio</Text>
+                      </View>
+                      <View style={styles.carInfoHeaderBtns}>
+                        <TouchableOpacity onPress={() => setUltimoCambioExpanded(v => !v)} style={styles.carHeaderIconBtn}>
+                          <Ionicons name={ultimoCambioExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => eliminarAceite(cambiosAceite[0].id)} style={styles.carHeaderIconBtn}>
+                          <Ionicons name="close" size={18} color={Colors.error} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {ultimoCambioExpanded && (
+                      <View style={styles.carInfoCard}>
+                        <View style={styles.carInfoRow}>
+                          <Text style={styles.carInfoLabel}>Fecha</Text>
+                          <Text style={styles.carInfoVal}>{formatFechaCar(cambiosAceite[0].fecha)}</Text>
+                        </View>
+                        <View style={styles.carInfoRow}>
+                          <Text style={styles.carInfoLabel}>Km actual</Text>
+                          <Text style={styles.carInfoVal}>{cambiosAceite[0].kmActual.toLocaleString()} km</Text>
+                        </View>
+                        <View style={styles.carInfoRow}>
+                          <Text style={styles.carInfoLabel}>Producto</Text>
+                          <Text style={styles.carInfoVal}>{cambiosAceite[0].producto}</Text>
+                        </View>
+                        <View style={[styles.carInfoRow, styles.carInfoRowHighlight]}>
+                          <Text style={styles.carInfoLabel}>Próximo cambio</Text>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={[styles.carInfoVal, { color: Colors.blue, fontWeight: '800' }]}>{cambiosAceite[0].kmProximo.toLocaleString()} km</Text>
+                            {cambiosAceite[0].fechaProximo && (
+                              <Text style={{ fontSize: FontSize.xs, color: Colors.blue, opacity: 0.75 }}>{formatFechaCar(cambiosAceite[0].fechaProximo)}</Text>
+                            )}
+                          </View>
+                        </View>
+                        <View style={styles.carFiltrosRow}>
+                          <Text style={styles.carInfoLabel}>Filtro aire</Text>
+                          <View style={[styles.carFiltroChip, { backgroundColor: cambiosAceite[0].filtroAire ? Colors.success + '22' : Colors.error + '22' }]}>
+                            <Ionicons name={cambiosAceite[0].filtroAire ? 'checkmark-circle' : 'close-circle'} size={14} color={cambiosAceite[0].filtroAire ? Colors.success : Colors.error} />
+                            <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: cambiosAceite[0].filtroAire ? Colors.success : Colors.error }}>{cambiosAceite[0].filtroAire ? 'Cambiado' : 'No cambiado'}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.carFiltrosRow}>
+                          <Text style={styles.carInfoLabel}>Filtro de aceite</Text>
+                          <View style={[styles.carFiltroChip, { backgroundColor: cambiosAceite[0].filtroGasolina ? Colors.success + '22' : Colors.error + '22' }]}>
+                            <Ionicons name={cambiosAceite[0].filtroGasolina ? 'checkmark-circle' : 'close-circle'} size={14} color={cambiosAceite[0].filtroGasolina ? Colors.success : Colors.error} />
+                            <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: cambiosAceite[0].filtroGasolina ? Colors.success : Colors.error }}>{cambiosAceite[0].filtroGasolina ? 'Cambiado' : 'No cambiado'}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {/* Formulario nuevo cambio */}
+                {formAceite ? (
+                  <>
+                    <View style={styles.carInfoHeader}>
+                      <Ionicons name="water-outline" size={16} color={Colors.blue} />
+                      <Text style={styles.carInfoTitle}>Registrar cambio de aceite</Text>
+                    </View>
+                  <View style={styles.carForm}>
+                    <View style={styles.carFieldWrap}>
+                      <Text style={styles.carFieldLabel}>Km actual</Text>
+                      <TextInput style={styles.input} value={formAceite.kmActual} onChangeText={t => setFormAceite(f => f && ({ ...f, kmActual: t }))} placeholder="ej: 125143" placeholderTextColor={Colors.textMuted} keyboardType="numeric" />
+                    </View>
+                    <View style={styles.carFieldWrap}>
+                      <Text style={styles.carFieldLabel}>Producto</Text>
+                      <TextInput style={styles.input} value={formAceite.producto} onChangeText={t => setFormAceite(f => f && ({ ...f, producto: t }))} placeholder="ej: Valvoline 15W-40" placeholderTextColor={Colors.textMuted} autoCapitalize="words" />
+                    </View>
+                    <View style={styles.carFieldWrap}>
+                      <Text style={styles.carFieldLabel}>Próximo cambio km</Text>
+                      <TextInput style={styles.input} value={formAceite.kmProximo} onChangeText={t => setFormAceite(f => f && ({ ...f, kmProximo: t }))} placeholder="ej: 130143" placeholderTextColor={Colors.textMuted} keyboardType="numeric" />
+                    </View>
+                    <View style={styles.carFieldWrap}>
+                      <Text style={styles.carFieldLabel}>Fecha próximo cambio</Text>
+                      <TouchableOpacity style={styles.carDateBtn} onPress={() => setShowDatePickerAceite(true)}>
+                        <Ionicons name="calendar-outline" size={16} color={formAceite.fechaProximo ? Colors.blue : Colors.textMuted} />
+                        <Text style={[styles.carDateBtnText, formAceite.fechaProximo && { color: Colors.blue }]}>
+                          {formAceite.fechaProximo ? formatFechaCar(formAceite.fechaProximo.toISOString()) : 'Seleccionar fecha…'}
+                        </Text>
+                        {formAceite.fechaProximo && (
+                          <TouchableOpacity onPress={() => setFormAceite(f => f && ({ ...f, fechaProximo: null }))} hitSlop={10}>
+                            <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
+                      {showDatePickerAceite && (
+                        <DateTimePicker
+                          value={formAceite.fechaProximo ?? new Date()}
+                          mode="date"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          onChange={(_, date) => {
+                            setShowDatePickerAceite(false);
+                            if (date) setFormAceite(f => f && ({ ...f, fechaProximo: date }));
+                          }}
+                        />
+                      )}
+                    </View>
+                    {/* Filtros opcionales */}
+                    <View style={styles.carFieldWrap}>
+                      <Text style={styles.carFieldLabel}>Filtros <Text style={{ fontWeight: '400', opacity: 0.6 }}>(opcional)</Text></Text>
+                      <View style={styles.carFiltrosToggleRow}>
+                        <TouchableOpacity style={[styles.carFiltroToggle, formAceite.filtroAire && styles.carFiltroToggleOn]} onPress={() => setFormAceite(f => f && ({ ...f, filtroAire: !f.filtroAire }))}>
+                          <Ionicons name={formAceite.filtroAire ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={formAceite.filtroAire ? Colors.success : Colors.textMuted} />
+                          <Text style={[styles.carFiltroToggleText, formAceite.filtroAire && { color: Colors.success }]}>Filtro aire</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.carFiltroToggle, formAceite.filtroGasolina && styles.carFiltroToggleOn]} onPress={() => setFormAceite(f => f && ({ ...f, filtroGasolina: !f.filtroGasolina }))}>
+                          <Ionicons name={formAceite.filtroGasolina ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={formAceite.filtroGasolina ? Colors.success : Colors.textMuted} />
+                          <Text style={[styles.carFiltroToggleText, formAceite.filtroGasolina && { color: Colors.success }]}>Filtro de aceite</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={styles.modalBtns}>
+                      <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setFormAceite(null)}>
+                        <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.modalBtnConfirm, { backgroundColor: Colors.blue }]} onPress={registrarCambioAceite}>
+                        <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                        <Text style={styles.modalBtnConfirmText}>Guardar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  </>
+                ) : (
+                  <TouchableOpacity style={[styles.carAgregarBtn, { backgroundColor: Colors.blue }]} onPress={() => setFormAceite({ kmActual: '', producto: '', kmProximo: '', fechaProximo: null, filtroAire: false, filtroGasolina: false })}>
+                    <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                    <Text style={styles.carAgregarText}>Registrar cambio de aceite</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Historial de cambios */}
+                {cambiosAceite.length > 1 && (
+                  <View style={styles.histSection}>
+                    <View style={styles.histTituloRow}>
+                      <Ionicons name="time-outline" size={16} color={Colors.blue} />
+                      <Text style={styles.histTitulo}>Historial</Text>
+                    </View>
+                    {cambiosAceite.slice(1).map(c => (
+                      <View key={c.id} style={styles.carHistRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.carHistFecha}>{formatFechaCar(c.fecha)}</Text>
+                          <Text style={styles.carHistProducto}>{c.producto} · {c.kmActual.toLocaleString()} km</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => eliminarAceite(c.id)} hitSlop={10}>
+                          <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* ── TAB LLANTAS ── */}
+            {carTab === 'llantas' && (
+              <>
+                {(['alineacion', 'rotacion', 'balanceo'] as TipoLlanta[]).map(tipo => {
+                  const ultimo = ultimoServicio(tipo);
+                  const labels: Record<TipoLlanta, string> = { alineacion: 'Alineación', rotacion: 'Rotación', balanceo: 'Balanceo' };
+                  const icons:  Record<TipoLlanta, any>    = { alineacion: 'git-branch-outline', rotacion: 'sync-outline', balanceo: 'radio-button-on-outline' };
+                  return (
+                    <View key={tipo}>
+                      <View style={styles.carInfoHeader}>
+                        <Ionicons name={icons[tipo]} size={16} color={Colors.blue} />
+                        <Text style={styles.carInfoTitle}>{labels[tipo]}</Text>
+                      </View>
+                    <View style={styles.carInfoCard}>
+                      {ultimo ? (
+                        <>
+                          <View style={styles.carInfoRow}>
+                            <Text style={styles.carInfoLabel}>Último servicio</Text>
+                            <Text style={styles.carInfoVal}>{formatFechaCar(ultimo.fecha)}</Text>
+                          </View>
+                          <View style={styles.carInfoRow}>
+                            <Text style={styles.carInfoLabel}>Km</Text>
+                            <Text style={styles.carInfoVal}>{ultimo.km.toLocaleString()} km</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, paddingVertical: 4 }}>Sin registros aún</Text>
+                      )}
+                      <TouchableOpacity style={[styles.carAgregarBtn, { backgroundColor: Colors.blue, marginTop: 8 }]} onPress={() => setFormLlanta({ tipo, km: '' })}>
+                        <Ionicons name="add-circle-outline" size={16} color="#fff" />
+                        <Text style={styles.carAgregarText}>Registrar {labels[tipo].toLowerCase()}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    </View>
+                  );
+                })}
+
+                {/* Historial llantas */}
+                {serviciosLlantas.length > 0 && (
+                  <View style={styles.histSection}>
+                    <View style={styles.histTituloRow}>
+                      <Ionicons name="time-outline" size={16} color={Colors.blue} />
+                      <Text style={styles.histTitulo}>Historial</Text>
+                    </View>
+                    {serviciosLlantas.map(s => {
+                      const labels: Record<TipoLlanta, string> = { alineacion: 'Alineación', rotacion: 'Rotación', balanceo: 'Balanceo' };
+                      return (
+                        <View key={s.id} style={styles.carHistRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.carHistFecha}>{labels[s.tipo]} · {formatFechaCar(s.fecha)}</Text>
+                            <Text style={styles.carHistProducto}>{s.km.toLocaleString()} km</Text>
+                          </View>
+                          <TouchableOpacity onPress={() => eliminarLlanta(s.id)} hitSlop={10}>
+                            <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
+            )}
+
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Modal formulario llantas */}
+        {formLlanta && (
+          <Modal transparent visible animationType="fade" onRequestClose={() => setFormLlanta(null)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setFormLlanta(null)}>
+              <Pressable style={styles.modalCard} onPress={e => e.stopPropagation()}>
+                <View style={styles.modalHeader}>
+                  <Ionicons name="refresh-circle-outline" size={22} color={Colors.blue} />
+                  <Text style={styles.modalTitle}>
+                    {{ alineacion: 'Alineación', rotacion: 'Rotación', balanceo: 'Balanceo' }[formLlanta.tipo]}
+                  </Text>
+                </View>
+                <TextInput style={styles.input} value={formLlanta.km} onChangeText={t => setFormLlanta(f => f && ({ ...f, km: t }))} placeholder="Km actual (ej: 125143)" placeholderTextColor={Colors.textMuted} keyboardType="numeric" autoFocus />
+                <View style={styles.modalBtns}>
+                  <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setFormLlanta(null)}>
+                    <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtnConfirm, { backgroundColor: Colors.blue }]} onPress={registrarServicioLlanta}>
+                    <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                    <Text style={styles.modalBtnConfirmText}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        )}
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -986,6 +1559,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     paddingHorizontal: 10, paddingVertical: 6,
   },
   fijoHeaderBtnText: { fontSize: FontSize.xs, color: '#fff', fontWeight: '700' },
+  infoHeaderBtn: { padding: 4 },
 
   fijoModal:      { gap: Spacing.md, maxHeight: '85%' },
   fijoModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1039,4 +1613,73 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     gap: 6, paddingVertical: 13, borderRadius: Radius.md,
   },
   fijoAgregarText: { fontSize: FontSize.md, color: '#fff', fontWeight: '700' },
+
+  // ── Botones módulos superiores ────────────────────────────────────────────
+  modBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    paddingVertical: 8, borderRadius: Radius.md,
+    backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border,
+  },
+  modBtnActive:   { backgroundColor: Colors.blue, borderColor: Colors.blue },
+  modBtnDisabled: { opacity: 0.5 },
+  modBtnText:     { fontSize: FontSize.sm, fontWeight: '700', color: Colors.blue },
+
+  // ── Car module ────────────────────────────────────────────────────────────
+  carInfoCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.md, gap: 8,
+  },
+  carInfoHeaderRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  carInfoHeaderBtns: { flexDirection: 'row', gap: 4 },
+  carHeaderIconBtn:  { padding: 6 },
+  carInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, paddingLeft: 2 },
+  carInfoTitle:  { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
+  carInfoRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  carInfoRowHighlight: {
+    backgroundColor: Colors.blue + '11', borderRadius: Radius.sm,
+    paddingHorizontal: 6, paddingVertical: 4, marginTop: 2,
+  },
+  carInfoLabel:  { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600' },
+  carInfoVal:    { fontSize: FontSize.sm, color: Colors.text, fontWeight: '700' },
+
+  carFiltrosRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  carFiltroChip:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
+
+  carFiltrosToggleRow: { flexDirection: 'row', gap: Spacing.sm },
+  carFiltroToggle: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  carFiltroToggleOn:   { borderColor: Colors.success + '88', backgroundColor: Colors.success + '11' },
+  carFiltroToggleText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
+
+  carForm:       { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: Spacing.md, gap: Spacing.md },
+  carFormTitle:  { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
+  carFieldWrap:  { gap: 4 },
+  carFieldLabel: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, paddingLeft: 2 },
+  carDateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, paddingVertical: 12,
+  },
+  carDateBtnText: { flex: 1, fontSize: FontSize.md, color: Colors.textMuted },
+
+  carAgregarBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 12, borderRadius: Radius.md,
+  },
+  carAgregarText: { fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
+
+  carHistRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, paddingVertical: 10,
+  },
+  carHistFecha:    { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
+  carHistProducto: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
 }); }

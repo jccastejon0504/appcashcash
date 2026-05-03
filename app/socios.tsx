@@ -13,7 +13,6 @@ import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SocioComercial } from '@/services/supabase';
-import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 
 export default function SociosScreen() {
@@ -44,16 +43,16 @@ export default function SociosScreen() {
   const [ciudadesDisponibles, setCiudadesDisponibles] = useState<string[]>([]);
   const [mostrarSugCiudad,    setMostrarSugCiudad]    = useState(false);
   const [mostrarRadioList,    setMostrarRadioList]    = useState(false);
-  const [mapaExpandido,       setMapaExpandido]       = useState(false);
   const [mapCoords,           setMapCoords]           = useState<{ latitude: number; longitude: number } | null>(null);
   const [buscandoUbicacion,   setBuscandoUbicacion]   = useState(false);
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [modalInfo,     setModalInfo]     = useState(false);
-  type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null };
-  const [galeriaItems,   setGaleriaItems]   = useState<ItemGaleria[]>([]);
-  const [productoModal,  setProductoModal]  = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
-  const [paginaProducto, setPaginaProducto] = useState(0);
+  type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null; descripcion: string | null };
+  const [galeriaItems,        setGaleriaItems]        = useState<ItemGaleria[]>([]);
+  const [productoModal,       setProductoModal]       = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
+  const [paginaProducto,      setPaginaProducto]      = useState(0);
+  const [infoProductoVisible, setInfoProductoVisible] = useState(false);
   const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
   const pulsoOpacity = useSharedValue(0.4);
@@ -144,6 +143,12 @@ export default function SociosScreen() {
       setBuscandoUbicacion(false);
     })();
   }, [modalConfigVisible]);
+
+  // Auto-refresh cada 60 segundos mientras la pantalla está visible
+  useFocusEffect(useCallback(() => {
+    const timer = setInterval(() => cargar(true), 60000);
+    return () => clearInterval(timer);
+  }, [cargar]));
 
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem('ubicacion_config').then(raw => {
@@ -491,7 +496,7 @@ export default function SociosScreen() {
   };
 
   useEffect(() => { if (!imagenAmpliada) resetVisor(); }, [imagenAmpliada]);
-  useEffect(() => { if (!productoModal) resetVisorP(); }, [productoModal]);
+  useEffect(() => { if (!productoModal) { resetVisorP(); setInfoProductoVisible(false); } }, [productoModal]);
 
   const pinch = Gesture.Pinch()
     .onUpdate(e => { escala.value = Math.max(1, escalaBase.value * e.scale); })
@@ -605,15 +610,29 @@ export default function SociosScreen() {
             )}
 
             <View style={{ padding: Spacing.lg, paddingTop: imagenes.length > 1 ? 4 : Spacing.lg, gap: 10 }}>
-              {/* Nombre + X */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Nombre + ⓘ + X */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <Text style={[styles.productoTitulo, { color: Colors.text, flex: 1 }]}>{item.titulo ?? ''}</Text>
+                {item.descripcion ? (
+                  <TouchableOpacity
+                    style={[styles.productoCerrarX, { backgroundColor: infoProductoVisible ? Colors.accent + '22' : Colors.border }]}
+                    onPress={() => setInfoProductoVisible(v => !v)}>
+                    <Ionicons name="information-circle-outline" size={18} color={infoProductoVisible ? Colors.accent : Colors.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity
                   style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
                   onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
                   <Ionicons name="close" size={18} color={Colors.text} />
                 </TouchableOpacity>
               </View>
+
+              {/* Descripción del producto (desplegable con ⓘ) */}
+              {infoProductoVisible && item.descripcion ? (
+                <View style={{ backgroundColor: Colors.accent + '12', borderRadius: Radius.md, padding: 12, borderLeftWidth: 3, borderLeftColor: Colors.accent }}>
+                  <Text style={{ fontSize: FontSize.sm, color: Colors.text, lineHeight: 20 }}>{item.descripcion}</Text>
+                </View>
+              ) : null}
 
               {/* Precios */}
               {(item.precio || item.precio_bs) ? (
@@ -745,85 +764,21 @@ export default function SociosScreen() {
                 </View>
               )}
             </View>
-            <TouchableOpacity
-              activeOpacity={mapCoords ? 0.9 : 1}
-              onPress={() => { if (mapCoords) setMapaExpandido(true); }}
-              style={[styles.configMapBox, { borderColor: Colors.border }]}>
-              <Text style={styles.configMapLabel}>Mapa</Text>
-              {buscandoUbicacion ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator size="small" color={Colors.accent} />
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 6 }}>Obteniendo ubicación…</Text>
-                </View>
-              ) : mapCoords ? (
-                <>
-                  <MapView
-                    style={{ flex: 1 }}
-                    region={{
-                      latitude: mapCoords.latitude,
-                      longitude: mapCoords.longitude,
-                      latitudeDelta:  (parseInt(radioInputTemp) * 2) / 111,
-                      longitudeDelta: (parseInt(radioInputTemp) * 2) / 111,
-                    }}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
-                    pitchEnabled={false}
-                    rotateEnabled={false}
-                    pointerEvents="none">
-                    <Marker coordinate={mapCoords} pinColor={Colors.accent} />
-                    <Circle
-                      center={mapCoords}
-                      radius={parseInt(radioInputTemp) * 1000}
-                      strokeColor={Colors.accent}
-                      fillColor={Colors.accent + '22'}
-                      strokeWidth={2}
-                    />
-                  </MapView>
-                  <View style={styles.configMapExpandHint}>
-                    <Ionicons name="expand-outline" size={16} color="#fff" />
-                  </View>
-                </>
-              ) : (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="map-outline" size={36} color={Colors.textMuted} />
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 6 }}>Escribe una ciudad</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Mapa expandido full-screen */}
-            <Modal visible={mapaExpandido} animationType="slide" onRequestClose={() => setMapaExpandido(false)}>
-              <View style={{ flex: 1 }}>
-                {mapCoords && (
-                  <MapView
-                    style={{ flex: 1 }}
-                    initialRegion={{
-                      latitude: mapCoords.latitude,
-                      longitude: mapCoords.longitude,
-                      latitudeDelta:  (parseInt(radioInputTemp) * 2) / 111,
-                      longitudeDelta: (parseInt(radioInputTemp) * 2) / 111,
-                    }}
-                    scrollEnabled
-                    zoomEnabled
-                    pitchEnabled={false}
-                    rotateEnabled={false}>
-                    <Marker coordinate={mapCoords} pinColor={Colors.accent} />
-                    <Circle
-                      center={mapCoords}
-                      radius={parseInt(radioInputTemp) * 1000}
-                      strokeColor={Colors.accent}
-                      fillColor={Colors.accent + '22'}
-                      strokeWidth={2}
-                    />
-                  </MapView>
-                )}
-                <TouchableOpacity
-                  style={[styles.mapaFullCerrar, { backgroundColor: Colors.card }]}
-                  onPress={() => setMapaExpandido(false)}>
-                  <Ionicons name="close" size={24} color={Colors.text} />
-                </TouchableOpacity>
+            {/* Indicador de ubicación (sin mapa) */}
+            {buscandoUbicacion && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text style={{ color: Colors.textMuted, fontSize: 12 }}>Obteniendo ubicación…</Text>
               </View>
-            </Modal>
+            )}
+            {!buscandoUbicacion && mapCoords && !ciudadInputTemp.trim() && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
+                <Ionicons name="location" size={14} color={Colors.accent} />
+                <Text style={{ color: Colors.textMuted, fontSize: 12 }}>
+                  Ubicación detectada · {mapCoords.latitude.toFixed(4)}, {mapCoords.longitude.toFixed(4)}
+                </Text>
+              </View>
+            )}
             <TouchableOpacity
               style={[styles.configApply, { backgroundColor: Colors.accent }]}
               onPress={() => {

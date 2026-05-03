@@ -15,6 +15,7 @@ type ItemMercado = {
   nombre: string;
   cantidad: number;
   checked: boolean;
+  mercado?: string;
 };
 
 type ListaAgendada = {
@@ -51,6 +52,8 @@ export default function ListadoMercadoScreen() {
   const [modalComercios,    setModalComercios]    = useState(false);
   const [modalProductos,    setModalProductos]    = useState(false);
   const [busquedaModal,     setBusquedaModal]     = useState('');
+  const [modalCantidad,     setModalCantidad]     = useState<{ nombre: string; mercado?: string } | null>(null);
+  const [cantidadTemp,      setCantidadTemp]      = useState('1');
 
   useEffect(() => {
     (async () => {
@@ -72,11 +75,12 @@ export default function ListadoMercadoScreen() {
     setTimeout(() => setGuardado(false), 1500);
   };
 
-  const agregar = (nombreOverride?: string) => {
+  const agregar = (nombreOverride?: string, mercadoOverride?: string) => {
     const nombre = (nombreOverride ?? nuevo).trim();
     if (!nombre) return;
     const cant = Math.max(1, parseInt(cantidad, 10) || 1);
-    const nuevaLista = [...items, { id: Date.now().toString(), nombre, cantidad: cant, checked: false }];
+    const mercadoAuto = mercadoOverride ?? getMejorPrecio(nombre)?.comercio;
+    const nuevaLista = [...items, { id: Date.now().toString(), nombre, cantidad: cant, checked: false, mercado: mercadoAuto }];
     setItems(nuevaLista);
     setNuevo('');
     setCantidad('');
@@ -287,7 +291,7 @@ export default function ListadoMercadoScreen() {
                 <TouchableOpacity
                   key={s}
                   style={[styles.sugerenciaItem, i < sugerencias.length - 1 && styles.sugerenciaBorder]}
-                  onPress={() => { agregar(s); }}
+                  onPress={() => { setNuevo(''); setCantidadTemp('1'); setModalCantidad({ nombre: s }); }}
                 >
                   <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.sugerenciaText}>{s}</Text>
@@ -333,15 +337,64 @@ export default function ListadoMercadoScreen() {
                       {lista.items.length === 0 ? (
                         <Text style={styles.sinProductosText}>Sin productos</Text>
                       ) : (
-                        lista.items.map((item, idx) => (
-                          <View
-                            key={item.id}
-                            style={[styles.productoFila, idx < lista.items.length - 1 && styles.productoFilaBorder]}
-                          >
-                            <Ionicons name="ellipse" size={7} color={Colors.blue} />
-                            <Text style={styles.productoNombre}>{item.nombre}</Text>
-                          </View>
-                        ))
+                        (() => {
+                          const filas = lista.items.map((item, idx) => {
+                            const mejor = getMejorPrecio(item.nombre);
+                            const total = mejor ? mejor.precio * (item.cantidad ?? 1) : null;
+                            const totalBs = total && tasaBCV && tasaBCV > 0
+                              ? `Bs ${(total * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : null;
+                            return (
+                              <View
+                                key={item.id}
+                                style={[styles.productoFila, idx < lista.items.length - 1 && styles.productoFilaBorder]}
+                              >
+                                <Ionicons name="ellipse" size={7} color={Colors.blue} />
+                                <View style={{ flex: 1, gap: 2 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <Text style={styles.productoNombre}>{item.nombre}</Text>
+                                    <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>x{item.cantidad ?? 1}</Text>
+                                    {item.mercado ? (
+                                      <View style={styles.mercadoChip}>
+                                        <Ionicons name="storefront-outline" size={9} color={Colors.blue} />
+                                        <Text style={styles.mercadoChipText}>{item.mercado}</Text>
+                                      </View>
+                                    ) : null}
+                                  </View>
+                                  {total !== null && (
+                                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                                      <Text style={styles.agendaPrecioUSD}>${total.toFixed(2)}</Text>
+                                      {totalBs && <Text style={styles.agendaPrecioBs}>{totalBs}</Text>}
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            );
+                          });
+                          const sumaUSD = lista.items.reduce((acc, item) => {
+                            const mejor = getMejorPrecio(item.nombre);
+                            return acc + (mejor ? mejor.precio * (item.cantidad ?? 1) : 0);
+                          }, 0);
+                          const sumaBs = tasaBCV && tasaBCV > 0 ? sumaUSD * tasaBCV : null;
+                          return (
+                            <>
+                              {filas}
+                              {sumaUSD > 0 && (
+                                <View style={styles.agendaTotalRow}>
+                                  <Text style={styles.agendaTotalLabel}>Total</Text>
+                                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                                    <Text style={styles.agendaTotalUSD}>${sumaUSD.toFixed(2)}</Text>
+                                    {sumaBs !== null && (
+                                      <Text style={styles.agendaTotalBs}>
+                                        {`Bs ${sumaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                              )}
+                            </>
+                          );
+                        })()
                       )}
                     </View>
                   )}
@@ -391,6 +444,12 @@ export default function ListadoMercadoScreen() {
                     </Text>
                     <Text style={styles.itemCantidad}>x{item.cantidad ?? 1}</Text>
                   </View>
+                  {item.mercado ? (
+                    <View style={styles.mercadoChip}>
+                      <Ionicons name="storefront-outline" size={10} color={Colors.blue} />
+                      <Text style={styles.mercadoChipText} numberOfLines={1}>{item.mercado}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={styles.colPrecio}>
                   {mejor ? (
@@ -542,8 +601,11 @@ export default function ListadoMercadoScreen() {
                             key={p.id}
                             style={[styles.mpProductoFila, i < productosFiltrados.length - 1 && styles.mpProductoBorder]}
                             onPress={() => {
-                              if (!yaEnLista) agregar(p.nombre);
-                              setModalProductos(false);
+                              if (!yaEnLista) {
+                                setModalProductos(false);
+                                setCantidadTemp('1');
+                                setModalCantidad({ nombre: p.nombre, mercado: c.nombre });
+                              }
                             }}
                           >
                             {p.imagen && (
@@ -572,6 +634,60 @@ export default function ListadoMercadoScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Mini modal: cantidad antes de agregar */}
+      <Modal
+        transparent
+        visible={!!modalCantidad}
+        animationType="fade"
+        onRequestClose={() => setModalCantidad(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalCantidad(null)}>
+          <Pressable style={[styles.modalCard, { gap: 14 }]} onPress={e => e.stopPropagation()}>
+            <Text style={styles.modalTitle} numberOfLines={2}>{modalCantidad?.nombre}</Text>
+            <View style={{ gap: 4 }}>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' }}>Cantidad</Text>
+              <TextInput
+                style={[styles.addCantidad, { width: '100%', textAlign: 'center', fontSize: FontSize.lg }]}
+                value={cantidadTemp}
+                onChangeText={t => setCantidadTemp(t.replace(/[^0-9]/g, ''))}
+                keyboardType="number-pad"
+                autoFocus
+                maxLength={3}
+                selectTextOnFocus
+              />
+            </View>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={[styles.modalBtnCancel, { flex: 1 }]}
+                onPress={() => setModalCantidad(null)}
+              >
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtnConfirm, { flex: 1 }]}
+                onPress={() => {
+                  if (modalCantidad) {
+                    const cant = Math.max(1, parseInt(cantidadTemp, 10) || 1);
+                    const mercadoAuto = modalCantidad.mercado ?? getMejorPrecio(modalCantidad.nombre)?.comercio;
+                    const nuevaLista = [...items, {
+                      id: Date.now().toString(),
+                      nombre: modalCantidad.nombre,
+                      cantidad: cant,
+                      checked: false,
+                      mercado: mercadoAuto,
+                    }];
+                    setItems(nuevaLista);
+                    setModalCantidad(null);
+                  }
+                }}
+              >
+                <Text style={styles.modalBtnConfirmText}>Agregar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Modal: seleccionar fecha para agendar */}
@@ -845,6 +961,22 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     marginTop: 2, justifyContent: 'flex-end',
   },
   localText:  { fontSize: FontSize.xs, color: Colors.success, fontWeight: '600', flexShrink: 1 },
+  mercadoChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3,
+    backgroundColor: Colors.blue + '15', borderRadius: Radius.full,
+    paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start',
+  },
+  mercadoChipText: { fontSize: FontSize.xs, color: Colors.blue, fontWeight: '700' },
+  agendaPrecioUSD: { fontSize: FontSize.sm, fontWeight: '800', color: Colors.text },
+  agendaPrecioBs:  { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted },
+  agendaTotalRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 8, paddingTop: 8,
+    borderTopWidth: 1, borderTopColor: Colors.blue + '33',
+  },
+  agendaTotalLabel: { fontSize: FontSize.sm, fontWeight: '800', color: Colors.text },
+  agendaTotalUSD:   { fontSize: FontSize.sm, fontWeight: '800', color: Colors.blue },
+  agendaTotalBs:    { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted },
   sinPrecio:  { fontSize: FontSize.md, color: Colors.textMuted, fontWeight: '600', textAlign: 'right' },
 
   btnPorComercio: {

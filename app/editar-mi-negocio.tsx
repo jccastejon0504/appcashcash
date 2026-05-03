@@ -93,7 +93,7 @@ export default function EditarMiNegocioScreen() {
   const [portada, setPortada] = useState<string>('');
 
   // Catálogo de galería con título y precio
-  type ItemGaleria = { id?: string; imagen: string; imagen2: string; imagen3: string; titulo: string; precio: string; precio_bs: string; orden: number };
+  type ItemGaleria = { id?: string; imagen: string; imagen2: string; imagen3: string; titulo: string; precio: string; precio_bs: string; descripcion: string; orden: number };
   const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
   const [guardandoCat,    setGuardandoCat]    = useState(false);
   const [tasaBCV,         setTasaBCV]         = useState<number | null>(null);
@@ -179,14 +179,15 @@ export default function EditarMiNegocioScreen() {
         .then(({ data }) => {
           if (data) {
             setGaleriaItems(data.map((d: any) => ({
-              id:        d.id,
-              imagen:    d.imagen    ?? '',
-              imagen2:   d.imagen2   ?? '',
-              imagen3:   d.imagen3   ?? '',
-              titulo:    d.titulo    ?? '',
-              precio:    d.precio    ?? '',
-              precio_bs: d.precio_bs ?? '',
-              orden:     d.orden     ?? 0,
+              id:          d.id,
+              imagen:      d.imagen      ?? '',
+              imagen2:     d.imagen2     ?? '',
+              imagen3:     d.imagen3     ?? '',
+              titulo:      d.titulo      ?? '',
+              precio:      d.precio      ?? '',
+              precio_bs:   d.precio_bs   ?? '',
+              descripcion: d.descripcion ?? '',
+              orden:       d.orden       ?? 0,
             })));
             setGaleriaLoadedAt(Date.now()); // dispara auto-fill de Bs si la tasa ya está lista
           }
@@ -202,11 +203,18 @@ export default function EditarMiNegocioScreen() {
 
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
-      setMetodosPago(data);
+      const ORDEN = ['movil','móvil','pago m','transfer','zelle','usdt','crypto'];
+      const prioridad = (label: string) => {
+        const l = label.toLowerCase();
+        const idx = ORDEN.findIndex(k => l.includes(k));
+        return idx === -1 ? 99 : idx;
+      };
+      const ordenados = [...data].sort((a, b) => prioridad(a.label) - prioridad(b.label));
+      setMetodosPago(ordenados);
       const mapa: Record<string,string[]> = {};
       data.forEach((m: any) => { mapa[m.id] = m.datos; });
       setInfoPago(mapa);
-      if (data[0]) setMetodoRenov(data[0].id);
+      if (ordenados[0]) setMetodoRenov(ordenados[0].id);
     });
 
     supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
@@ -342,14 +350,15 @@ export default function EditarMiNegocioScreen() {
     setGuardandoCat(true);
     const itemsSubidos = await Promise.all(
       galeriaItems.map(async (item, i) => ({
-        socio_id:  resolvedId,
-        imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
-        imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
-        imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
-        titulo:    item.titulo.trim()    || null,
-        precio:    item.precio.trim()    || null,
-        precio_bs: item.precio_bs.trim() || null,
-        orden:     i,
+        socio_id:    resolvedId,
+        imagen:      await subirImagen(item.imagen,  `gal${i}_1`),
+        imagen2:     item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
+        imagen3:     item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
+        titulo:      item.titulo.trim()      || null,
+        precio:      item.precio.trim()      || null,
+        precio_bs:   item.precio_bs.trim()   || null,
+        descripcion: item.descripcion?.trim() || null,
+        orden:       i,
       }))
     );
     if (itemsSubidos.length > 0) {
@@ -367,14 +376,15 @@ export default function EditarMiNegocioScreen() {
           .not('id', 'in', `(${newIds.join(',')})`);
       }
       if (data) setGaleriaItems(data.map((d: any) => ({
-        id:        d.id,
-        imagen:    d.imagen    ?? '',
-        imagen2:   d.imagen2   ?? '',
-        imagen3:   d.imagen3   ?? '',
-        titulo:    d.titulo    ?? '',
-        precio:    d.precio    ?? '',
-        precio_bs: d.precio_bs ?? '',
-        orden:     d.orden     ?? 0,
+        id:          d.id,
+        imagen:      d.imagen      ?? '',
+        imagen2:     d.imagen2     ?? '',
+        imagen3:     d.imagen3     ?? '',
+        titulo:      d.titulo      ?? '',
+        precio:      d.precio      ?? '',
+        precio_bs:   d.precio_bs   ?? '',
+        descripcion: d.descripcion ?? '',
+        orden:       d.orden       ?? 0,
       })));
     } else {
       await supabase.from('galeria_items').delete().eq('socio_id', resolvedId);
@@ -388,7 +398,7 @@ export default function EditarMiNegocioScreen() {
     const galeriaSlots = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
     if (galeriaItems.length >= galeriaSlots) return;
     pickImage(uri => {
-      setGaleriaItems(prev => [...prev, { imagen: uri, imagen2: '', imagen3: '', titulo: '', precio: '', precio_bs: '', orden: prev.length }]);
+      setGaleriaItems(prev => [...prev, { imagen: uri, imagen2: '', imagen3: '', titulo: '', precio: '', precio_bs: '', descripcion: '', orden: prev.length }]);
     });
   };
 
@@ -449,17 +459,18 @@ export default function EditarMiNegocioScreen() {
       }
     }
 
-    // Guardar galería de productos (con título y precio)
+    // Guardar galería de productos (con título, precio y descripción)
     const itemsSubidos = await Promise.all(
       galeriaItems.map(async (item, i) => ({
-        socio_id:  resolvedId,
-        imagen:    await subirImagen(item.imagen,  `gal${i}_1`),
-        imagen2:   item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
-        imagen3:   item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
-        titulo:    item.titulo.trim()    || null,
-        precio:    item.precio.trim()    || null,
-        precio_bs: item.precio_bs.trim() || null,
-        orden:     i,
+        socio_id:    resolvedId,
+        imagen:      await subirImagen(item.imagen,  `gal${i}_1`),
+        imagen2:     item.imagen2 ? await subirImagen(item.imagen2, `gal${i}_2`) : null,
+        imagen3:     item.imagen3 ? await subirImagen(item.imagen3, `gal${i}_3`) : null,
+        titulo:      item.titulo.trim()      || null,
+        precio:      item.precio.trim()      || null,
+        precio_bs:   item.precio_bs.trim()   || null,
+        descripcion: item.descripcion?.trim() || null,
+        orden:       i,
       }))
     );
 
@@ -617,7 +628,7 @@ export default function EditarMiNegocioScreen() {
                     ))}
                   </View>
 
-                  {/* Inputs título y precio */}
+                  {/* Inputs título, precio y descripción */}
                   <View style={{ flex: 1, gap: 8 }}>
                     <TextInput
                       style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 9 }]}
@@ -653,6 +664,17 @@ export default function EditarMiNegocioScreen() {
                       placeholder={tasaBCV ? `Precio Bs. (tasa: ${tasaBCV.toFixed(2)})` : 'Precio Bs.'}
                       placeholderTextColor={Colors.textMuted}
                       keyboardType="decimal-pad"
+                    />
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 9 }]}
+                      value={item.descripcion}
+                      onChangeText={t => setGaleriaItems(prev => {
+                        const n = [...prev]; n[i] = { ...n[i], descripcion: t }; return n;
+                      })}
+                      placeholder="Descripción del producto (opcional)"
+                      placeholderTextColor={Colors.textMuted}
+                      multiline
+                      numberOfLines={2}
                     />
                   </View>
 

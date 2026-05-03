@@ -6,10 +6,12 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { getItem, setItem } from '@/services/storage';
 import { useTheme } from '@/contexts/ThemeContext';
+import * as Notifications from 'expo-notifications';
 
 const CACHE_KEY    = 'bcv_cache';
 const CUATRO_HORAS = 4 * 60 * 60 * 1000;
@@ -68,6 +70,9 @@ export default function CalculadoraBCVScreen() {
   const [copiado,       setCopiado]       = useState<'divisa' | 'bs' | null>(null);
   const [menuVisible,   setMenuVisible]   = useState(false);
   const [configVisible, setConfigVisible] = useState(false);
+  const [alertaCar,     setAlertaCar]     = useState<{ id: string; kmProximo: number; fechaProximo: string; producto: string } | null>(null);
+  const [modalAlerta,   setModalAlerta]   = useState(false);
+  const [alertaVista,   setAlertaVista]   = useState<string | null>(null);
   const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
   const router = useRouter();
 
@@ -75,6 +80,31 @@ export default function CalculadoraBCVScreen() {
   const tasa    = fuente === 'bcv' ? tasaBCV : (moneda === 'usd' ? tasaBinance : null);
 
   useEffect(() => { fetchTasa(); fetchUSDT(); }, []);
+
+  // Auto-refresh tasa BCV cada 5 minutos mientras la pantalla está visible
+  useFocusEffect(React.useCallback(() => {
+    const timer = setInterval(() => { fetchTasa(); fetchUSDT(); }, 300000);
+    return () => clearInterval(timer);
+  }, []));
+
+  useFocusEffect(React.useCallback(() => {
+    (async () => {
+      const data  = await getItem<{ id: string; kmProximo: number; fechaProximo?: string; producto: string }[]>('cambios_aceite_data');
+      const visto = await getItem<string>('alerta_car_vista');
+      setAlertaVista(visto ?? null);
+      const ultimo = data?.[0];
+      console.log('[AlertaCar] ultimo:', JSON.stringify(ultimo));
+      if (ultimo?.fechaProximo) {
+        const hd = new Date(); hd.setHours(0,0,0,0);
+        const fd = new Date(ultimo.fechaProximo); fd.setHours(0,0,0,0);
+        const dias = Math.round((fd.getTime() - hd.getTime()) / 86400000);
+        console.log('[AlertaCar] diasRestantes:', dias, 'visto:', visto, 'id:', ultimo.id);
+        setAlertaCar({ id: ultimo.id, kmProximo: ultimo.kmProximo, fechaProximo: ultimo.fechaProximo, producto: ultimo.producto });
+      } else {
+        setAlertaCar(null);
+      }
+    })();
+  }, []));
 
   useEffect(() => {
     if (!valor || !tasa) { setBs(''); return; }
@@ -746,6 +776,65 @@ export default function CalculadoraBCVScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── Campana flotante ── */}
+      {alertaCar && (() => {
+        const hoy   = new Date(); hoy.setHours(0,0,0,0);
+        const fecha = new Date(alertaCar.fechaProximo); fecha.setHours(0,0,0,0);
+        const diasRestantes = Math.round((fecha.getTime() - hoy.getTime()) / 86400000);
+        const vencida = diasRestantes <= 0;
+        if (!vencida) return null;
+        if (alertaVista === alertaCar.id) return null;
+        const badgeColor = '#EF4444';
+        return (
+          <TouchableOpacity style={[s.campanaFloat, { backgroundColor: badgeColor }]} onPress={() => setModalAlerta(true)} activeOpacity={0.85}>
+            <Ionicons name="notifications" size={22} color="#fff" />
+          </TouchableOpacity>
+        );
+      })()}
+
+      {/* ── Modal alerta mantenimiento ── */}
+      {alertaCar && (() => {
+        const hoy2   = new Date(); hoy2.setHours(0,0,0,0);
+        const fecha2 = new Date(alertaCar.fechaProximo); fecha2.setHours(0,0,0,0);
+        const diasRestantes = Math.round((fecha2.getTime() - hoy2.getTime()) / 86400000);
+        const badgeColor = '#EF4444';
+        return (
+          <Modal transparent visible={modalAlerta} animationType="fade" onRequestClose={() => setModalAlerta(false)}>
+            <View style={s.alertaOverlay}>
+              <Pressable style={[s.alertaCard, { backgroundColor: T.card, borderColor: T.border }]} onPress={e => e.stopPropagation()}>
+                <View style={[s.alertaIconWrap, { backgroundColor: badgeColor + '22' }]}>
+                  <Ionicons name="notifications" size={28} color={badgeColor} />
+                </View>
+                <Text style={[s.alertaTitulo, { color: T.text }]}>¡Cambio de aceite vencido!</Text>
+                <Text style={[s.alertaProducto, { color: T.textMuted }]}>{alertaCar.producto}</Text>
+                <View style={[s.alertaInfoRow, { borderColor: T.border }]}>
+                  <View style={s.alertaInfoItem}>
+                    <Text style={[s.alertaInfoLabel, { color: T.textMuted }]}>Próximo km</Text>
+                    <Text style={[s.alertaInfoVal, { color: badgeColor }]}>{alertaCar.kmProximo.toLocaleString()} km</Text>
+                  </View>
+                  <View style={[s.alertaInfoDivider, { backgroundColor: T.border }]} />
+                  <View style={s.alertaInfoItem}>
+                    <Text style={[s.alertaInfoLabel, { color: T.textMuted }]}>Hace</Text>
+                    <Text style={[s.alertaInfoVal, { color: badgeColor }]}>{Math.abs(diasRestantes)} días</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={[s.alertaBtn, { backgroundColor: badgeColor }]} onPress={async () => {
+                  await setItem('alerta_car_vista', alertaCar.id);
+                  setAlertaVista(alertaCar.id);
+                  setModalAlerta(false);
+                  // Cancelar notificación programada
+                  const notifId = await getItem<string>('aceite_notif_id');
+                  if (notifId) await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+                }}>
+                  <Text style={s.alertaBtnText}>Entendido</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </View>
+          </Modal>
+        );
+      })()}
+
     </SafeAreaView>
   );
 }
@@ -763,6 +852,14 @@ const s = StyleSheet.create({
   iconBtn: {
     padding: 8, borderRadius: Radius.md,
     backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
+    position: 'relative',
+  },
+  campanaFloat: {
+    position: 'absolute', top: 90, right: 12,
+    width: 46, height: 46, borderRadius: 23,
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 8, zIndex: 99,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6,
   },
 
   // Menú
@@ -906,4 +1003,21 @@ const s = StyleSheet.create({
   },
   quickMain: { fontSize: FontSize.md, fontWeight: '800', color: C.text },
   quickSub:  { fontSize: FontSize.xs, fontWeight: '600' },
+
+  // Alerta mantenimiento
+  alertaOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
+  alertaCard: {
+    width: '100%', borderRadius: Radius.xl, borderWidth: 1,
+    padding: Spacing.lg, gap: Spacing.md, alignItems: 'center',
+  },
+  alertaIconWrap: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  alertaTitulo:   { fontSize: FontSize.lg, fontWeight: '900', textAlign: 'center' },
+  alertaProducto: { fontSize: FontSize.sm, fontWeight: '600', textAlign: 'center' },
+  alertaInfoRow:  { flexDirection: 'row', width: '100%', borderWidth: 1, borderRadius: Radius.md, overflow: 'hidden' },
+  alertaInfoItem: { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
+  alertaInfoDivider: { width: 1 },
+  alertaInfoLabel: { fontSize: FontSize.xs, fontWeight: '600' },
+  alertaInfoVal:   { fontSize: FontSize.xl, fontWeight: '900' },
+  alertaBtn: { width: '100%', paddingVertical: 14, borderRadius: Radius.md, alignItems: 'center' },
+  alertaBtnText: { fontSize: FontSize.md, color: '#fff', fontWeight: '800' },
 });

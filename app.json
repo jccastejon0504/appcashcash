@@ -9,10 +9,25 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.calculadorabcv.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Usamos la cámara para escanear códigos de barras de productos.",
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para mostrarte comercios cercanos."
+      }
     },
     "android": {
       "package": "com.calculadorabcv.app",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "USE_EXACT_ALARM"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#1a8a7a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

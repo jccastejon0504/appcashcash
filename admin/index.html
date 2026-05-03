@@ -313,6 +313,9 @@
     <div class="nav-item active" data-section="dashboard">
       <span class="icon">📊</span> Dashboard
     </div>
+    <div class="nav-item" data-section="descargas">
+      <span class="icon">📱</span> Descargas
+    </div>
 
     <div class="nav-section">Socios</div>
     <div class="nav-item" data-section="ofertas">
@@ -400,15 +403,90 @@
       </div>
     </div>
 
+    <!-- ══ DESCARGAS ══════════════════════════════════════ -->
+    <div class="section" id="section-descargas">
+
+      <!-- Bloque total grande -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleTotalDescargas()">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="desc-total-arrow" style="font-size:13px;transition:transform .2s;display:inline-block">▼</span>
+            <h2>Total de descargas</h2>
+          </div>
+        </div>
+        <div id="desc-total-wrap">
+          <div style="padding:32px 20px;text-align:center">
+            <div style="font-size:96px;font-weight:900;color:var(--accent);line-height:1" id="desc-total-big">—</div>
+            <div style="font-size:14px;color:var(--muted);margin-top:8px;font-weight:600">descargas totales</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Totales por plataforma -->
+      <div class="stats-grid" style="margin-bottom:24px">
+        <div class="stat-card">
+          <div class="stat-label">Total descargas</div>
+          <div class="stat-value" id="desc-total">—</div>
+          <div class="stat-sub">todos los dispositivos</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #22c55e">
+          <div class="stat-label">🤖 Android</div>
+          <div class="stat-value" id="desc-android">—</div>
+          <div class="stat-sub">dispositivos Android</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #6c3fc5">
+          <div class="stat-label">🍎 iOS</div>
+          <div class="stat-value" id="desc-ios">—</div>
+          <div class="stat-sub">dispositivos iOS</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #f59e0b">
+          <div class="stat-label">🗓️ Este mes</div>
+          <div class="stat-value" id="desc-mes">—</div>
+          <div class="stat-sub" id="desc-mes-label">descargas</div>
+        </div>
+      </div>
+
+      <!-- Últimas descargas -->
+      <div class="card">
+        <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleUltimasDescargas()">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="desc-tabla-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Últimas descargas</h2>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cargarDescargas()">↻ Actualizar</button>
+        </div>
+        <div id="desc-tabla-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Plataforma</th><th>Fecha y hora</th></tr>
+              </thead>
+              <tbody id="desc-tabla"><tr><td colspan="3" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico por mes -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header"><h2>Descargas por mes</h2></div>
+        <div class="card-body">
+          <div id="desc-chart" style="display:flex;align-items:flex-end;gap:8px;height:140px;overflow-x:auto;padding-bottom:4px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ OFERTAS ═════════════════════════════════════════ -->
     <div class="section" id="section-ofertas">
 
       <!-- Reglas de Registro (primer bloque) -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
-          <h2>Reglas de Registro</h2>
+          <h2>Reglas de Registro y Planes</h2>
         </div>
-        <div style="padding:20px;max-width:480px;display:flex;flex-direction:column;gap:20px">
+        <div style="padding:20px;max-width:560px;display:flex;flex-direction:column;gap:24px">
+
+          <!-- Límite de tiendas -->
           <div>
             <div style="font-weight:800;font-size:14px;margin-bottom:6px">Límite de tiendas por cliente</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -425,6 +503,37 @@
               <span id="msg-limite-tiendas" style="font-size:12px"></span>
             </div>
           </div>
+
+          <hr style="border:none;border-top:1px solid var(--border)" />
+
+          <!-- Días de gracia -->
+          <div>
+            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Días de gracia tras vencimiento</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              Días adicionales que un socio permanece activo después de que su plan vence. Pasado ese tiempo se desactiva automáticamente al abrir el admin.
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <input type="number" id="cfg-dias-gracia" min="0" max="30" value="0"
+                style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
+              <button class="btn btn-primary btn-sm" onclick="guardarDiasGracia()">Guardar</button>
+              <span id="msg-dias-gracia" style="font-size:12px"></span>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--border)" />
+
+          <!-- Reset manual -->
+          <div>
+            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Resetear planes vencidos</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              Desactiva todos los socios cuyo plan ya venció (respetando los días de gracia configurados).
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <button class="btn btn-danger" onclick="resetearVencidos(true)">⟳ Resetear ahora</button>
+              <span id="msg-reset-vencidos" style="font-size:12px"></span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -506,13 +615,24 @@
                 <input type="number" id="precio-base-pro-anual" step="0.01" placeholder="300" />
               </div>
             </div>
-            <div class="form-group" style="margin-top:8px">
-              <label>Texto promocional en la app</label>
-              <textarea id="texto-promo" placeholder="¡Únete hoy y obtén beneficios exclusivos!"></textarea>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+              <button class="btn btn-primary" onclick="guardarPreciosBase()">Guardar cambios</button>
+              <span class="msg" id="msg-precios"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Texto promocional -->
+        <div class="card">
+          <div class="card-header"><h2>Texto promocional en la app</h2></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Mensaje que verán los usuarios en la sección Mi Tienda</label>
+              <textarea id="texto-promo" placeholder="¡Únete hoy y obtén beneficios exclusivos!" style="min-height:90px"></textarea>
             </div>
             <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
-              <button class="btn btn-primary" onclick="guardarPreciosBase()">Guardar precios</button>
-              <span class="msg" id="msg-precios"></span>
+              <button class="btn btn-primary" onclick="guardarTextoPromo()">Guardar texto</button>
+              <span class="msg" id="msg-texto-promo"></span>
             </div>
           </div>
         </div>
@@ -1011,7 +1131,11 @@
         <div class="card">
           <div class="card-header">
             <h2>Métodos de pago</h2>
-            <button class="btn btn-outline btn-sm" onclick="abrirNuevoMetodo()">+ Nuevo</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-outline btn-sm" onclick="insertarTransferencia()">+ Transferencia</button>
+              <button class="btn btn-outline btn-sm" onclick="abrirNuevoMetodo()">+ Nuevo</button>
+              <button id="btn-guardar-metodos" class="btn btn-sm" style="background:var(--accent);color:#fff;opacity:.4;cursor:default" disabled onclick="guardarEstadosMetodos()">Guardar cambios</button>
+            </div>
           </div>
           <div id="lista-metodos" class="card-body">
             <div class="loading">Cargando…</div>
@@ -1026,12 +1150,24 @@
               <input type="hidden" id="metodo-id" />
               <div class="form-group" style="margin-bottom:12px">
                 <label>Nombre del método *</label>
-                <input type="text" id="metodo-label" placeholder="Ej: Pago Móvil, Zelle, USDT…" />
+                <input type="text" id="metodo-label" placeholder="Ej: Pago Móvil, Zelle…" />
               </div>
-              <div class="form-group" style="margin-bottom:12px">
-                <label>Datos de pago (uno por línea)</label>
-                <textarea id="metodo-datos" rows="5" placeholder="Banco: Banesco&#10;Teléfono: 0414-0000000&#10;Nombre: Juan García&#10;Cédula: V-12345678"></textarea>
+              <div class="form-group" style="margin-bottom:16px">
+                <label>Ícono</label>
+                <select id="metodo-icono" style="border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);background:#fff;width:100%">
+                  <option value="card-outline">💳 Tarjeta (general)</option>
+                  <option value="phone-portrait-outline">📱 Pago Móvil</option>
+                  <option value="logo-usd">💵 Zelle / USD</option>
+                  <option value="logo-bitcoin">₿ Crypto / USDT</option>
+                  <option value="swap-horizontal-outline">🔄 Transferencia</option>
+                  <option value="cash-outline">💵 Efectivo</option>
+                </select>
               </div>
+
+              <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--muted)">DATOS DE PAGO</div>
+              <div id="metodo-campos" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px"></div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="agregarCampo('','')" style="margin-bottom:16px">+ Agregar campo</button>
+
               <div class="toggle-row" style="margin-bottom:12px">
                 <span>Activo</span>
                 <label class="toggle">
@@ -1063,6 +1199,7 @@
 
   const SECCIONES = {
     dashboard:    { title: 'Dashboard',                sub: 'Resumen general' },
+    descargas:    { title: 'Descargas de la App',      sub: 'Contador de instalaciones por plataforma' },
     ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
@@ -1125,6 +1262,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('topbar-title').textContent = s.title;
     document.getElementById('topbar-sub').textContent   = s.sub;
     if (id === 'dashboard')   cargarDashboard();
+    if (id === 'descargas')   cargarDescargas();
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'socios')      cargarSocios();
@@ -1147,6 +1285,98 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     el.textContent = text;
     el.className = `msg ${tipo}`;
     setTimeout(() => { el.className = 'msg'; }, 3500);
+  }
+
+  // ── Descargas ─────────────────────────────────────────────────────────────
+
+  function toggleTotalDescargas() {
+    const wrap  = document.getElementById('desc-total-wrap');
+    const arrow = document.getElementById('desc-total-arrow');
+    const open  = wrap.style.display === 'none';
+    wrap.style.display    = open ? 'block' : 'none';
+    arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+
+  function toggleUltimasDescargas() {
+    const wrap  = document.getElementById('desc-tabla-wrap');
+    const arrow = document.getElementById('desc-tabla-arrow');
+    const open  = wrap.style.display === 'none';
+    wrap.style.display  = open ? 'block' : 'none';
+    arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+
+  async function cargarDescargas() {
+    const { data, error } = await db
+      .from('descargas_app')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return;
+
+    const total   = data.length;
+    const android = data.filter(d => d.platform === 'android').length;
+    const ios     = data.filter(d => d.platform === 'ios').length;
+    document.getElementById('desc-total-big').textContent = total;
+
+    // Este mes
+    const ahora = new Date();
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const esMes = data.filter(d => new Date(d.created_at) >= inicioMes).length;
+    const nomMes = ahora.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' });
+
+    document.getElementById('desc-total').textContent   = total;
+    document.getElementById('desc-android').textContent = android;
+    document.getElementById('desc-ios').textContent     = ios;
+    document.getElementById('desc-mes').textContent     = esMes;
+    document.getElementById('desc-mes-label').textContent = nomMes;
+
+    // Tabla últimas 50
+    const tbody = document.getElementById('desc-tabla');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty"><p>Sin registros aún</p></td></tr>';
+    } else {
+      tbody.innerHTML = data.slice(0, 50).map((d, i) => {
+        const plat = d.platform === 'android' ? '🤖 Android' : d.platform === 'ios' ? '🍎 iOS' : '❓ Desconocido';
+        const fecha = new Date(d.created_at).toLocaleString('es-VE', {
+          day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        return `<tr><td>${i + 1}</td><td>${plat}</td><td>${fecha}</td></tr>`;
+      }).join('');
+    }
+
+    // Gráfico por mes (últimos 6 meses)
+    const meses = {};
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(ahora.getFullYear(), ahora.getMonth() - m, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('es-VE', { month: 'short' });
+      meses[key] = { label, android: 0, ios: 0, otro: 0 };
+    }
+    data.forEach(d => {
+      const dt = new Date(d.created_at);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (!meses[key]) return;
+      if (d.platform === 'android') meses[key].android++;
+      else if (d.platform === 'ios') meses[key].ios++;
+      else meses[key].otro++;
+    });
+
+    const vals = Object.values(meses);
+    const maxVal = Math.max(1, ...vals.map(v => v.android + v.ios + v.otro));
+    const chart = document.getElementById('desc-chart');
+    chart.innerHTML = vals.map(v => {
+      const tot = v.android + v.ios + v.otro;
+      const pct = Math.round((tot / maxVal) * 100);
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:48px">
+          <span style="font-size:11px;font-weight:700;color:var(--text)">${tot || ''}</span>
+          <div style="width:100%;background:var(--border);border-radius:6px;overflow:hidden;height:${Math.max(4, pct)}px;position:relative">
+            <div style="position:absolute;bottom:0;left:0;right:0;height:${Math.round(v.android/Math.max(1,tot)*100)}%;background:#22c55e;border-radius:0 0 6px 6px"></div>
+            <div style="position:absolute;bottom:${Math.round(v.android/Math.max(1,tot)*100)}%;left:0;right:0;height:${Math.round(v.ios/Math.max(1,tot)*100)}%;background:#6c3fc5"></div>
+          </div>
+          <span style="font-size:10px;color:var(--muted)">${v.label}</span>
+        </div>`;
+    }).join('');
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -1256,13 +1486,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarOfertas() {
     cargarReglas();   // carga el límite de tiendas que ahora vive en este mismo módulo
-    // Cargar config_app (visibilidad + precios base + texto promo)
+    // Cargar config_app (visibilidad + precios base + texto promo + días de gracia)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
                     'gratis_fecha_inicio','gratis_fecha_fin',
                     'precio_base_basico_mensual','precio_base_basico_anual',
-                    'precio_base_pro_mensual','precio_base_pro_anual','texto_promocional',
-                    'dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual']);
+                    'precio_base_pro_mensual','precio_base_pro_anual','texto_planes',
+                    'dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual',
+                    'dias_gracia_vencimiento']);
     let preciosBase = {};
     if (configs) {
       const cfg = Object.fromEntries(configs.map(c => [c.clave, c.valor]));
@@ -1275,11 +1506,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       document.getElementById('precio-base-basico-anual').value   = cfg.precio_base_basico_anual   ?? '';
       document.getElementById('precio-base-pro-mensual').value    = cfg.precio_base_pro_mensual    ?? '';
       document.getElementById('precio-base-pro-anual').value      = cfg.precio_base_pro_anual      ?? '';
-      document.getElementById('texto-promo').value                = cfg.texto_promocional          ?? '';
+      document.getElementById('texto-promo').value                = cfg.texto_planes               ?? '';
       document.getElementById('cfg-dias-basico-mensual').value = parseInt(cfg.dias_basico_mensual) || 31;
       document.getElementById('cfg-dias-basico-anual').value   = parseInt(cfg.dias_basico_anual)   || 365;
       document.getElementById('cfg-dias-pro-mensual').value    = parseInt(cfg.dias_pro_mensual)    || 31;
       document.getElementById('cfg-dias-pro-anual').value      = parseInt(cfg.dias_pro_anual)      || 365;
+      document.getElementById('cfg-dias-gracia').value         = parseInt(cfg.dias_gracia_vencimiento) || 0;
       preciosBase = {
         'basico-mensual': cfg.precio_base_basico_mensual ?? '',
         'basico-anual':   cfg.precio_base_basico_anual   ?? '',
@@ -1356,13 +1588,22 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
   }
 
+  async function guardarTextoPromo() {
+    const msg   = document.getElementById('msg-texto-promo');
+    const valor = document.getElementById('texto-promo').value.trim();
+    if (!valor) { msg.textContent = 'Escribe un texto primero.'; msg.style.color = 'var(--red)'; return; }
+    const { error } = await db.from('config_app').upsert({ clave: 'texto_planes', valor }, { onConflict: 'clave' });
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
+    setTimeout(() => msg.textContent = '', 3000);
+  }
+
   async function guardarPreciosBase() {
     const claves = [
       ['precio_base_basico_mensual', 'precio-base-basico-mensual'],
       ['precio_base_basico_anual',   'precio-base-basico-anual'],
       ['precio_base_pro_mensual',    'precio-base-pro-mensual'],
       ['precio_base_pro_anual',      'precio-base-pro-anual'],
-      ['texto_promocional',          'texto-promo'],
     ];
     const msg = document.getElementById('msg-precios');
     try {
@@ -2475,6 +2716,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   // ── Socios activos ────────────────────────────────────────────────────────
 
   async function cargarSocios() {
+    await resetearVencidos(false); // auto-desactiva vencidos silenciosamente
     const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true').order('nombre');
     const tbody = document.getElementById('tabla-socios');
     if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; return; }
@@ -2594,48 +2836,131 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { data } = await db.from('metodos_pago').select('*').order('label');
     const lista = document.getElementById('lista-metodos');
     if (!data?.length) { lista.innerHTML = '<div class="empty"><p>Sin métodos configurados</p></div>'; return; }
-    lista.innerHTML = data.map(m => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-weight:700;font-size:14px">${m.label}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">${(m.datos ?? []).join(' · ')}</div>
+    lista.innerHTML = data.map((m, i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;${i < data.length-1 ? 'border-bottom:1px solid var(--border)' : ''}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px;${!m.activo ? 'color:var(--muted);text-decoration:line-through' : ''}">${m.label}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(m.datos ?? []).join(' · ')}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="badge ${m.activo ? 'badge-green' : 'badge-gray'}">${m.activo ? 'Activo' : 'Inactivo'}</span>
+        <div style="display:flex;gap:10px;align-items:center;margin-left:12px;flex-shrink:0">
+          <label class="toggle" title="Activar / desactivar en app" style="cursor:pointer">
+            <input type="checkbox" data-metodo-id="${m.id}" ${m.activo ? 'checked' : ''} onchange="marcarCambioMetodo()" />
+            <span class="slider"></span>
+          </label>
           <button class="btn btn-sm btn-outline" onclick="editarMetodo(${JSON.stringify(m).replace(/"/g,'&quot;')})">Editar</button>
         </div>
       </div>`).join('');
   }
 
+  function marcarCambioMetodo() {
+    const btn = document.getElementById('btn-guardar-metodos');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor  = 'pointer';
+  }
+
+  async function guardarEstadosMetodos() {
+    const btn = document.getElementById('btn-guardar-metodos');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+    const checks = document.querySelectorAll('[data-metodo-id]');
+    await Promise.all(Array.from(checks).map(ch =>
+      db.from('metodos_pago').update({ activo: ch.checked }).eq('id', ch.dataset.metodoId)
+    ));
+    btn.textContent = '✓ Guardado';
+    btn.style.opacity = '1';
+    setTimeout(() => {
+      btn.textContent  = 'Guardar cambios';
+      btn.style.opacity = '.4';
+      btn.style.cursor  = 'default';
+    }, 1800);
+    cargarMetodos();
+  }
+
+  async function insertarTransferencia() {
+    const { data: existe } = await db.from('metodos_pago').select('id').ilike('label', '%transferencia%').maybeSingle();
+    if (existe) { alert('Ya existe un método de Transferencia.'); return; }
+    const { error } = await db.from('metodos_pago').insert({
+      id: crypto.randomUUID(),
+      label: 'Transferencia',
+      datos: ['Banco: ', 'Titular: ', 'Cédula: ', 'Cuenta N°: '],
+      activo: true,
+      icono: 'swap-horizontal-outline',
+    });
+    if (error) { alert('Error: ' + error.message); return; }
+    cargarMetodos();
+  }
+
+  function agregarCampo(clave, valor) {
+    const cont = document.getElementById('metodo-campos');
+    const div  = document.createElement('div');
+    div.style.cssText = 'display:grid;grid-template-columns:130px 1fr 28px;gap:8px;align-items:center';
+    div.innerHTML = `
+      <input type="text" placeholder="Ej: Banco" value="${clave}"
+        style="border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;color:var(--text);background:#fff;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+      <input type="text" placeholder="Valor" value="${valor}"
+        style="border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);background:#fff;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+      <button type="button" onclick="this.parentElement.remove()"
+        style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:18px;line-height:1;padding:0">×</button>`;
+    cont.appendChild(div);
+  }
+
+  function leerCampos() {
+    const filas = document.getElementById('metodo-campos').querySelectorAll('div');
+    return Array.from(filas).map(f => {
+      const inputs = f.querySelectorAll('input');
+      const k = inputs[0].value.trim();
+      const v = inputs[1].value.trim();
+      return k ? `${k}: ${v}` : null;
+    }).filter(Boolean);
+  }
+
   function abrirNuevoMetodo() {
     document.getElementById('metodo-id').value       = '';
     document.getElementById('metodo-label').value    = '';
-    document.getElementById('metodo-datos').value    = '';
+    document.getElementById('metodo-campos').innerHTML = '';
+    document.getElementById('metodo-icono').value    = 'card-outline';
     document.getElementById('metodo-activo').checked = true;
     document.getElementById('btn-borrar-metodo').style.display = 'none';
     document.getElementById('metodo-form-titulo').textContent = 'Nuevo método';
+    agregarCampo('', '');
   }
 
   function editarMetodo(m) {
     document.getElementById('metodo-id').value       = m.id;
     document.getElementById('metodo-label').value    = m.label;
-    document.getElementById('metodo-datos').value    = (m.datos ?? []).join('\n');
+    document.getElementById('metodo-campos').innerHTML = '';
+    document.getElementById('metodo-icono').value    = m.icono ?? 'card-outline';
     document.getElementById('metodo-activo').checked = m.activo;
     document.getElementById('btn-borrar-metodo').style.display = 'inline-flex';
-    document.getElementById('metodo-form-titulo').textContent = 'Editar método';
+    document.getElementById('metodo-form-titulo').textContent  = 'Editar método';
+    const datos = m.datos ?? [];
+    if (datos.length === 0) {
+      agregarCampo('', '');
+    } else {
+      datos.forEach(linea => {
+        const idx = linea.indexOf(':');
+        const k   = idx >= 0 ? linea.slice(0, idx).trim() : linea;
+        const v   = idx >= 0 ? linea.slice(idx + 1).trim() : '';
+        agregarCampo(k, v);
+      });
+    }
   }
 
   document.getElementById('form-metodo').addEventListener('submit', async e => {
     e.preventDefault();
     const id     = document.getElementById('metodo-id').value;
     const label  = document.getElementById('metodo-label').value.trim();
-    const datos  = document.getElementById('metodo-datos').value.split('\n').map(l => l.trim()).filter(Boolean);
+    const datos  = leerCampos();
     const activo = document.getElementById('metodo-activo').checked;
     if (!label) { showMsg('msg-metodo', 'El nombre es obligatorio.', 'err'); return; }
-    const payload = { label, datos, activo };
+    const icono   = document.getElementById('metodo-icono').value;
+    const payload = { label, datos, activo, icono };
     const { error } = id
       ? await db.from('metodos_pago').update(payload).eq('id', id)
-      : await db.from('metodos_pago').insert(payload);
+      : await db.from('metodos_pago').insert({ id: crypto.randomUUID(), ...payload });
     if (error) { showMsg('msg-metodo', 'Error: ' + error.message, 'err'); return; }
     showMsg('msg-metodo', '¡Guardado!', 'ok');
     abrirNuevoMetodo();
@@ -2712,6 +3037,57 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     setTimeout(() => msg.textContent = '', 2500);
   }
 
+  // ── Días de gracia + Reset vencidos ─────────────────────────────────────
+
+  async function guardarDiasGracia() {
+    const msg   = document.getElementById('msg-dias-gracia');
+    const valor = String(Math.min(30, Math.max(0, parseInt(document.getElementById('cfg-dias-gracia').value) || 0)));
+    const { error } = await db.from('config_app').upsert({ clave: 'dias_gracia_vencimiento', valor }, { onConflict: 'clave' });
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+
+  async function resetearVencidos(mostrarMsg = false) {
+    // Leer días de gracia
+    const { data: cfg } = await db.from('config_app').select('valor').eq('clave', 'dias_gracia_vencimiento').single();
+    const diasGracia = parseInt(cfg?.valor ?? '0') || 0;
+
+    // Fecha límite: hoy − días de gracia
+    const limite = new Date();
+    limite.setDate(limite.getDate() - diasGracia);
+    const limitISO = limite.toISOString();
+
+    // Socios activos con vencimiento ya superado
+    const { data: vencidos } = await db
+      .from('socios_comerciales')
+      .select('id, nombre, fecha_vencimiento')
+      .eq('activo', true)
+      .lt('fecha_vencimiento', limitISO);
+
+    if (!vencidos?.length) {
+      if (mostrarMsg) {
+        const msg = document.getElementById('msg-reset-vencidos');
+        msg.textContent = 'No hay planes vencidos.'; msg.style.color = 'var(--muted)';
+        setTimeout(() => msg.textContent = '', 3000);
+      }
+      return;
+    }
+
+    const ids = vencidos.map(v => v.id);
+    const { error } = await db.from('socios_comerciales').update({ activo: false }).in('id', ids);
+
+    if (mostrarMsg) {
+      const msg = document.getElementById('msg-reset-vencidos');
+      if (error) {
+        msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)';
+      } else {
+        msg.textContent = `✓ ${ids.length} socio(s) desactivado(s).`; msg.style.color = 'var(--green)';
+        setTimeout(() => msg.textContent = '', 4000);
+      }
+    }
+  }
+
   async function guardarDiasPlan() {
     const msg = document.getElementById('msg-dias-plan');
     const filas = [
@@ -2726,6 +3102,65 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
     setTimeout(() => msg.textContent = '', 2500);
   }
+
+  // ── Auto-refresh ──────────────────────────────────────────────────────────
+
+  let _seccionActual = 'dashboard';
+  let _refreshTimer  = null;
+  const _REFRESH_SEG = 60; // segundos entre cada refresco
+  let _cuenta        = _REFRESH_SEG;
+
+  // Indicador visual en topbar
+  const _indicador = document.createElement('div');
+  _indicador.style.cssText = 'font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px';
+  _indicador.innerHTML = '<span id="refresh-dot" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span><span id="refresh-label">Actualizando en 60s</span>';
+  document.getElementById('topbar-right').appendChild(_indicador);
+
+  function _actualizarIndicador() {
+    const label = document.getElementById('refresh-label');
+    const dot   = document.getElementById('refresh-dot');
+    if (!label || !dot) return;
+    if (_cuenta <= 0) {
+      label.textContent = 'Actualizando…';
+      dot.style.background = '#f59e0b';
+    } else {
+      label.textContent = `Actualiza en ${_cuenta}s`;
+      dot.style.background = '#22c55e';
+    }
+  }
+
+  function _recargarSeccion() {
+    const fn = {
+      dashboard:   cargarDashboard,
+      descargas:   cargarDescargas,
+      ofertas:     cargarOfertas,
+      solicitudes: cargarSolicitudes,
+      socios:      cargarSocios,
+      ubicaciones: cargarEstados,
+      metodos:     cargarMetodos,
+      terminos:    cargarTerminos,
+    }[_seccionActual];
+    if (fn) fn();
+  }
+
+  // Interceptar navTo para trackear sección activa y reiniciar timer
+  const _navToOriginal = navTo;
+  navTo = function(id) {
+    _navToOriginal(id);
+    _seccionActual = id;
+    _cuenta = _REFRESH_SEG;
+    _actualizarIndicador();
+  };
+
+  // Tick cada segundo
+  setInterval(() => {
+    _cuenta--;
+    _actualizarIndicador();
+    if (_cuenta <= 0) {
+      _cuenta = _REFRESH_SEG;
+      _recargarSeccion();
+    }
+  }, 1000);
 
   // ── Init ──────────────────────────────────────────────────────────────────
 

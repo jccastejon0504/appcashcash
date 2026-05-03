@@ -10,13 +10,38 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function solicitarPermisosNotificaciones() {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('mantenimiento', {
+      name: 'Mantenimiento vehículo',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+    });
+  }
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === 'granted';
+}
 
 function useRegistrarDescarga() {
   useEffect(() => {
+    solicitarPermisosNotificaciones();
     const registrar = async () => {
       const ya = await AsyncStorage.getItem('app_instalada');
       if (ya) return;
-      await supabase.from('descargas_app').insert({});
+      await supabase.from('descargas_app').insert({ platform: Platform.OS });
       await AsyncStorage.setItem('app_instalada', 'true');
     };
     registrar();

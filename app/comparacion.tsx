@@ -47,6 +47,7 @@ export default function ComparacionScreen() {
   const [photoTarget,    setPhotoTarget]    = useState<'nuevo' | 'edit'>('nuevo');
   const [nuevoImagen,    setNuevoImagen]    = useState<string | undefined>(undefined);
   const [fotoAmpliada,   setFotoAmpliada]   = useState<string | undefined>(undefined);
+  const [sugerenciasNombre, setSugerenciasNombre] = useState<string[]>([]);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
@@ -204,6 +205,12 @@ export default function ComparacionScreen() {
     setScannerVisible(false);
     if (scannerTarget === 'codigo') {
       setNuevoCodigo(data);
+      // Auto-completar nombre si el código ya existe en cualquier comercio
+      const productoExistente = comercios.flatMap(c => c.productos).find(p => p.codigo === data);
+      if (productoExistente) {
+        if (!nuevoNombre.trim()) setNuevoNombre(productoExistente.nombre);
+        if (!nuevoImagen && productoExistente.imagen) setNuevoImagen(productoExistente.imagen);
+      }
     } else {
       setBusqueda(data);
       buscarProducto(data);
@@ -376,15 +383,22 @@ export default function ComparacionScreen() {
           <View style={styles.addProductCol}>
             {/* Fila 1: Código de barras + escáner */}
             <View style={styles.addRow}>
-              <TextInput
-                style={styles.addInput}
-                value={nuevoCodigo}
-                onChangeText={setNuevoCodigo}
-                placeholder="Código de barras (opcional)…"
-                placeholderTextColor={Colors.textMuted}
-                keyboardType="number-pad"
-                returnKeyType="next"
-              />
+              <View style={styles.inputWithClear}>
+                <TextInput
+                  style={styles.addInputFlex}
+                  value={nuevoCodigo}
+                  onChangeText={setNuevoCodigo}
+                  placeholder="Código de barras (opcional)…"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="number-pad"
+                  returnKeyType="next"
+                />
+                {nuevoCodigo.length > 0 && (
+                  <TouchableOpacity onPress={() => setNuevoCodigo('')} style={styles.clearBtn}>
+                    <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
               <TouchableOpacity style={styles.scanBtn} onPress={() => abrirScanner('codigo')}>
                 <Ionicons name="barcode-outline" size={22} color="#fff" />
               </TouchableOpacity>
@@ -394,7 +408,18 @@ export default function ComparacionScreen() {
               <TextInput
                 style={styles.addInput}
                 value={nuevoNombre}
-                onChangeText={setNuevoNombre}
+                onChangeText={t => {
+                  setNuevoNombre(t);
+                  if (t.trim().length > 0) {
+                    const term = t.toLowerCase().trim();
+                    const todos = Array.from(new Set(
+                      comercios.flatMap(c => c.productos.map(p => p.nombre))
+                    )).filter(n => n.toLowerCase().includes(term) && n.toLowerCase() !== term);
+                    setSugerenciasNombre(todos.slice(0, 6));
+                  } else {
+                    setSugerenciasNombre([]);
+                  }
+                }}
                 placeholder="Título del producto…"
                 placeholderTextColor={Colors.textMuted}
                 returnKeyType="next"
@@ -409,6 +434,22 @@ export default function ComparacionScreen() {
                 }
               </TouchableOpacity>
             </View>
+            {/* Sugerencias nombre */}
+            {sugerenciasNombre.length > 0 && (
+              <View style={styles.sugerenciasCard}>
+                {sugerenciasNombre.map((s, i) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.sugerenciaItem, i < sugerenciasNombre.length - 1 && styles.sugerenciaBorder]}
+                    onPress={() => { setNuevoNombre(s); setSugerenciasNombre([]); }}
+                  >
+                    <Ionicons name="pricetag-outline" size={13} color={Colors.textMuted} />
+                    <Text style={styles.sugerenciaText}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             {/* Fila 3: Valor + $/Bs + agregar */}
             <View style={styles.addProductRow}>
               <TextInput
@@ -637,15 +678,22 @@ export default function ComparacionScreen() {
         <Text style={styles.instruccion}>Escribe un producto para ver los precios en cada local</Text>
         <View>
           <View style={styles.addRow}>
-            <TextInput
-              style={styles.addInput}
-              value={busqueda}
-              onChangeText={setBusqueda}
-              placeholder="Ej: mantequilla, arroz, leche…"
-              placeholderTextColor={Colors.textMuted}
-              onSubmitEditing={() => buscarProducto()}
-              returnKeyType="search"
-            />
+            <View style={styles.inputWithClear}>
+              <TextInput
+                style={styles.addInputFlex}
+                value={busqueda}
+                onChangeText={setBusqueda}
+                placeholder="Ej: mantequilla, arroz, leche…"
+                placeholderTextColor={Colors.textMuted}
+                onSubmitEditing={() => buscarProducto()}
+                returnKeyType="search"
+              />
+              {busqueda.length > 0 && (
+                <TouchableOpacity onPress={() => setBusqueda('')} style={styles.clearBtn}>
+                  <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
             <TouchableOpacity style={styles.addBtn} onPress={() => buscarProducto()}>
               <Ionicons name="search" size={20} color="#fff" />
             </TouchableOpacity>
@@ -842,6 +890,18 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: Spacing.md, paddingVertical: 12,
     fontSize: FontSize.md, color: Colors.text,
+  },
+  inputWithClear: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  addInputFlex: {
+    flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 12,
+    fontSize: FontSize.md, color: Colors.text,
+  },
+  clearBtn: {
+    paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center',
   },
   addBtn: {
     backgroundColor: Colors.blue, borderRadius: Radius.md,
