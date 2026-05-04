@@ -26,7 +26,8 @@ export default function SociosScreen() {
   const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
   const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null }[]>([]);
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
-  const [submenu,          setSubmenu]          = useState(false);
+  const [submenu,           setSubmenu]           = useState(false);
+  const [modalMisTiendas,   setModalMisTiendas]   = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,        setBusqueda]        = useState('');
   const [filtroAplicado,  setFiltroAplicado]  = useState('');
@@ -328,7 +329,7 @@ export default function SociosScreen() {
         </View>
       )}
       {s.destacado && (
-        <View style={[styles.badgeDestacado, { backgroundColor: Colors.accent }]}>
+        <View style={[styles.badgeDestacado, { backgroundColor: '#FFD700' }]}>
           <Ionicons name="star" size={10} color="#fff" />
         </View>
       )}
@@ -914,20 +915,32 @@ export default function SociosScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mi Tienda</Text>
         <TouchableOpacity
-          style={[styles.configBtn, { borderColor: Colors.border }]}
-          onPress={() => { setCiudadInputTemp(ubicacionCiudad); setRadioInputTemp(ubicacionRadio); setModalConfigVisible(true); }}
+          style={[styles.miTiendaBtn, { backgroundColor: Colors.accent }]}
+          onPress={() => setModalMisTiendas(true)}
+          activeOpacity={0.8}
         >
-          <Ionicons name="settings-outline" size={20} color={ubicacionCiudad ? Colors.accent : Colors.text} />
+          <Ionicons name="storefront-outline" size={15} color="#fff" />
+          <Text style={styles.directorioBtnText}>
+            {misSocios.length > 0 ? `${misSocios.length} tienda${misSocios.length > 1 ? 's' : ''}` : 'Mis tiendas'}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.directorioBtn, { backgroundColor: Colors.accent }]}
-          onPress={() => router.push('/directorio')}
-        >
-          <Ionicons name="map-outline" size={15} color="#fff" />
-          <Text style={styles.directorioBtnText}>Directorio</Text>
-        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity
+            style={[styles.configBtn, { borderColor: Colors.border }]}
+            onPress={() => { setCiudadInputTemp(ubicacionCiudad); setRadioInputTemp(ubicacionRadio); setModalConfigVisible(true); }}
+          >
+            <Ionicons name="settings-outline" size={20} color={ubicacionCiudad ? Colors.accent : Colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.directorioBtn, { backgroundColor: Colors.accent }]}
+            onPress={() => router.push('/directorio')}
+          >
+            <Ionicons name="map-outline" size={15} color="#fff" />
+            <Text style={styles.directorioBtnText}>Directorio</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Banner ubicación activa */}
@@ -945,92 +958,93 @@ export default function SociosScreen() {
         </View>
       ) : null}
 
-      {/* Mi espacio de negocio */}
-      <View style={[styles.bannerSocio, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '55', flexDirection: 'column', alignItems: 'stretch' }]}>
-        {/* Cabecera — siempre visible */}
-        <TouchableOpacity
-          onPress={() => setSubmenu(v => !v)}
-          activeOpacity={0.8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={[styles.bannerSocioIcono, { backgroundColor: Colors.accent }]}>
-            <Ionicons name="create" size={18} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.bannerSocioTitulo, { color: Colors.text }]}>Mis tiendas</Text>
-            <Text style={[styles.bannerSocioSub, { color: Colors.textMuted }]}>
-              {misSocios.length === 0 ? 'Toca para gestionar tu negocio' : `${misSocios.length} negocio${misSocios.length > 1 ? 's' : ''} · toca para ver`}
-            </Text>
-          </View>
-          <Ionicons name={submenu ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.accent} />
-        </TouchableOpacity>
-
-        {/* Submenú desplegable */}
-        {submenu && (
-          <View style={{ marginTop: Spacing.sm, gap: 8 }}>
-
-            {/* Negocios aprobados detectados automáticamente */}
-            {misSocios.map(s => {
-              const vencida = s.fecha_vencimiento
-                ? new Date(s.fecha_vencimiento).getTime() < Date.now()
-                : false;
-              const mesVenc = s.fecha_vencimiento
-                ? new Date(s.fecha_vencimiento).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
-                : null;
-              return (
-                <TouchableOpacity key={s.id}
-                  onPress={() => { setSubmenu(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
-                  activeOpacity={0.85}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: vencida ? '#ef4444' : Colors.border, overflow: 'hidden' }}>
-                  {/* Miniatura */}
-                  {s.imagen ? (
-                    <Image source={{ uri: s.imagen }} style={{ width: 54, height: 54 }} resizeMode="cover" />
-                  ) : (
-                    <View style={{ width: 54, height: 54, backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="storefront-outline" size={22} color={Colors.accent} />
-                    </View>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
-                    {vencida && mesVenc ? (
-                      <Text style={{ color: '#ef4444', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>
-                        ⚠ Vencida · {mesVenc}
-                      </Text>
-                    ) : (
-                      <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar mi tienda · subir imágenes</Text>
-                    )}
-                  </View>
-                  <View style={{ backgroundColor: vencida ? '#ef4444' : Colors.accent, paddingHorizontal: 12, paddingVertical: 8, marginRight: 10, borderRadius: Radius.md }}>
-                    <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-
-            {/* Si no hay negocios aún */}
-            {misSocios.length === 0 && (
-              <View style={{ paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' }}>
-                <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs, textAlign: 'center' }}>
-                  {yaEnvioSolicitud
-                    ? 'Tu solicitud está en revisión. Cuando sea aprobada, tu negocio aparecerá aquí.'
-                    : 'Aún no tienes un negocio registrado.'}
+      {/* Modal Mis Tiendas */}
+      <Modal visible={modalMisTiendas} animationType="slide" transparent onRequestClose={() => setModalMisTiendas(false)}>
+        <View style={{ flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setModalMisTiendas(false)} />
+          <View style={{ backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' }}>
+            {/* Handle */}
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border }} />
+            </View>
+            {/* Header modal */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="storefront" size={18} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Mis tiendas</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 }}>
+                  {misSocios.length === 0 ? 'Gestiona tu negocio' : `${misSocios.length} negocio${misSocios.length > 1 ? 's' : ''} registrado${misSocios.length > 1 ? 's' : ''}`}
                 </Text>
               </View>
-            )}
-
-            {/* Registrar nuevo negocio — solo si no se alcanzó el límite */}
-            {misSocios.length < limiteTiendas && (
-              <TouchableOpacity
-                onPress={() => { setSubmenu(false); router.push('/unirse-socio'); }}
-                activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
-                <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
-                <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
+              <TouchableOpacity onPress={() => setModalMisTiendas(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
               </TouchableOpacity>
-            )}
+            </View>
 
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }} showsVerticalScrollIndicator={false}>
+              {/* Negocios detectados */}
+              {misSocios.map(s => {
+                const vencida = s.fecha_vencimiento ? new Date(s.fecha_vencimiento).getTime() < Date.now() : false;
+                const mesVenc = s.fecha_vencimiento
+                  ? new Date(s.fecha_vencimiento).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+                  : null;
+                return (
+                  <TouchableOpacity key={s.id}
+                    onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
+                    activeOpacity={0.85}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.background, borderRadius: Radius.lg, borderWidth: 1, borderColor: vencida ? '#ef4444' : Colors.border, overflow: 'hidden' }}>
+                    {s.imagen ? (
+                      <Image source={{ uri: s.imagen }} style={{ width: 64, height: 64 }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ width: 64, height: 64, backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
+                      {vencida && mesVenc ? (
+                        <Text style={{ color: '#ef4444', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>⚠ Membresía vencida · {mesVenc}</Text>
+                      ) : (
+                        <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar · subir imágenes</Text>
+                      )}
+                    </View>
+                    <View style={{ backgroundColor: vencida ? '#ef4444' : Colors.accent, paddingHorizontal: 14, paddingVertical: 10, marginRight: 12, borderRadius: Radius.md }}>
+                      <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* Sin negocios */}
+              {misSocios.length === 0 && (
+                <View style={{ paddingVertical: 20, alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="storefront-outline" size={40} color={Colors.textMuted + '66'} />
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' }}>
+                    {yaEnvioSolicitud
+                      ? 'Tu solicitud está en revisión.\nCuando sea aprobada, tu negocio aparecerá aquí.'
+                      : 'Aún no tienes un negocio registrado.'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Registrar nueva tienda */}
+              {misSocios.length < limiteTiendas && (
+                <TouchableOpacity
+                  onPress={() => { setModalMisTiendas(false); router.push('/unirse-socio'); }}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
+                  <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+                </TouchableOpacity>
+              )}
+              <View style={{ height: 16 }} />
+            </ScrollView>
           </View>
-        )}
-      </View>
+        </View>
+      </Modal>
 
 
       {/* Modal buscador */}
@@ -1128,17 +1142,6 @@ export default function SociosScreen() {
           {/* Sección Destacados */}
           {!busqueda && (destacados.length > 0 || subcats.length > 0) && (
             <View>
-              <TouchableOpacity
-                style={styles.seccionHeader}
-                onPress={() => setSubcatAbierto(v => !v)}
-                activeOpacity={0.7}>
-                <Ionicons name="star" size={14} color={Colors.accent} />
-                <Text style={[styles.seccionTitulo, { color: Colors.accent, flex: 1 }]}>Destacados</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={[styles.seccionTitulo, { color: Colors.accent }]}>Categoría</Text>
-                  <Ionicons name={subcatAbierto ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.accent} />
-                </View>
-              </TouchableOpacity>
 
               {/* Subcategorías desplegables */}
               {subcatAbierto && subcats.length > 0 && (
@@ -1174,6 +1177,9 @@ export default function SociosScreen() {
                             <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
                           </View>
                         )}
+                        <View style={[styles.badgeDestacado, { backgroundColor: '#FFD700' }]}>
+                          <Ionicons name="star" size={10} color="#fff" />
+                        </View>
                         <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
                         {s.ciudad ? <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1, paddingHorizontal: 8 }} numberOfLines={1}>{s.ciudad}</Text> : null}
                         {s.whatsapp ? (
@@ -1265,12 +1271,13 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   safe:   { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: Spacing.lg, paddingTop: Spacing.xxl, paddingBottom: Spacing.md,
+    paddingLeft: Spacing.lg, paddingRight: 8, paddingTop: Spacing.xxl, paddingBottom: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.card,
   },
   backBtn:           { padding: 4 },
   headerTitle:       { flex: 1, fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   configBtn:         { width: 34, height: 34, borderRadius: Radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  miTiendaBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.md },
   directorioBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.md },
   directorioBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
   locationBanner:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 7, borderBottomWidth: 1 },
