@@ -630,15 +630,28 @@
     <!-- ══ MAPA ══════════════════════════════════════════════ -->
     <div class="section" id="section-mapa">
 
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-        <div id="mapa-stats" style="font-size:13px;color:var(--muted)">Cargando tiendas…</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-          <!-- Selector de capa -->
-          <select id="mapa-capa" onchange="cambiarCapa()" style="padding:7px 10px;font-size:12px;border-radius:8px;border:1.5px solid var(--border)">
-            <option value="osm">🗺 Calles</option>
-            <option value="satellite" selected>🛰 Satélite</option>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto">
+        <div id="mapa-stats" style="font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0">Cargando tiendas…</div>
+
+        <div style="display:flex;align-items:center;gap:0;margin-left:auto;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;flex-shrink:0">
+          <!-- Buscador -->
+          <div style="display:flex;align-items:center;gap:6px;padding:0 10px;border-right:1.5px solid var(--border)">
+            <span style="font-size:13px;color:var(--muted)">🔍</span>
+            <input id="mapa-buscar-input" type="text" placeholder="Pega coordenadas + Enter"
+              onkeydown="if(event.key==='Enter') buscarLugarMapa()"
+              style="border:none;outline:none;font-size:12px;width:200px;color:var(--text);padding:8px 0;background:transparent" />
+          </div>
+          <!-- Selector capa -->
+          <select id="mapa-capa" onchange="cambiarCapa()"
+            style="padding:8px 10px;font-size:12px;border:none;outline:none;background:transparent;color:var(--text);cursor:pointer;border-right:1.5px solid var(--border)">
+            <option value="osm" selected>🗺 Calles</option>
+            <option value="satellite">🛰 Satélite</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="cargarMapa()">↻ Actualizar</button>
+          <!-- Actualizar -->
+          <button onclick="location.reload()"
+            style="padding:8px 14px;font-size:12px;font-weight:700;border:none;background:transparent;color:var(--accent);cursor:pointer;white-space:nowrap">
+            ↻ Actualizar
+          </button>
         </div>
       </div>
 
@@ -655,7 +668,7 @@
           <span style="width:12px;height:12px;border-radius:50%;background:#16a34a;display:inline-block"></span> Activa
         </div>
         <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">
-          <span style="width:12px;height:12px;border-radius:50%;background:#6c3fc5;display:inline-block"></span> Destacada
+          <span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;display:inline-block"></span> Destacada
         </div>
         <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">
           <span style="width:12px;height:12px;border-radius:50%;background:#dc2626;display:inline-block"></span> Vencida
@@ -1950,6 +1963,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             ${s.redes      ? `<div style="grid-column:1/-1">🌐 <b>Redes:</b> ${s.redes}</div>` : ''}
             ${s.ciudad     ? `<div>📍 <b>Ciudad:</b> ${s.ciudad}</div>` : ''}
             ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
+            ${(s.latitud && s.longitud) ? `
+              <div style="grid-column:1/-1;background:#f5f3ff;border:1.5px solid #6c3fc5;border-radius:8px;padding:6px 10px">
+                <div style="font-size:10px;font-weight:700;color:#6c3fc5;margin-bottom:3px">📡 COORDENADAS</div>
+                <div style="font-size:12px;font-weight:700;color:#1e1040">${toDMS(s.latitud, true)}&nbsp;&nbsp;${toDMS(s.longitud, false)}</div>
+                <div style="font-size:10px;color:#7c3aed;font-family:monospace;margin-top:2px">${s.latitud.toFixed(6)}, ${s.longitud.toFixed(6)}</div>
+              </div>` : ''}
             ${s.descripcion? `<div style="grid-column:1/-1;color:var(--muted);font-style:italic">"${s.descripcion}"</div>` : ''}
             ${estado === 'aprobado' ? `
             <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
@@ -3574,6 +3593,56 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   let _capas       = {};
   let _modoClic    = null;   // { pid, socioId } cuando está activo
 
+  function toDMS(deg, esLat) {
+    const dir = esLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'O');
+    const abs = Math.abs(deg);
+    const d   = Math.floor(abs);
+    const mAll= (abs - d) * 60;
+    const m   = Math.floor(mAll);
+    const s   = ((mAll - m) * 60).toFixed(2);
+    return `${d}° ${m}' ${s}" ${dir}`;
+  }
+
+  function parsearCoordenadas(texto) {
+    // Formato decimal: "10.086512, -69.295724" o "10.086512 -69.295724"
+    const dec = texto.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+    if (dec) return { lat: parseFloat(dec[1]), lng: parseFloat(dec[2]) };
+
+    // Formato DMS: 10° 5' 11.44" N 69° 17' 44.07" O  (o E/W/S)
+    const dms = texto.match(/(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([NSns])[,\s]*(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([EOWoeow])/);
+    if (dms) {
+      const lat = (parseFloat(dms[1]) + parseFloat(dms[2])/60 + parseFloat(dms[3])/3600) * (/[Ss]/.test(dms[4]) ? -1 : 1);
+      const lng = (parseFloat(dms[5]) + parseFloat(dms[6])/60 + parseFloat(dms[7])/3600) * (/[OoWw]/.test(dms[8]) ? -1 : 1);
+      return { lat, lng };
+    }
+    return null;
+  }
+
+  function buscarLugarMapa() {
+    const q = document.getElementById('mapa-buscar-input').value.trim();
+    if (!q || !_mapaL) return;
+
+    const coords = parsearCoordenadas(q);
+    if (!coords) { alert('Formato no reconocido.\nEjemplos válidos:\n10.086512, -69.295724\n10° 5\' 11" N 69° 17\' 44" O'); return; }
+
+    _mapaL.setView([coords.lat, coords.lng], 17, { animate: true });
+
+    if (window._markerBusqueda) window._markerBusqueda.remove();
+    window._markerBusqueda = L.marker([coords.lat, coords.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+            fill="#0ea5e9" stroke="#0369a1" stroke-width="1.2"/>
+          <circle cx="12" cy="9" r="2.8" fill="white" opacity="0.9"/>
+        </svg>`,
+        iconSize: [36, 36], iconAnchor: [18, 36],
+      })
+    }).addTo(_mapaL)
+      .bindPopup(`<div style="font-family:system-ui;font-size:12px"><b>📍 Ubicación buscada</b><br><span style="font-family:monospace">${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</span><br><span style="color:#6c3fc5">${toDMS(coords.lat,true)}  ${toDMS(coords.lng,false)}</span></div>`)
+      .openPopup();
+  }
+
   function extraerCoordsGoogleMaps(texto) {
     // Formatos comunes de Google Maps:
     // https://maps.google.com/?q=10.0688,-69.3474
@@ -3687,8 +3756,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     window._markerTemp = L.marker([lat, lng], {
       icon: L.divIcon({
         className: '',
-        html: `<div style="width:18px;height:18px;border-radius:50%;background:#6c3fc5;border:3px solid #fff;box-shadow:0 0 0 3px #6c3fc5;animation:pulse 1.2s infinite"></div>`,
-        iconSize: [18, 18], iconAnchor: [9, 9],
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" style="animation:pulse 1.2s infinite">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+            fill="#6c3fc5" stroke="#4c1d95" stroke-width="1.2"/>
+          <circle cx="12" cy="9" r="2.8" fill="white" opacity="0.9"/>
+        </svg>`,
+        iconSize: [32, 32], iconAnchor: [16, 32],
       })
     }).addTo(_mapaL).bindPopup(`<b style="font-family:system-ui">${lat.toFixed(6)}, ${lng.toFixed(6)}</b>`).openPopup();
 
@@ -3758,8 +3831,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         subdomains: ['mt0','mt1','mt2','mt3'],
       });
 
-      // Iniciar con satélite
-      _capas.satellite.addTo(_mapaL);
+      // Iniciar con calles
+      _capas.osm.addTo(_mapaL);
 
       // Click en mapa para modo posicionar
       _mapaL.on('click', function(e) {
@@ -3783,6 +3856,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { data: socios } = await db
       .from('socios_comerciales')
       .select('*')
+      .or('activo.is.null,activo.eq.true')
       .order('nombre');
 
     if (!socios?.length) { stats.textContent = 'Sin tiendas registradas.'; return; }
@@ -3805,21 +3879,21 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
       const vencida = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) < hoy : false;
       const esDest  = s.destacado;
-      const color   = vencida ? '#dc2626' : esDest ? '#6c3fc5' : '#16a34a';
-      const border  = vencida ? '#991b1b' : esDest ? '#4c1d95' : '#15803d';
+      const color   = vencida ? '#dc2626' : esDest ? '#f59e0b' : '#16a34a';
+      const border  = vencida ? '#991b1b' : esDest ? '#b45309' : '#15803d';
 
       const esExacto = !!(s.latitud && s.longitud);
 
+      const sz = esDest ? 36 : 28;
       const icon = L.divIcon({
         className: '',
-        html: `<div style="
-          background:${color};border:2px solid ${border};border-radius:50%;
-          width:${esDest ? 18 : 14}px;height:${esDest ? 18 : 14}px;
-          box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:grab;
-          ${!esExacto ? 'opacity:0.7;' : ''}
-        "></div>`,
-        iconSize:   [esDest ? 18 : 14, esDest ? 18 : 14],
-        iconAnchor: [esDest ? 9  :  7, esDest ? 9  :  7],
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 24 24" style="${!esExacto ? 'opacity:0.6;' : ''}">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+            fill="${color}" stroke="${border}" stroke-width="1.2"/>
+          <circle cx="12" cy="9" r="2.8" fill="white" opacity="0.9"/>
+        </svg>`,
+        iconSize:   [sz, sz],
+        iconAnchor: [sz/2, sz],
       });
 
       const planLabel = s.plan ? s.plan.charAt(0).toUpperCase() + s.plan.slice(1) : 'Gratis';
@@ -3830,41 +3904,54 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const pid = s.id.replace(/-/g,'').slice(0,8);
 
       function actualizarPopup(lat, lng, guardado = false) {
-        const direccionCompleta = [s.direccion, s.ciudad, 'Venezuela'].filter(Boolean).join(', ');
+        const planLabel = s.plan ? s.plan.charAt(0).toUpperCase() + s.plan.slice(1) : 'Gratis';
         marker.bindPopup(`
-          <div style="font-family:system-ui;min-width:220px">
-            <div style="font-weight:800;font-size:14px;margin-bottom:2px">${s.nombre}</div>
-            ${s.direccion ? `<div style="font-size:11px;color:#64748b;margin-bottom:2px">📌 ${s.direccion}</div>` : ''}
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🏙 ${s.ciudad ?? '—'}</div>
+          <div style="font-family:system-ui;min-width:240px;max-width:260px">
 
-            <button onclick="activarModoClic('${pid}','${s.id}','${s.nombre.replace(/'/g, '')}')"
-              style="width:100%;padding:8px;background:#1e1040;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px">
-              🎯 Clic en mapa para colocar pin exacto
-            </button>
-
-            <div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">O AJUSTA MANUALMENTE</div>
-            <div style="display:flex;gap:4px;margin-bottom:6px">
-              <input id="pin-lat-${pid}" type="number" step="any" value="${lat.toFixed(6)}"
-                placeholder="Latitud"
-                style="flex:1;padding:5px 7px;font-size:11px;border:1.5px solid #e2e8f0;border-radius:6px;width:0">
-              <input id="pin-lng-${pid}" type="number" step="any" value="${lng.toFixed(6)}"
-                placeholder="Longitud"
-                style="flex:1;padding:5px 7px;font-size:11px;border:1.5px solid #e2e8f0;border-radius:6px;width:0">
+            <!-- Encabezado -->
+            <div style="background:#1e1040;border-radius:10px 10px 0 0;padding:10px 12px;margin:-1px -1px 0 -1px">
+              <div style="font-weight:800;font-size:14px;color:#fff;margin-bottom:2px">${s.nombre}</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:10px;background:${esDest ? '#f59e0b' : vencida ? '#dc2626' : '#16a34a'};color:#fff;padding:1px 7px;border-radius:20px;font-weight:700">${planLabel}</span>
+                ${esDest ? '<span style="font-size:10px">⭐ Destacada</span>' : ''}
+              </div>
             </div>
-            <div style="display:flex;gap:4px">
-              <button onclick="moverPin('${pid}','${s.id}')"
-                style="flex:1;padding:7px;background:#6c3fc5;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">
-                📍 Mover pin
+
+            <!-- Cuerpo -->
+            <div style="padding:10px 12px">
+              ${s.direccion ? `<div style="font-size:11px;color:#475569;margin-bottom:2px">📌 ${s.direccion}</div>` : ''}
+              ${s.ciudad    ? `<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🏙 ${s.ciudad}</div>` : '<div style="margin-bottom:8px"></div>'}
+
+              <!-- Coordenadas -->
+              <div style="background:#f5f3ff;border:1.5px solid #6c3fc5;border-radius:8px;padding:8px 10px;margin-bottom:10px;text-align:center">
+                <div style="font-size:9px;font-weight:800;color:#6c3fc5;letter-spacing:1px;margin-bottom:4px">📡 COORDENADAS</div>
+                <div style="font-size:12px;font-weight:700;color:#1e1040">${toDMS(lat,true)}</div>
+                <div style="font-size:12px;font-weight:700;color:#1e1040;margin-bottom:4px">${toDMS(lng,false)}</div>
+                <div style="border-top:1px solid #ddd6fe;padding-top:4px;font-size:10px;color:#7c3aed;font-family:monospace">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+              </div>
+
+              <!-- Inputs ocultos -->
+              <input id="pin-lat-${pid}" type="hidden" value="${lat.toFixed(6)}">
+              <input id="pin-lng-${pid}" type="hidden" value="${lng.toFixed(6)}">
+
+              <!-- Botones -->
+              <button onclick="activarModoClic('${pid}','${s.id}','${s.nombre.replace(/'/g, '')}')"
+                style="width:100%;padding:8px;background:#1e1040;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px">
+                🎯 Colocar pin exacto
               </button>
               <button id="btn-guardar-${s.id}" onclick="guardarUbicacionSocio('${s.id}', parseFloat(document.getElementById('pin-lat-${pid}').value), parseFloat(document.getElementById('pin-lng-${pid}').value))"
-                style="flex:1;padding:7px;background:${guardado ? '#16a34a' : '#0f172a'};color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">
-                ${guardado ? '✓ Guardado' : '💾 Guardar'}
+                style="width:100%;padding:8px;background:${guardado ? '#16a34a' : '#6c3fc5'};color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+                ${guardado ? '✓ Guardado' : '💾 Guardar ubicación'}
               </button>
             </div>
-          </div>`, { maxWidth: 270 });
+          </div>`, { maxWidth: 280 });
       }
 
       actualizarPopup(coords.lat, coords.lng);
+
+      marker.bindTooltip(`<b style="font-size:12px;font-family:system-ui">${s.nombre}</b>`, {
+        direction: 'top', offset: [0, -28], opacity: 1,
+      });
 
       // Registrar referencia del marker para moverlo desde el popup
       window._mapaMarkersMap = window._mapaMarkersMap || {};

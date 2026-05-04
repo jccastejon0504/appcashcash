@@ -35,6 +35,16 @@ const METODOS: { key: MetodoPago; label: string; icon: string }[] = [
 ];
 
 
+const toDMS = (deg: number, esLat: boolean) => {
+  const dir = esLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'O');
+  const abs = Math.abs(deg);
+  const d   = Math.floor(abs);
+  const mAll= (abs - d) * 60;
+  const m   = Math.floor(mAll);
+  const s   = ((mAll - m) * 60).toFixed(2);
+  return `${d}° ${m}' ${s}" ${dir}`;
+};
+
 export default function UnirseSocioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
@@ -359,7 +369,7 @@ export default function UnirseSocioScreen() {
         }}>
         <Ionicons name={coordenadas ? 'location' : 'location-outline'} size={18} color={coordenadas ? Colors.accent : Colors.textMuted} />
         <Text style={{ flex: 1, fontSize: FontSize.sm, fontWeight: '600', color: coordenadas ? Colors.accent : Colors.textMuted }}>
-          {obtenGPS ? 'Obteniendo ubicación…' : coordenadas ? `Ubicación capturada ✓ (${coordenadas.lat.toFixed(5)}, ${coordenadas.lng.toFixed(5)})` : 'Marcar ubicación exacta de mi tienda'}
+          {obtenGPS ? 'Obteniendo ubicación…' : coordenadas ? `✓ ${toDMS(coordenadas.lat, true)}  ${toDMS(coordenadas.lng, false)}` : 'Marcar ubicación exacta de mi tienda'}
         </Text>
         {coordenadas && (
           <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>

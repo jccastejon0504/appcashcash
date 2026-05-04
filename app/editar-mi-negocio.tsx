@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -99,6 +100,40 @@ export default function EditarMiNegocioScreen() {
   const [guardandoCat,    setGuardandoCat]    = useState(false);
   const [tasaBCV,         setTasaBCV]         = useState<number | null>(null);
   const [galeriaLoadedAt, setGaleriaLoadedAt] = useState(0);
+
+  // GPS
+  const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
+  const [obtenGPS,    setObtenGPS]    = useState(false);
+
+  const toDMS = (deg: number, esLat: boolean) => {
+    const dir = esLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'O');
+    const abs = Math.abs(deg);
+    const d   = Math.floor(abs);
+    const mAll= (abs - d) * 60;
+    const m   = Math.floor(mAll);
+    const s   = ((mAll - m) * 60).toFixed(2);
+    return `${d}° ${m}' ${s}" ${dir}`;
+  };
+
+  const capturarGPS = async () => {
+    setObtenGPS(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Necesitamos acceso a tu ubicación para guardar las coordenadas.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const lat = loc.coords.latitude;
+      const lng = loc.coords.longitude;
+      setCoordenadas({ lat, lng });
+      Alert.alert('Ubicación capturada', `${toDMS(lat, true)}\n${toDMS(lng, false)}\n\nPresiona Guardar para actualizar.`);
+    } catch (e) {
+      Alert.alert('Error GPS', 'No se pudo obtener la ubicación.');
+    } finally {
+      setObtenGPS(false);
+    }
+  };
 
   useEffect(() => {
     const cargar = async () => {
@@ -438,6 +473,15 @@ export default function EditarMiNegocioScreen() {
 
     if (error) { setGuardando(false); Alert.alert('Error', error.message); return; }
 
+    // Guardar coordenadas GPS via RPC (evita schema cache de Supabase)
+    if (coordenadas && resolvedId) {
+      await supabase.rpc('actualizar_ubicacion_socio', {
+        p_id:  resolvedId,
+        p_lat: coordenadas.lat,
+        p_lng: coordenadas.lng,
+      });
+    }
+
     // Propagar cambios a solicitudes usando el teléfono ORIGINAL (antes de editar)
     const telOriginal = (socio?.telefono || socio?.whatsapp || '').replace(/\D/g, '');
     const nombreOriginal = socio?.nombre?.trim().toLowerCase() ?? '';
@@ -753,6 +797,35 @@ export default function EditarMiNegocioScreen() {
             )}
           </View>
         ))}
+
+        {/* Botón GPS */}
+        <View style={[styles.campo, { marginTop: -4 }]}>
+          <Text style={[styles.label, { color: Colors.textMuted }]}>Ubicación exacta (GPS)</Text>
+          <TouchableOpacity
+            onPress={capturarGPS}
+            disabled={obtenGPS}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: coordenadas ? '#dcfce7' : Colors.card, borderWidth: 1, borderColor: coordenadas ? '#16a34a' : Colors.border, borderRadius: Radius.md, padding: 12 }}
+            activeOpacity={0.8}>
+            {obtenGPS
+              ? <ActivityIndicator size="small" color="#6c3fc5" />
+              : <Ionicons name="location" size={18} color={coordenadas ? '#16a34a' : '#6c3fc5'} />}
+            <Text style={{ flex: 1, fontSize: FontSize.md, color: coordenadas ? '#15803d' : Colors.text }}>
+              {obtenGPS
+                ? 'Obteniendo ubicación…'
+                : coordenadas
+                  ? `✓ ${toDMS(coordenadas.lat, true)}  ${toDMS(coordenadas.lng, false)}`
+                  : 'Capturar mi ubicación actual'}
+            </Text>
+            {coordenadas && (
+              <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+          <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
+            Solo se actualiza si capturas GPS y guardas.
+          </Text>
+        </View>
 
         {/* Selector Ciudad → Categoría */}
         <View style={styles.campo}>
