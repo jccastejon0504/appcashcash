@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
+import { registrarEvento } from '@/services/analytics';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
@@ -50,6 +51,7 @@ function useRegistrarDescarga() {
 
 function AppTabs() {
   useRegistrarDescarga();
+  useEffect(() => { registrarEvento('apertura_app'); }, []);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -82,6 +84,7 @@ function AppTabs() {
             <Ionicons name="calculator-outline" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Cash') }}
       />
       <Tabs.Screen
         name="listado"
@@ -91,6 +94,7 @@ function AppTabs() {
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Comprar') }}
       />
       <Tabs.Screen
         name="comparacion"
@@ -100,6 +104,7 @@ function AppTabs() {
             <Ionicons name="bar-chart-outline" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Mercados') }}
       />
       <Tabs.Screen
         name="gastos"
@@ -109,6 +114,7 @@ function AppTabs() {
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Mi Cartera') }}
       />
       <Tabs.Screen
         name="socios"
@@ -118,6 +124,7 @@ function AppTabs() {
             <Ionicons name="storefront-outline" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Mi Tienda') }}
       />
       {/* Ocultar rutas que no son tabs */}
       <Tabs.Screen name="(tabs)"             options={{ href: null }} />

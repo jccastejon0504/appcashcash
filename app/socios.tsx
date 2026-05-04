@@ -13,6 +13,7 @@ import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SocioComercial } from '@/services/supabase';
+import { registrarEvento } from '@/services/analytics';
 import * as Location from 'expo-location';
 
 export default function SociosScreen() {
@@ -318,7 +319,7 @@ export default function SociosScreen() {
     <TouchableOpacity
       key={s.id}
       style={[styles.miniCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}
-      onPress={() => setSocioModal(s)}
+      onPress={() => { setSocioModal(s); registrarEvento('ficha_tienda', s.nombre, s.id); }}
       activeOpacity={0.85}
     >
       {s.imagen ? (
@@ -431,7 +432,7 @@ export default function SociosScreen() {
                 <View style={styles.galeriaGrid}>
                   {galeriaItems.map(item => (
                     <TouchableOpacity key={item.id}
-                      onPress={() => setProductoModal({ item, whatsapp: s.whatsapp ?? null })}
+                      onPress={() => { setProductoModal({ item, whatsapp: s.whatsapp ?? null }); registrarEvento('galeria_producto', item.titulo ?? undefined, s.id, s.nombre); }}
                       activeOpacity={0.85}
                       style={[styles.galeriaImgGrande, { borderColor: Colors.border }]}>
                       <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -1024,7 +1025,7 @@ export default function SociosScreen() {
                   <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' }}>
                     {yaEnvioSolicitud
                       ? 'Tu solicitud está en revisión.\nCuando sea aprobada, tu negocio aparecerá aquí.'
-                      : 'Aún no tienes un negocio registrado.'}
+                      : '¿Tienes un negocio? ¡Regístralo y llega a más clientes!\nDestaca tu tienda, muestra tu catálogo y recibe contactos directo por WhatsApp.'}
                   </Text>
                 </View>
               )}

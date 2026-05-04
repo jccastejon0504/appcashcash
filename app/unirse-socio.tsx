@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getItem } from '@/services/storage';
@@ -17,7 +18,7 @@ type Plan      = 'gratis' | 'basico' | 'pro';
 type Periodo   = 'mensual' | 'anual';
 type PlanKey   = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 type MetodoPago = 'pagomovil' | 'zelle' | 'usdt';
-type GaleriaItemLocal = { imagen: string | null; titulo: string; precio: string; precio_bs: string; };
+type GaleriaItemLocal = { imagen: string | null; imagen2: string | null; imagen3: string | null; titulo: string; precio: string; precio_bs: string; descripcion: string; };
 
 const PLAN_GALERIA: Record<Plan, number> = { gratis: 3, basico: 6, pro: 12 };
 
@@ -65,6 +66,8 @@ export default function UnirseSocioScreen() {
   const [redes,       setRedes]       = useState('');
   const [direccion,   setDireccion]   = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
+  const [obtenGPS,    setObtenGPS]    = useState(false);
 
   // Selector ciudad → categoría
   type CiudadItem     = { id: string; nombre: string };
@@ -83,7 +86,7 @@ export default function UnirseSocioScreen() {
 
   // Paso 3 – Fotos
   const [portada,     setPortada]     = useState<string | null>(null);
-  const emptyGalItem = (): GaleriaItemLocal => ({ imagen: null, titulo: '', precio: '', precio_bs: '' });
+  const emptyGalItem = (): GaleriaItemLocal => ({ imagen: null, imagen2: null, imagen3: null, titulo: '', precio: '', precio_bs: '', descripcion: '' });
   const [galeriaData, setGaleriaData] = useState<GaleriaItemLocal[]>(Array(12).fill(null).map(emptyGalItem));
 
   // Paso 4 – Pago (solo planes pagos)
@@ -104,8 +107,13 @@ export default function UnirseSocioScreen() {
     supabase.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre')
       .then(({ data }) => { if (data) setSubcategorias(data as SubcatItem[]); });
 
-    // Tasa BCV desde cache
+    // Tasa BCV: cache primero, luego API
     getItem<{ usd: number }>('bcv_cache').then(c => { if (c?.usd) setTasaBCV(c.usd); });
+    fetch('https://ve.dolarapi.com/v1/dolares/oficiales')
+      .then(r => r.json()).then(d => {
+        const t = parseFloat(d.promedio ?? d.promedio_real);
+        if (!isNaN(t) && t > 0) setTasaBCV(t);
+      }).catch(() => {});
 
     supabase.from('metodos_pago').select('id,datos').eq('activo', true).then(({ data }) => {
       if (!data) return;
@@ -263,10 +271,13 @@ export default function UnirseSocioScreen() {
     const galeriaSlots = PLAN_GALERIA[plan];
     const catalogoSubido = await Promise.all(
       galeriaData.slice(0, galeriaSlots).map(async (item, i) => ({
-        imagen:    item.imagen ? await subirImagen(item.imagen, `catalogo${i + 1}`) : null,
-        titulo:    item.titulo.trim() || null,
-        precio:    item.precio || null,
-        precio_bs: item.precio_bs || null,
+        imagen:      item.imagen  ? await subirImagen(item.imagen,  `catalogo${i + 1}_1`) : null,
+        imagen2:     item.imagen2 ? await subirImagen(item.imagen2, `catalogo${i + 1}_2`) : null,
+        imagen3:     item.imagen3 ? await subirImagen(item.imagen3, `catalogo${i + 1}_3`) : null,
+        titulo:      item.titulo.trim()      || null,
+        precio:      item.precio             || null,
+        precio_bs:   item.precio_bs          || null,
+        descripcion: item.descripcion.trim() || null,
       }))
     );
     const galeriaDataJson = catalogoSubido.some(it => it.imagen || it.titulo)
@@ -289,6 +300,7 @@ export default function UnirseSocioScreen() {
       imagen:       urlPortada,
       galeria_data: galeriaDataJson,
       comprobante:  precio > 0 ? urlComprobante : null,
+      ...(coordenadas ? { latitud: coordenadas.lat, longitud: coordenadas.lng } : {}),
     });
 
     setGuardando(false);
@@ -328,6 +340,33 @@ export default function UnirseSocioScreen() {
           )}
         </View>
       ))}
+
+      {/* Botón ubicación GPS */}
+      <TouchableOpacity
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1.5,
+          borderColor: coordenadas ? Colors.accent : Colors.border,
+          backgroundColor: coordenadas ? Colors.accent + '12' : Colors.card, marginBottom: 4 }}
+        activeOpacity={0.8}
+        onPress={async () => {
+          setObtenGPS(true);
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') { Alert.alert('Permiso denegado', 'Activa la ubicación para marcar tu tienda en el mapa.'); return; }
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            setCoordenadas({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          } catch { Alert.alert('Error', 'No se pudo obtener la ubicación.'); }
+          finally { setObtenGPS(false); }
+        }}>
+        <Ionicons name={coordenadas ? 'location' : 'location-outline'} size={18} color={coordenadas ? Colors.accent : Colors.textMuted} />
+        <Text style={{ flex: 1, fontSize: FontSize.sm, fontWeight: '600', color: coordenadas ? Colors.accent : Colors.textMuted }}>
+          {obtenGPS ? 'Obteniendo ubicación…' : coordenadas ? `Ubicación capturada ✓ (${coordenadas.lat.toFixed(5)}, ${coordenadas.lng.toFixed(5)})` : 'Marcar ubicación exacta de mi tienda'}
+        </Text>
+        {coordenadas && (
+          <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
 
       {/* Selector Ciudad */}
       <View style={styles.campo}>
@@ -574,24 +613,28 @@ export default function UnirseSocioScreen() {
               const item = galeriaData[i];
               return (
                 <View key={i} style={[styles.catalogoCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-                  {/* Imagen del artículo */}
-                  <TouchableOpacity
-                    style={[styles.catalogoImagen, { borderColor: item.imagen ? Colors.accent : Colors.border, backgroundColor: Colors.background }]}
-                    onPress={() => pickImage(uri => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], imagen: uri }; return n; }))}
-                    activeOpacity={0.8}>
-                    {item.imagen ? (
-                      <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                    ) : (
-                      <Ionicons name="camera" size={22} color={Colors.textMuted} />
-                    )}
-                    {item.imagen && (
-                      <TouchableOpacity
-                        style={{ position: 'absolute', top: 3, right: 3, backgroundColor: Colors.card, borderRadius: 99, padding: 2 }}
-                        onPress={() => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], imagen: null }; return n; })}>
-                        <Ionicons name="close" size={11} color={Colors.text} />
+                  {/* 3 slots de imagen */}
+                  <View style={{ gap: 4 }}>
+                    {(['imagen', 'imagen2', 'imagen3'] as const).map((campo, si) => (
+                      <TouchableOpacity key={si}
+                        style={[styles.catalogoImagen, { borderColor: si === 0 ? (item[campo] ? Colors.accent : Colors.border) : Colors.border, backgroundColor: Colors.background }]}
+                        onPress={() => pickImage(uri => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], [campo]: uri }; return n; }))}
+                        activeOpacity={0.8}>
+                        {item[campo] ? (
+                          <Image source={{ uri: item[campo]! }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        ) : (
+                          <Ionicons name={si === 0 ? 'camera' : 'add'} size={si === 0 ? 22 : 18} color={si === 0 ? Colors.textMuted : Colors.border} />
+                        )}
+                        {item[campo] && (
+                          <TouchableOpacity
+                            style={{ position: 'absolute', top: 3, right: 3, backgroundColor: Colors.card, borderRadius: 99, padding: 2 }}
+                            onPress={() => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], [campo]: null }; return n; })}>
+                            <Ionicons name="close" size={11} color={Colors.text} />
+                          </TouchableOpacity>
+                        )}
                       </TouchableOpacity>
-                    )}
-                  </TouchableOpacity>
+                    ))}
+                  </View>
 
                   {/* Campos */}
                   <View style={{ flex: 1, gap: 6 }}>
@@ -608,7 +651,7 @@ export default function UnirseSocioScreen() {
                         value={item.precio}
                         onChangeText={v => setGaleriaData(prev => {
                           const n = [...prev];
-                          const bs = tasaBCV && v && !isNaN(parseFloat(v))
+                          const bs = tasaBCV && v && !isNaN(parseFloat(v)) && parseFloat(v) > 0
                             ? (parseFloat(v) * tasaBCV).toFixed(2) : n[i].precio_bs;
                           n[i] = { ...n[i], precio: v, precio_bs: bs };
                           return n;
@@ -626,6 +669,15 @@ export default function UnirseSocioScreen() {
                         keyboardType="decimal-pad"
                       />
                     </View>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text, paddingVertical: 8, fontSize: FontSize.sm, minHeight: 56, textAlignVertical: 'top' }]}
+                      value={item.descripcion}
+                      onChangeText={t => setGaleriaData(prev => { const n = [...prev]; n[i] = { ...n[i], descripcion: t }; return n; })}
+                      placeholder="Descripción del producto"
+                      placeholderTextColor={Colors.textMuted}
+                      multiline
+                      numberOfLines={2}
+                    />
                   </View>
                 </View>
               );

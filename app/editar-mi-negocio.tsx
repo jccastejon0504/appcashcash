@@ -11,6 +11,7 @@ import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase, SUPABASE_URL, SUPABASE_KEY } from '@/services/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getItem } from '@/services/storage';
 
 type Plan    = 'gratis' | 'basico' | 'pro';
 type Periodo = 'mensual' | 'anual';
@@ -194,7 +195,8 @@ export default function EditarMiNegocioScreen() {
         });
     };
     cargar();
-    // Cargar tasa BCV
+    // Cargar tasa BCV: caché primero (inmediato), luego API
+    getItem<{ usd: number }>('bcv_cache').then(c => { if (c?.usd) setTasaBCV(c.usd); });
     fetch('https://ve.dolarapi.com/v1/dolares/oficiales')
       .then(r => r.json()).then(d => {
         const t = parseFloat(d.promedio ?? d.promedio_real);
@@ -333,17 +335,24 @@ export default function EditarMiNegocioScreen() {
     });
   }, [resolvedId]));
 
-  // Auto-calcular Bs. en items que ya tienen precio USD pero sin precio_bs.
-  // Se ejecuta cuando carga la tasa O cuando carga la galería (lo que llegue después).
+  // Recalcular Bs. desde precio USD con la tasa BCV del día.
+  // Corre cuando llega la tasa O cuando carga/cambia la galería.
   useEffect(() => {
     if (!tasaBCV) return;
-    setGaleriaItems(prev => prev.map(item => {
-      if (item.precio && !item.precio_bs) {
-        const n = parseFloat(item.precio);
-        if (!isNaN(n)) return { ...item, precio_bs: (n * tasaBCV).toFixed(2) };
-      }
-      return item;
-    }));
+    setGaleriaItems(prev => {
+      let changed = false;
+      const next = prev.map(item => {
+        if (item.precio) {
+          const n = parseFloat(item.precio);
+          if (!isNaN(n) && n > 0) {
+            const newBs = (n * tasaBCV).toFixed(2);
+            if (newBs !== item.precio_bs) { changed = true; return { ...item, precio_bs: newBs }; }
+          }
+        }
+        return item;
+      });
+      return changed ? next : prev;
+    });
   }, [tasaBCV, galeriaLoadedAt]);
 
   const guardarCatalogo = async () => {

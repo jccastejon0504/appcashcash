@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CashCach · Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -295,6 +300,22 @@
     /* ── Empty state ──────────────────────────────────────── */
     .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
     .empty p { font-size: 14px; margin-top: 8px; }
+
+    /* ── Pulse animation (mapa) ──────────────────────────── */
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(108,63,197,.6); }
+      70%  { box-shadow: 0 0 0 10px rgba(108,63,197,0); }
+      100% { box-shadow: 0 0 0 0 rgba(108,63,197,0); }
+    }
+
+    /* ── Flatpickr personalizado ──────────────────────────── */
+    .flatpickr-calendar { font-family: inherit; box-shadow: 0 8px 30px rgba(0,0,0,.12); border-radius: 14px; border: 1px solid var(--border); }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: var(--accent); border-color: var(--accent); }
+    .flatpickr-day.inRange { background: #ede9fe; border-color: #ede9fe; color: var(--accent); }
+    .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover { background: var(--accent2); border-color: var(--accent2); }
+    .flatpickr-months .flatpickr-month { background: var(--accent); border-radius: 14px 14px 0 0; }
+    .flatpickr-current-month, .flatpickr-monthDropdown-months, .flatpickr-month .flatpickr-prev-month, .flatpickr-month .flatpickr-next-month { color: #fff !important; fill: #fff !important; }
+    .flatpickr-weekday { color: var(--accent); font-weight: 700; }
   </style>
 </head>
 <body>
@@ -315,6 +336,13 @@
     </div>
     <div class="nav-item" data-section="descargas">
       <span class="icon">📱</span> Descargas
+    </div>
+    <div class="nav-item" data-section="analytics">
+      <span class="icon">📈</span> Analytics
+    </div>
+
+    <div class="nav-item" data-section="mapa">
+      <span class="icon">🗺️</span> Mapa de Tiendas
     </div>
 
     <div class="nav-section">Socios</div>
@@ -474,6 +502,171 @@
           <div id="desc-chart" style="display:flex;align-items:flex-end;gap:8px;height:140px;overflow-x:auto;padding-bottom:4px"></div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ ANALYTICS ════════════════════════════════════════ -->
+    <div class="section" id="section-analytics">
+
+      <!-- Filtro período -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <label style="margin:0;font-size:13px;font-weight:700;color:var(--muted)">Período:</label>
+        <select id="analytics-periodo" onchange="onPeriodoChange()" style="width:auto;padding:7px 12px">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="cargarAnalytics()">↻ Actualizar</button>
+        <div style="position:relative;margin-left:auto">
+          <input id="analytics-calendario" readonly placeholder="📅 Rango personalizado"
+            style="width:220px;padding:7px 12px 7px 36px;font-size:13px;cursor:pointer;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:#fff">
+          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">📅</span>
+        </div>
+        <button class="btn btn-sm" onclick="limpiarAnalytics()"
+          style="background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca;white-space:nowrap"
+          title="Elimina TODOS los eventos de analytics de Supabase">
+          🗑 Limpiar datos
+        </button>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+        <div class="stat-card">
+          <div class="stat-label">Aperturas de app</div>
+          <div class="stat-value" id="an-aperturas">—</div>
+          <div class="stat-sub">en el período</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Clicks en módulos</div>
+          <div class="stat-value" id="an-tabs">—</div>
+          <div class="stat-sub">navegaciones de tab</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tiendas vistas</div>
+          <div class="stat-value" id="an-fichas">—</div>
+          <div class="stat-sub">tiendas consultadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Productos vistos</div>
+          <div class="stat-value" id="an-galeria">—</div>
+          <div class="stat-sub">clicks en galería</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Módulo más usado</div>
+          <div class="stat-value" style="font-size:18px" id="an-top-tab">—</div>
+          <div class="stat-sub">tab más clicado</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px">
+
+        <!-- Actividad diaria (7 días) -->
+        <div class="card">
+          <div class="card-header"><h2>Actividad diaria (7 días)</h2></div>
+          <div class="card-body" id="an-timeline">
+            <div class="loading">Cargando…</div>
+          </div>
+        </div>
+
+        <!-- Uso por módulo -->
+        <div class="card">
+          <div class="card-header"><h2>Clicks por módulo</h2></div>
+          <div class="card-body" id="an-modulos">
+            <div class="loading">Cargando…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tiendas por mes -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header" onclick="toggleBloque('an-top-tiendas-wrap','an-top-tiendas-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-top-tiendas-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Tiendas más vistas — <span id="an-mes-tiendas-label"></span></h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesTiendas(-1)">‹</button>
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesTiendas(1)" id="an-mes-tiendas-next">›</button>
+          </div>
+        </div>
+        <div id="an-top-tiendas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Tienda</th><th style="text-align:center">iOS</th><th style="text-align:center">Android</th><th style="text-align:center">Total</th></tr>
+              </thead>
+              <tbody id="an-top-tiendas"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Galerías por tienda -->
+      <div class="card">
+        <div class="card-header" onclick="toggleBloque('an-galeria-tiendas-wrap','an-galeria-tiendas-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-galeria-tiendas-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Galerías vistas — <span id="an-mes-galeria-label"></span></h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesGaleria(-1)">‹</button>
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesGaleria(1)" id="an-mes-galeria-next">›</button>
+          </div>
+        </div>
+        <div id="an-galeria-tiendas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Tienda</th><th>Producto más visto</th><th style="text-align:center">Clicks galería</th></tr>
+              </thead>
+              <tbody id="an-galeria-tiendas"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ MAPA ══════════════════════════════════════════════ -->
+    <div class="section" id="section-mapa">
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div id="mapa-stats" style="font-size:13px;color:var(--muted)">Cargando tiendas…</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+          <!-- Selector de capa -->
+          <select id="mapa-capa" onchange="cambiarCapa()" style="padding:7px 10px;font-size:12px;border-radius:8px;border:1.5px solid var(--border)">
+            <option value="osm">🗺 Calles</option>
+            <option value="satellite" selected>🛰 Satélite</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="cargarMapa()">↻ Actualizar</button>
+        </div>
+      </div>
+
+      <!-- Barra modo clic -->
+      <div id="mapa-modo-bar" style="display:none;align-items:center;gap:10px;padding:10px 16px;background:#fef3c7;border:1.5px solid #fbbf24;border-radius:10px;margin-bottom:12px">
+        <span style="font-size:14px">🎯</span>
+        <span style="font-size:13px;font-weight:700;color:#92400e;flex:1">Modo colocar pin — haz clic en el mapa donde está <b id="mapa-modo-nombre"></b></span>
+        <button onclick="cancelarModoClic()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Cancelar</button>
+      </div>
+
+      <!-- Leyenda -->
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">
+          <span style="width:12px;height:12px;border-radius:50%;background:#16a34a;display:inline-block"></span> Activa
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">
+          <span style="width:12px;height:12px;border-radius:50%;background:#6c3fc5;display:inline-block"></span> Destacada
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">
+          <span style="width:12px;height:12px;border-radius:50%;background:#dc2626;display:inline-block"></span> Vencida
+        </div>
+        <div style="margin-left:auto;font-size:11px;color:var(--muted)">💡 Abre el popup de una tienda → <b>📍 Clic en mapa</b> para posicionar con precisión</div>
+      </div>
+
+      <div class="card">
+        <div id="mapa-container" style="height:620px;width:100%;border-radius:14px;overflow:hidden;z-index:0"></div>
+      </div>
+
     </div>
 
     <!-- ══ OFERTAS ═════════════════════════════════════════ -->
@@ -1199,7 +1392,9 @@
 
   const SECCIONES = {
     dashboard:    { title: 'Dashboard',                sub: 'Resumen general' },
+    mapa:         { title: 'Mapa de Tiendas',         sub: 'Ubicación geográfica de los socios activos' },
     descargas:    { title: 'Descargas de la App',      sub: 'Contador de instalaciones por plataforma' },
+    analytics:    { title: 'Analytics',               sub: 'Actividad de usuarios en la app' },
     ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
@@ -1263,6 +1458,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('topbar-sub').textContent   = s.sub;
     if (id === 'dashboard')   cargarDashboard();
     if (id === 'descargas')   cargarDescargas();
+    if (id === 'analytics')   { if (!_calRango) _initCalendario(); cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); }
+    if (id === 'mapa')        cargarMapa();
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'socios')      cargarSocios();
@@ -1288,6 +1485,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   // ── Descargas ─────────────────────────────────────────────────────────────
+
+  function toggleBloque(wrapId, arrowId) {
+    const wrap  = document.getElementById(wrapId);
+    const arrow = document.getElementById(arrowId);
+    const open  = wrap.style.display === 'none';
+    wrap.style.display    = open ? 'block' : 'none';
+    arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
 
   function toggleTotalDescargas() {
     const wrap  = document.getElementById('desc-total-wrap');
@@ -2026,6 +2231,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         imagen7: sol.imagen7, imagen8: sol.imagen8, imagen9: sol.imagen9,
         imagen10: sol.imagen10, imagen11: sol.imagen11, imagen12: sol.imagen12,
         fecha_vencimiento: sol.fecha_vencimiento, subcategoria_id: sol.subcategoria_id,
+        latitud:  sol.latitud  ?? null,
+        longitud: sol.longitud ?? null,
         activo: true,
       }).select('id').single();
       if (error) { if (msg) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; } return; }
@@ -3103,11 +3310,590 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     setTimeout(() => msg.textContent = '', 2500);
   }
 
+  // ── Analytics ─────────────────────────────────────────────────────────────
+
+  let _calRango = null;
+
+  // Navegación por mes para las tablas de tiendas
+  const _hoy = new Date();
+  let _mesTiendas  = { y: _hoy.getFullYear(), m: _hoy.getMonth() }; // 0-based
+  let _mesGaleria  = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
+
+  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  function _rangoMes(ref) {
+    const desde = new Date(ref.y, ref.m, 1, 0, 0, 0, 0);
+    const hasta = new Date(ref.y, ref.m + 1, 0, 23, 59, 59, 999);
+    return { desde: desde.toISOString(), hasta: hasta.toISOString() };
+  }
+
+  function _esMesActual(ref) {
+    return ref.y === _hoy.getFullYear() && ref.m === _hoy.getMonth();
+  }
+
+  function cambiarMesTiendas(dir) {
+    _mesTiendas.m += dir;
+    if (_mesTiendas.m > 11) { _mesTiendas.m = 0; _mesTiendas.y++; }
+    if (_mesTiendas.m < 0)  { _mesTiendas.m = 11; _mesTiendas.y--; }
+    cargarTablaTiendas();
+  }
+
+  function cambiarMesGaleria(dir) {
+    _mesGaleria.m += dir;
+    if (_mesGaleria.m > 11) { _mesGaleria.m = 0; _mesGaleria.y++; }
+    if (_mesGaleria.m < 0)  { _mesGaleria.m = 11; _mesGaleria.y--; }
+    cargarTablaGaleria();
+  }
+
+  async function cargarTablaTiendas() {
+    const label = document.getElementById('an-mes-tiendas-label');
+    const next  = document.getElementById('an-mes-tiendas-next');
+    label.textContent = `${MESES_ES[_mesTiendas.m]} ${_mesTiendas.y}`;
+    next.disabled = _esMesActual(_mesTiendas);
+
+    const { desde, hasta } = _rangoMes(_mesTiendas);
+    const { data } = await db.from('eventos_analytics')
+      .select('detalle, socio_id, plataforma')
+      .eq('tipo', 'ficha_tienda')
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(5000);
+
+    const conteo = {};
+    (data ?? []).forEach(e => {
+      const key = e.socio_id || e.detalle || '?';
+      if (!conteo[key]) conteo[key] = { nombre: e.detalle || key, ios: 0, android: 0 };
+      if (e.plataforma === 'ios') conteo[key].ios++;
+      else                        conteo[key].android++;
+    });
+    const filas = Object.values(conteo)
+      .map(t => ({ ...t, total: t.ios + t.android }))
+      .sort((a,b) => b.total - a.total);
+
+    const tbody = document.getElementById('an-top-tiendas');
+    tbody.innerHTML = filas.length
+      ? filas.map((t, i) => `
+          <tr>
+            <td><b>#${i+1}</b></td>
+            <td>${t.nombre}</td>
+            <td style="text-align:center">${t.ios}</td>
+            <td style="text-align:center">${t.android}</td>
+            <td style="text-align:center"><b>${t.total}</b></td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="empty"><p>Sin datos este mes</p></td></tr>';
+  }
+
+  async function cargarTablaGaleria() {
+    const label = document.getElementById('an-mes-galeria-label');
+    const next  = document.getElementById('an-mes-galeria-next');
+    label.textContent = `${MESES_ES[_mesGaleria.m]} ${_mesGaleria.y}`;
+    next.disabled = _esMesActual(_mesGaleria);
+
+    const { desde, hasta } = _rangoMes(_mesGaleria);
+    const { data } = await db.from('eventos_analytics')
+      .select('detalle, socio_id, tienda_nombre, plataforma')
+      .eq('tipo', 'galeria_producto')
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(5000);
+
+    // Mapa nombre tienda desde eventos ficha del mismo mes
+    const { data: fichas } = await db.from('eventos_analytics')
+      .select('socio_id, detalle')
+      .eq('tipo', 'ficha_tienda')
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(2000);
+    const nombreMap = {};
+    (fichas ?? []).forEach(e => { if (e.socio_id && e.detalle) nombreMap[e.socio_id] = e.detalle; });
+
+    const conteo = {};
+    (data ?? []).forEach(e => {
+      const key    = e.socio_id || '?';
+      const nombre = nombreMap[key] || e.tienda_nombre || key;
+      if (!conteo[key]) conteo[key] = { nombre, productos: {} };
+      const prod = e.detalle || '(sin título)';
+      conteo[key].productos[prod] = (conteo[key].productos[prod] || 0) + 1;
+    });
+    const filas = Object.values(conteo).map(t => {
+      const entries = Object.entries(t.productos).sort((a,b) => b[1]-a[1]);
+      return { nombre: t.nombre, topProducto: entries[0]?.[0] ?? '—', total: entries.reduce((s,[,n])=>s+n,0) };
+    }).sort((a,b) => b.total - a.total);
+
+    const tbody = document.getElementById('an-galeria-tiendas');
+    tbody.innerHTML = filas.length
+      ? filas.map((t,i) => `
+          <tr>
+            <td><b>#${i+1}</b></td>
+            <td><b>${t.nombre}</b></td>
+            <td style="color:var(--muted)">${t.topProducto}</td>
+            <td style="text-align:center"><b>${t.total}</b></td>
+          </tr>`).join('')
+      : '<tr><td colspan="4" class="empty"><p>Sin datos este mes</p></td></tr>';
+  }
+
+  async function limpiarAnalytics() {
+    if (!confirm('⚠️ ¿Eliminar TODOS los eventos de analytics?\nEsto no se puede deshacer.')) return;
+    const { error } = await db.from('eventos_analytics').delete().neq('tipo', '__never__');
+    if (error) { alert('Error: ' + error.message); return; }
+    alert('✓ Datos eliminados. Tabla en cero.');
+    cargarAnalytics();
+    cargarTablaTiendas();
+    cargarTablaGaleria();
+  }
+
+  function _initCalendario() {
+    _calRango = flatpickr('#analytics-calendario', {
+      mode: 'range',
+      locale: 'es',
+      dateFormat: 'd M Y',
+      maxDate: 'today',
+      showMonths: 2,
+      onChange(dates) {
+        if (dates.length === 2) {
+          // Desactiva el selector de período cuando el usuario elige rango manual
+          document.getElementById('analytics-periodo').value = '';
+          cargarAnalytics();
+        }
+      },
+      onClose(dates) {
+        // Si cerró sin seleccionar 2 fechas, restaura el selector
+        if (dates.length < 2) {
+          document.getElementById('analytics-periodo').value = '30';
+        }
+      },
+    });
+  }
+
+  function onPeriodoChange() {
+    // Limpia el calendario al elegir un período predefinido
+    if (_calRango) _calRango.clear();
+    cargarAnalytics();
+  }
+
+  async function cargarAnalytics() {
+    const periodo = document.getElementById('analytics-periodo').value;
+    let desdeISO, hastaISO;
+    const fechasCal = _calRango?.selectedDates ?? [];
+    if (fechasCal.length === 2) {
+      const d = new Date(fechasCal[0]); d.setHours(0,0,0,0);
+      const h = new Date(fechasCal[1]); h.setHours(23,59,59,999);
+      desdeISO = d.toISOString();
+      hastaISO = h.toISOString();
+    } else {
+      const dias  = parseInt(periodo) || 30;
+      const desde = new Date();
+      desde.setDate(desde.getDate() - dias);
+      desdeISO = desde.toISOString();
+      hastaISO = new Date().toISOString();
+    }
+
+    // Traer todos los eventos del período (máx 5000)
+    const { data: eventos } = await db
+      .from('eventos_analytics')
+      .select('tipo, detalle, socio_id, tienda_nombre, plataforma, created_at')
+      .gte('created_at', desdeISO)
+      .lte('created_at', hastaISO)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (!eventos) return;
+
+    // — Conteos generales —
+    const aperturas = eventos.filter(e => e.tipo === 'apertura_app').length;
+    const tabClicks = eventos.filter(e => e.tipo === 'tab_click').length;
+    const fichas    = eventos.filter(e => e.tipo === 'ficha_tienda').length;
+    const galeria   = eventos.filter(e => e.tipo === 'galeria_producto').length;
+    document.getElementById('an-aperturas').textContent = aperturas.toLocaleString();
+    document.getElementById('an-tabs').textContent      = tabClicks.toLocaleString();
+    document.getElementById('an-fichas').textContent    = fichas.toLocaleString();
+    document.getElementById('an-galeria').textContent   = galeria.toLocaleString();
+
+    // — Top módulo —
+    const conteoTab = {};
+    eventos.filter(e => e.tipo === 'tab_click').forEach(e => {
+      conteoTab[e.detalle] = (conteoTab[e.detalle] || 0) + 1;
+    });
+    const topTab = Object.entries(conteoTab).sort((a,b) => b[1]-a[1])[0];
+    document.getElementById('an-top-tab').textContent = topTab ? topTab[0] : '—';
+
+    // — Actividad diaria (últimos 7 días siempre) —
+    const hoy7 = new Date(); hoy7.setHours(23,59,59,999);
+    const hace7 = new Date(); hace7.setDate(hace7.getDate() - 6); hace7.setHours(0,0,0,0);
+    const dias7 = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(hace7); d.setDate(hace7.getDate() + i);
+      dias7.push(d);
+    }
+    const eventosUlt7 = eventos.filter(e => new Date(e.created_at) >= hace7);
+    const porDia = dias7.map(d => {
+      const key = d.toISOString().slice(0,10);
+      return {
+        label: d.toLocaleDateString('es', { weekday:'short', day:'numeric' }),
+        total: eventosUlt7.filter(e => e.created_at.slice(0,10) === key).length,
+      };
+    });
+    const maxDia = Math.max(...porDia.map(d => d.total), 1);
+    document.getElementById('an-timeline').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${porDia.map(d => `
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:60px;font-size:11px;font-weight:700;color:var(--muted);text-align:right;text-transform:capitalize">${d.label}</div>
+            <div style="flex:1;background:var(--bg);border-radius:99px;height:18px;overflow:hidden">
+              <div style="height:100%;width:${Math.round(d.total/maxDia*100)}%;background:var(--accent);border-radius:99px;transition:width .4s;min-width:${d.total?'4px':'0'}"></div>
+            </div>
+            <div style="width:32px;font-size:12px;font-weight:800;color:var(--text);text-align:right">${d.total}</div>
+          </div>`).join('')}
+      </div>`;
+
+    // — Clicks por módulo —
+    const TABS_ORDEN = ['Cash','Comprar','Mercados','Mi Cartera','Mi Tienda'];
+    const maxTab = Math.max(...TABS_ORDEN.map(t => conteoTab[t]||0), 1);
+    document.getElementById('an-modulos').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${TABS_ORDEN.map(t => {
+          const n = conteoTab[t] || 0;
+          return `
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:72px;font-size:11px;font-weight:700;color:var(--muted);text-align:right">${t}</div>
+              <div style="flex:1;background:var(--bg);border-radius:99px;height:18px;overflow:hidden">
+                <div style="height:100%;width:${Math.round(n/maxTab*100)}%;background:#7c3aed;border-radius:99px;transition:width .4s;min-width:${n?'4px':'0'}"></div>
+              </div>
+              <div style="width:32px;font-size:12px;font-weight:800;color:var(--text);text-align:right">${n}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+
+  }
+
+  // ── Mapa de Tiendas ──────────────────────────────────────────────────────
+
+  let _mapaL       = null;
+  let _mapaMarkers = [];
+  const _geoCache  = {};
+  let _capas       = {};
+  let _modoClic    = null;   // { pid, socioId } cuando está activo
+
+  function extraerCoordsGoogleMaps(texto) {
+    // Formatos comunes de Google Maps:
+    // https://maps.google.com/?q=10.0688,-69.3474
+    // https://www.google.com/maps/@10.0688,-69.3474,17z
+    // https://www.google.com/maps/place/.../@10.0688,-69.3474,17z
+    // https://maps.app.goo.gl/... (link corto — no se puede resolver sin fetch)
+    const patrones = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+    ];
+    for (const re of patrones) {
+      const m = texto.match(re);
+      if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+    }
+    return null;
+  }
+
+  async function geocodificarEnPopup(pid) {
+    const input = document.getElementById(`geo-input-${pid}`);
+    const btn   = document.getElementById(`btn-geo-${pid}`);
+    const query = (input?.value ?? '').trim();
+    if (!query) return;
+
+    if (btn) { btn.textContent = '…'; btn.disabled = true; }
+
+    // Detectar si es un link de Google Maps
+    let coords = null;
+    if (query.includes('google.com/maps') || query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
+      coords = extraerCoordsGoogleMaps(query);
+      if (!coords) {
+        if (btn) { btn.textContent = '⚠'; btn.disabled = false; btn.title = 'Link corto no soportado. Abre Google Maps → comparte → copia el link largo'; }
+        return;
+      }
+    } else {
+      // Buscar por texto en Nominatim
+      coords = await geocodificar(query);
+      if (!coords && !query.toLowerCase().includes('venezuela')) {
+        coords = await geocodificar(query + ', Venezuela');
+      }
+    }
+
+    if (!coords) {
+      if (btn) { btn.textContent = '⚠'; btn.disabled = false; btn.title = 'No encontrada. Prueba con un link de Google Maps'; }
+      return;
+    }
+
+    // Rellenar inputs y mover pin
+    const latInput = document.getElementById(`pin-lat-${pid}`);
+    const lngInput = document.getElementById(`pin-lng-${pid}`);
+    if (latInput) latInput.value = coords.lat.toFixed(6);
+    if (lngInput) lngInput.value = coords.lng.toFixed(6);
+
+    const ref = window._mapaMarkersMap?.[pid];
+    if (ref) {
+      ref.marker.setLatLng([coords.lat, coords.lng]);
+      _mapaL.setView([coords.lat, coords.lng], 17, { animate: true });
+    }
+
+    if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.background = '#16a34a'; btn.title = 'Ubicada — revisa y guarda'; }
+  }
+
+  function cambiarCapa() {
+    const val = document.getElementById('mapa-capa').value;
+    if (!_mapaL) return;
+    Object.values(_capas).forEach(c => _mapaL.removeLayer(c));
+    _capas[val].addTo(_mapaL);
+  }
+
+  function activarModoClic(pid, socioId, nombre) {
+    _modoClic = { pid, socioId };
+    // Cerrar popup para que no interfiera
+    _mapaL.closePopup();
+    // Mostrar barra de instrucciones
+    const bar = document.getElementById('mapa-modo-bar');
+    document.getElementById('mapa-modo-nombre').textContent = nombre;
+    bar.style.display = 'flex';
+    // Cursor crosshair
+    document.getElementById('mapa-container').style.cursor = 'crosshair';
+  }
+
+  function cancelarModoClic() {
+    _modoClic = null;
+    document.getElementById('mapa-modo-bar').style.display = 'none';
+    document.getElementById('mapa-container').style.cursor = '';
+  }
+
+  function moverPin(pid, socioId) {
+    const lat = parseFloat(document.getElementById(`pin-lat-${pid}`)?.value);
+    const lng = parseFloat(document.getElementById(`pin-lng-${pid}`)?.value);
+    if (isNaN(lat) || isNaN(lng)) { alert('Coordenadas inválidas.'); return; }
+    const ref = window._mapaMarkersMap?.[pid];
+    if (!ref) return;
+    ref.marker.setLatLng([lat, lng]);
+    ref.actualizarPopup(lat, lng);
+    ref.marker.openPopup();
+    _mapaL.setView([lat, lng], Math.max(_mapaL.getZoom(), 15), { animate: true });
+  }
+
+  function irACoordenadas() {
+    const val = document.getElementById('mapa-coords-input').value.trim();
+    if (!val || !_mapaL) return;
+    // Acepta formatos: "10.0688, -69.3474" o "10.0688 -69.3474"
+    const partes = val.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+    if (partes.length < 2) { alert('Formato inválido. Usa: latitud, longitud\nEj: 10.0688, -69.3474'); return; }
+    const [lat, lng] = partes;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { alert('Coordenadas fuera de rango.'); return; }
+
+    // Marcador temporal pulsante
+    if (window._markerTemp) window._markerTemp.remove();
+    window._markerTemp = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:18px;height:18px;border-radius:50%;background:#6c3fc5;border:3px solid #fff;box-shadow:0 0 0 3px #6c3fc5;animation:pulse 1.2s infinite"></div>`,
+        iconSize: [18, 18], iconAnchor: [9, 9],
+      })
+    }).addTo(_mapaL).bindPopup(`<b style="font-family:system-ui">${lat.toFixed(6)}, ${lng.toFixed(6)}</b>`).openPopup();
+
+    _mapaL.setView([lat, lng], 16, { animate: true });
+  }
+
+  async function guardarUbicacionSocio(id, lat, lng) {
+    const btn = document.getElementById(`btn-guardar-${id}`);
+    if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+    const { error } = await db.rpc('actualizar_ubicacion_socio', {
+      p_id:  id,
+      p_lat: lat,
+      p_lng: lng,
+    });
+    if (error) {
+      alert('Error al guardar: ' + error.message);
+      if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+      return;
+    }
+    if (btn) { btn.textContent = '✓ Guardado'; btn.style.background = '#16a34a'; }
+  }
+
+  async function geocodificar(query) {
+    if (_geoCache[query]) return _geoCache[query];
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=ve`;
+      const res  = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+      const data = await res.json();
+      if (data?.length) {
+        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        _geoCache[query] = coords;
+        return coords;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async function geocodificarSocio(s) {
+    // Intento 1: dirección completa
+    if (s.direccion && s.ciudad) {
+      const r = await geocodificar(`${s.direccion}, ${s.ciudad}, Venezuela`);
+      if (r) return r;
+      await new Promise(ok => setTimeout(ok, 1100));
+    }
+    // Intento 2: solo ciudad
+    if (s.ciudad) {
+      const r = await geocodificar(`${s.ciudad}, Venezuela`);
+      if (r) return r;
+      await new Promise(ok => setTimeout(ok, 1100));
+    }
+    // Fallback: centro de Venezuela
+    return { lat: 8.0 + (Math.random() - 0.5) * 0.5, lng: -66.0 + (Math.random() - 0.5) * 0.5 };
+  }
+
+  async function cargarMapa() {
+    const stats = document.getElementById('mapa-stats');
+    stats.textContent = 'Geocodificando tiendas… puede tardar unos segundos.';
+
+    if (!_mapaL) {
+      _mapaL = L.map('mapa-container', { zoomControl: true }).setView([8.0, -66.0], 6);
+
+      _capas.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19,
+      });
+      _capas.satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        attribution: '© Google', maxZoom: 21,
+        subdomains: ['mt0','mt1','mt2','mt3'],
+      });
+
+      // Iniciar con satélite
+      _capas.satellite.addTo(_mapaL);
+
+      // Click en mapa para modo posicionar
+      _mapaL.on('click', function(e) {
+        if (!_modoClic) return;
+        const { lat, lng } = e.latlng;
+        const { pid, socioId } = _modoClic;
+        const ref = window._mapaMarkersMap?.[pid];
+        if (ref) {
+          ref.marker.setLatLng([lat, lng]);
+          ref.actualizarPopup(lat, lng);
+          ref.marker.openPopup();
+        }
+        cancelarModoClic();
+      });
+    }
+
+    _mapaMarkers.forEach(m => m.remove());
+    _mapaMarkers = [];
+    window._mapaMarkersMap = {};
+
+    const { data: socios } = await db
+      .from('socios_comerciales')
+      .select('*')
+      .order('nombre');
+
+    if (!socios?.length) { stats.textContent = 'Sin tiendas registradas.'; return; }
+
+    const hoy = new Date();
+    let activas = 0, vencidas = 0, destacadas = 0;
+
+    for (let i = 0; i < socios.length; i++) {
+      const s = socios[i];
+      stats.textContent = `Procesando ${i + 1} / ${socios.length}…`;
+
+      let coords;
+      if (s.latitud && s.longitud) {
+        // Coordenadas GPS exactas guardadas — sin geocodificar
+        coords = { lat: s.latitud, lng: s.longitud };
+      } else {
+        coords = await geocodificarSocio(s);
+        if (i > 0) await new Promise(r => setTimeout(r, 1100));
+      }
+
+      const vencida = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) < hoy : false;
+      const esDest  = s.destacado;
+      const color   = vencida ? '#dc2626' : esDest ? '#6c3fc5' : '#16a34a';
+      const border  = vencida ? '#991b1b' : esDest ? '#4c1d95' : '#15803d';
+
+      const esExacto = !!(s.latitud && s.longitud);
+
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="
+          background:${color};border:2px solid ${border};border-radius:50%;
+          width:${esDest ? 18 : 14}px;height:${esDest ? 18 : 14}px;
+          box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:grab;
+          ${!esExacto ? 'opacity:0.7;' : ''}
+        "></div>`,
+        iconSize:   [esDest ? 18 : 14, esDest ? 18 : 14],
+        iconAnchor: [esDest ? 9  :  7, esDest ? 9  :  7],
+      });
+
+      const planLabel = s.plan ? s.plan.charAt(0).toUpperCase() + s.plan.slice(1) : 'Gratis';
+
+      const marker = L.marker([coords.lat, coords.lng], { icon, draggable: true }).addTo(_mapaL);
+
+      // ID único para los inputs de este marcador
+      const pid = s.id.replace(/-/g,'').slice(0,8);
+
+      function actualizarPopup(lat, lng, guardado = false) {
+        const direccionCompleta = [s.direccion, s.ciudad, 'Venezuela'].filter(Boolean).join(', ');
+        marker.bindPopup(`
+          <div style="font-family:system-ui;min-width:220px">
+            <div style="font-weight:800;font-size:14px;margin-bottom:2px">${s.nombre}</div>
+            ${s.direccion ? `<div style="font-size:11px;color:#64748b;margin-bottom:2px">📌 ${s.direccion}</div>` : ''}
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🏙 ${s.ciudad ?? '—'}</div>
+
+            <button onclick="activarModoClic('${pid}','${s.id}','${s.nombre.replace(/'/g, '')}')"
+              style="width:100%;padding:8px;background:#1e1040;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px">
+              🎯 Clic en mapa para colocar pin exacto
+            </button>
+
+            <div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">O AJUSTA MANUALMENTE</div>
+            <div style="display:flex;gap:4px;margin-bottom:6px">
+              <input id="pin-lat-${pid}" type="number" step="any" value="${lat.toFixed(6)}"
+                placeholder="Latitud"
+                style="flex:1;padding:5px 7px;font-size:11px;border:1.5px solid #e2e8f0;border-radius:6px;width:0">
+              <input id="pin-lng-${pid}" type="number" step="any" value="${lng.toFixed(6)}"
+                placeholder="Longitud"
+                style="flex:1;padding:5px 7px;font-size:11px;border:1.5px solid #e2e8f0;border-radius:6px;width:0">
+            </div>
+            <div style="display:flex;gap:4px">
+              <button onclick="moverPin('${pid}','${s.id}')"
+                style="flex:1;padding:7px;background:#6c3fc5;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">
+                📍 Mover pin
+              </button>
+              <button id="btn-guardar-${s.id}" onclick="guardarUbicacionSocio('${s.id}', parseFloat(document.getElementById('pin-lat-${pid}').value), parseFloat(document.getElementById('pin-lng-${pid}').value))"
+                style="flex:1;padding:7px;background:${guardado ? '#16a34a' : '#0f172a'};color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">
+                ${guardado ? '✓ Guardado' : '💾 Guardar'}
+              </button>
+            </div>
+          </div>`, { maxWidth: 270 });
+      }
+
+      actualizarPopup(coords.lat, coords.lng);
+
+      // Registrar referencia del marker para moverlo desde el popup
+      window._mapaMarkersMap = window._mapaMarkersMap || {};
+      window._mapaMarkersMap[pid] = { marker, actualizarPopup };
+
+      marker.on('dragend', function(e) {
+        const { lat, lng } = e.target.getLatLng();
+        actualizarPopup(lat, lng);
+        marker.openPopup();
+      });
+
+      _mapaMarkers.push(marker);
+
+      if (!vencida) activas++; else vencidas++;
+      if (esDest) destacadas++;
+    }
+
+    stats.textContent = `${socios.length} tienda${socios.length !== 1 ? 's' : ''} · ${activas} activa${activas !== 1 ? 's' : ''} · ${vencidas} vencida${vencidas !== 1 ? 's' : ''} · ${destacadas} destacada${destacadas !== 1 ? 's' : ''}`;
+
+    if (_mapaMarkers.length > 0) {
+      _mapaL.fitBounds(L.featureGroup(_mapaMarkers).getBounds().pad(0.25));
+    }
+  }
+
   // ── Auto-refresh ──────────────────────────────────────────────────────────
 
   let _seccionActual = 'dashboard';
   let _refreshTimer  = null;
-  const _REFRESH_SEG = 60; // segundos entre cada refresco
+  const _REFRESH_SEG = 60;
   let _cuenta        = _REFRESH_SEG;
 
   // Indicador visual en topbar
@@ -3133,6 +3919,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const fn = {
       dashboard:   cargarDashboard,
       descargas:   cargarDescargas,
+      analytics:   () => { cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); },
+      mapa:        cargarMapa,
       ofertas:     cargarOfertas,
       solicitudes: cargarSolicitudes,
       socios:      cargarSocios,

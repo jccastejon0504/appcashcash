@@ -11,6 +11,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase, Subcategoria, SocioComercial } from '@/services/supabase';
+import { registrarEvento } from '@/services/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -295,7 +296,7 @@ export default function DirectorioScreen() {
   const renderMiniCard = (c: SocioComercial) => (
     <TouchableOpacity key={c.id}
       style={[styles.miniCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}
-      onPress={() => setComercioModal(c)} activeOpacity={0.85}>
+      onPress={() => { setComercioModal(c); registrarEvento('ficha_tienda', c.nombre, c.id); }} activeOpacity={0.85}>
       {c.imagen ? (
         <Image source={{ uri: c.imagen }} style={styles.miniCardImg} resizeMode="cover" />
       ) : (
@@ -424,7 +425,7 @@ export default function DirectorioScreen() {
                     {galeriaItems.map((item, i) => (
                       <TouchableOpacity key={item.id ?? i} activeOpacity={0.85}
                         style={[styles.galeriaImgGrande, { borderColor: Colors.border }]}
-                        onPress={() => setProductoModal({ item, whatsapp: c.whatsapp ?? null })}>
+                        onPress={() => { setProductoModal({ item, whatsapp: c.whatsapp ?? null }); registrarEvento('galeria_producto', item.titulo ?? undefined, c.id, c.nombre); }}>
                         <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                         {(item.precio || item.precio_bs || item.titulo) && (
                           <View style={styles.galeriaOverlay}>
