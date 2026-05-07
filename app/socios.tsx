@@ -29,6 +29,8 @@ export default function SociosScreen() {
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
   const [submenu,           setSubmenu]           = useState(false);
   const [modalMisTiendas,   setModalMisTiendas]   = useState(false);
+  const [modalFavoritas,    setModalFavoritas]    = useState(false);
+  const [favoritas,         setFavoritas]         = useState<string[]>([]);
   const [error,       setError]       = useState<string | null>(null);
   const [busqueda,        setBusqueda]        = useState('');
   const [filtroAplicado,  setFiltroAplicado]  = useState('');
@@ -151,6 +153,12 @@ export default function SociosScreen() {
     const timer = setInterval(() => cargar(true), 60000);
     return () => clearInterval(timer);
   }, [cargar]));
+
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('favoritas').then(raw => {
+      setFavoritas(raw ? JSON.parse(raw) : []);
+    });
+  }, []));
 
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem('ubicacion_config').then(raw => {
@@ -315,6 +323,16 @@ export default function SociosScreen() {
     Linking.openURL(`tel:${n}`).catch(() => {});
   };
 
+  const esFavorita = (id: string) => favoritas.includes(id);
+
+  const toggleFavorita = async (id: string) => {
+    const nuevas = favoritas.includes(id)
+      ? favoritas.filter(f => f !== id)
+      : [...favoritas, id];
+    setFavoritas(nuevas);
+    await AsyncStorage.setItem('favoritas', JSON.stringify(nuevas));
+  };
+
   const renderMiniCard = (s: SocioComercial) => (
     <TouchableOpacity
       key={s.id}
@@ -334,6 +352,13 @@ export default function SociosScreen() {
           <Ionicons name="star" size={10} color="#fff" />
         </View>
       )}
+      <TouchableOpacity
+        onPress={() => toggleFavorita(s.id)}
+        style={{ position: 'absolute', top: 6, right: 6, backgroundColor: '#00000055', borderRadius: 20, padding: 5, zIndex: 10 }}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      >
+        <Ionicons name={esFavorita(s.id) ? 'heart' : 'heart-outline'} size={14} color={esFavorita(s.id) ? '#ef4444' : '#fff'} />
+      </TouchableOpacity>
       <View style={styles.miniCardBody}>
         <Text style={[styles.miniCardNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
         {(s.ciudad || s.direccion) ? (
@@ -356,12 +381,15 @@ export default function SociosScreen() {
               <Ionicons name="arrow-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <Text style={[styles.modalHeaderTitle, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-            {s.destacado ? (
-              <View style={[styles.modalDestacadoBadge, { backgroundColor: Colors.accent }]}>
-                <Ionicons name="star" size={11} color="#fff" />
-                <Text style={styles.modalDestacadoText}>Destacado</Text>
-              </View>
-            ) : <View style={{ width: 80 }} />}
+            <TouchableOpacity
+              onPress={() => toggleFavorita(s.id)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: esFavorita(s.id) ? '#ef444418' : Colors.border + '44' }}
+            >
+              <Ionicons name={esFavorita(s.id) ? 'heart' : 'heart-outline'} size={16} color={esFavorita(s.id) ? '#ef4444' : Colors.textMuted} />
+              <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: esFavorita(s.id) ? '#ef4444' : Colors.textMuted }}>
+                {esFavorita(s.id) ? 'Guardada' : 'Guardar'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -920,34 +948,49 @@ export default function SociosScreen() {
       {renderImagenAmpliada()}
       {renderModalConfig()}
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingRight: Spacing.lg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.miTiendaBtn, { backgroundColor: Colors.accent }]}
-          onPress={() => setModalMisTiendas(true)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="storefront-outline" size={15} color="#fff" />
-          <Text style={styles.directorioBtnText}>
-            {misSocios.length > 0 ? `${misSocios.length} tienda${misSocios.length > 1 ? 's' : ''}` : 'Mis tiendas'}
-          </Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flex: 1, flexDirection: 'row', gap: 6, justifyContent: 'flex-end' }}>
+          {/* Btn 1: Tiendas */}
           <TouchableOpacity
-            style={[styles.configBtn, { borderColor: Colors.border }]}
-            onPress={() => { setCiudadInputTemp(ubicacionCiudad); setRadioInputTemp(ubicacionRadio); setModalConfigVisible(true); }}
+            style={[styles.hBtn, { backgroundColor: Colors.accent }]}
+            onPress={() => setModalMisTiendas(true)}
+            activeOpacity={0.8}
           >
-            <Ionicons name="settings-outline" size={20} color={ubicacionCiudad ? Colors.accent : Colors.text} />
+            <Ionicons name="storefront-outline" size={14} color="#fff" />
+            <Text style={styles.hBtnText}>
+              {misSocios.length > 0 ? `${misSocios.length} Tienda${misSocios.length > 1 ? 's' : ''}` : 'Tiendas'}
+            </Text>
           </TouchableOpacity>
+          {/* Btn 2: Directorio */}
           <TouchableOpacity
-            style={[styles.directorioBtn, { backgroundColor: Colors.accent }]}
+            style={[styles.hBtn, { backgroundColor: Colors.accent + 'DD' }]}
             onPress={() => router.push('/directorio')}
+            activeOpacity={0.8}
           >
-            <Ionicons name="map-outline" size={15} color="#fff" />
-            <Text style={styles.directorioBtnText}>Directorio</Text>
+            <Ionicons name="map-outline" size={14} color="#fff" />
+            <Text style={styles.hBtnText}>Directorio</Text>
+          </TouchableOpacity>
+          {/* Btn 3: Mi Ubicación */}
+          <TouchableOpacity
+            style={[styles.hBtnIcon, { backgroundColor: ubicacionCiudad ? Colors.accent + '22' : Colors.border + '66', borderColor: ubicacionCiudad ? Colors.accent : Colors.border }]}
+            onPress={() => { setCiudadInputTemp(ubicacionCiudad); setRadioInputTemp(ubicacionRadio); setModalConfigVisible(true); }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="settings-outline" size={16} color={ubicacionCiudad ? Colors.accent : Colors.text} />
+          </TouchableOpacity>
+          {/* Btn 4: Favoritas */}
+          <TouchableOpacity
+            style={[styles.hBtnIcon, { backgroundColor: favoritas.length > 0 ? '#ef444418' : Colors.border + '66', borderColor: favoritas.length > 0 ? '#ef4444' : Colors.border }]}
+            onPress={() => setModalFavoritas(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name={favoritas.length > 0 ? 'heart' : 'heart-outline'} size={16} color={favoritas.length > 0 ? '#ef4444' : Colors.text} />
+            {favoritas.length > 0 && (
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#ef4444', marginLeft: 2 }}>{favoritas.length}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -1065,6 +1108,67 @@ export default function SociosScreen() {
         </View>
       </Modal>
 
+
+      {/* Modal Favoritas */}
+      <Modal visible={modalFavoritas} animationType="slide" transparent onRequestClose={() => setModalFavoritas(false)}>
+        <View style={{ flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setModalFavoritas(false)} />
+          <View style={{ backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' }}>
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border }} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#ef444422', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="heart" size={18} color="#ef4444" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Tiendas deseadas</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 }}>
+                  {favoritas.length === 0 ? 'Guarda las tiendas que te interesan' : `${favoritas.length} tienda${favoritas.length > 1 ? 's' : ''} guardada${favoritas.length > 1 ? 's' : ''}`}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalFavoritas(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }} showsVerticalScrollIndicator={false}>
+              {favoritas.length === 0 ? (
+                <View style={{ paddingVertical: 32, alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="heart-outline" size={48} color={Colors.textMuted + '66'} />
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' }}>
+                    {'Toca el ❤️ en cualquier tienda\npara guardarla aquí.'}
+                  </Text>
+                </View>
+              ) : (
+                socios.filter(s => favoritas.includes(s.id)).map(s => (
+                  <TouchableOpacity key={s.id}
+                    onPress={() => { setModalFavoritas(false); setSocioModal(s); }}
+                    activeOpacity={0.85}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.background, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' }}>
+                    {s.imagen ? (
+                      <Image source={{ uri: s.imagen }} style={{ width: 64, height: 64 }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ width: 64, height: 64, backgroundColor: '#ef444410', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="storefront-outline" size={24} color="#ef4444" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
+                      {s.ciudad ? <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 }}>{s.ciudad}</Text> : null}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => toggleFavorita(s.id)}
+                      style={{ padding: 12 }}>
+                      <Ionicons name="heart" size={20} color="#ef4444" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))
+              )}
+              <View style={{ height: 16 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal buscador */}
       <Modal visible={modalBuscar} animationType="fade" transparent onRequestClose={() => {
@@ -1299,6 +1403,9 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   miTiendaBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.md },
   directorioBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.md },
   directorioBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
+  hBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.md },
+  hBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  hBtnIcon: { flexDirection: 'row', width: 32, height: 32, borderRadius: Radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   locationBanner:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 7, borderBottomWidth: 1 },
   locationBannerText:{ fontSize: FontSize.sm, fontWeight: '600' },
 
