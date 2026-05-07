@@ -1159,7 +1159,7 @@ export default function SociosScreen() {
                 <Ionicons name="heart" size={18} color="#ef4444" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Tiendas deseadas</Text>
+                <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Tiendas favoritas</Text>
                 <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 }}>
                   {favoritasActivas.length === 0 ? 'Guarda las tiendas que te interesan' : `${favoritasActivas.length} tienda${favoritasActivas.length > 1 ? 's' : ''} guardada${favoritasActivas.length > 1 ? 's' : ''}`}
                 </Text>
