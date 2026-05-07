@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl, Image,
-  TextInput, Keyboard, Modal, Dimensions,
+  TextInput, Keyboard, Modal, Dimensions, Alert, Share,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
@@ -374,6 +374,14 @@ export default function SociosScreen() {
                   <Ionicons name="storefront-outline" size={64} color={Colors.accent + '55'} />
                 </View>
               )}
+              {/* Info ℹ️ arriba izquierda */}
+              {s.descripcion ? (
+                <TouchableOpacity
+                  onPress={() => Alert.alert(s.nombre, s.descripcion ?? '')}
+                  style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5 }}>
+                  <Ionicons name="information-circle-outline" size={18} color="#fff" />
+                </TouchableOpacity>
+              ) : null}
               {/* Ciudad arriba derecha */}
               {s.ciudad ? (
                 <View style={styles.modalHeroCiudad}>
@@ -1011,8 +1019,18 @@ export default function SociosScreen() {
                         <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar · subir imágenes</Text>
                       )}
                     </View>
-                    <View style={{ backgroundColor: vencida ? '#ef4444' : Colors.accent, paddingHorizontal: 14, paddingVertical: 10, marginRight: 12, borderRadius: Radius.md }}>
-                      <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
+                    <View style={{ flexDirection: 'row', gap: 6, marginRight: 12 }}>
+                      <TouchableOpacity
+                        onPress={() => Share.share({
+                          message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/tienda.html?id=${s.id}`,
+                          url: `https://appcashcash.com/tienda.html?id=${s.id}`,
+                        })}
+                        style={{ backgroundColor: Colors.accent + '18', paddingHorizontal: 12, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="share-outline" size={16} color={Colors.accent} />
+                      </TouchableOpacity>
+                      <View style={{ backgroundColor: vencida ? '#ef4444' : Colors.accent, paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.md }}>
+                        <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: '800' }}>Abrir</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );

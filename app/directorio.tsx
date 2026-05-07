@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl,
-  Image, TextInput, Keyboard, Modal, Dimensions,
+  Image, TextInput, Keyboard, Modal, Dimensions, Alert,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -347,6 +347,14 @@ export default function DirectorioScreen() {
                   <Ionicons name="storefront-outline" size={64} color={Colors.accent + '66'} />
                 </View>
               )}
+              {/* Info ℹ️ arriba izquierda */}
+              {c.descripcion ? (
+                <TouchableOpacity
+                  onPress={() => Alert.alert(c.nombre, c.descripcion ?? '')}
+                  style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5, zIndex: 10 }}>
+                  <Ionicons name="information-circle-outline" size={18} color="#fff" />
+                </TouchableOpacity>
+              ) : null}
               {/* Overlay gradiente */}
               <View style={styles.modalHeroGrad} />
               {/* Nombre sobre la imagen */}

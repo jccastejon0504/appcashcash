@@ -1962,6 +1962,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             ${s.whatsapp   ? `<div>💬 <b>WA:</b> ${s.whatsapp}</div>` : ''}
             ${s.redes      ? `<div style="grid-column:1/-1">🌐 <b>Redes:</b> ${s.redes}</div>` : ''}
             ${s.ciudad     ? `<div>📍 <b>Ciudad:</b> ${s.ciudad}</div>` : ''}
+            ${s.descripcion ? `<div style="grid-column:1/-1;background:#f8fafc;border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:6px 10px;font-size:12px;color:#334155"><b>ℹ️ Descripción:</b> ${s.descripcion}</div>` : ''}
             ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
             ${(s.latitud && s.longitud) ? `
               <div style="grid-column:1/-1;background:#f5f3ff;border:1.5px solid #6c3fc5;border-radius:8px;padding:6px 10px">
@@ -1969,7 +1970,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
                 <div style="font-size:12px;font-weight:700;color:#1e1040">${toDMS(s.latitud, true)}&nbsp;&nbsp;${toDMS(s.longitud, false)}</div>
                 <div style="font-size:10px;color:#7c3aed;font-family:monospace;margin-top:2px">${s.latitud.toFixed(6)}, ${s.longitud.toFixed(6)}</div>
               </div>` : ''}
-            ${s.descripcion? `<div style="grid-column:1/-1;color:var(--muted);font-style:italic">"${s.descripcion}"</div>` : ''}
             ${estado === 'aprobado' ? `
             <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
