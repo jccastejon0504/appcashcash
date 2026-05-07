@@ -1412,7 +1412,7 @@
   (async () => {
     const { data } = await db.auth.getSession();
     if (!data.session) {
-      location.replace('./login.html');
+      location.replace('/admin/login.html');
       return;
     }
     // Mostrar email del admin en el header
@@ -1423,7 +1423,7 @@
 
   async function logout() {
     await db.auth.signOut();
-    location.replace('./login.html');
+    location.replace('/admin/login.html');
   }
   // ────────────────────────────────────────────────────────
 
