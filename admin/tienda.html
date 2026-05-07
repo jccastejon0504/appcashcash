@@ -740,15 +740,12 @@
 
     let html = '';
 
-    // Contacto
-    const hayContacto = s.whatsapp || s.telefono || s.web;
-    if (hayContacto) {
-      html += `<div><div class="info-sec-label">Contactar</div><div class="info-sheet-btns">`;
-      if (s.whatsapp) html += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`;
-      if (s.telefono) html += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
-      if (s.web)      html += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`;
-      html += `</div></div>`;
-      if (s.direccion || s.ciudad || s.descripcion) html += `<div class="info-sheet-sep"></div>`;
+    // Descripción
+    if (s.descripcion) {
+      html += `<div><div class="info-sec-label">Sobre el negocio</div>
+        <p class="info-sheet-desc">${s.descripcion}</p>
+      </div>`;
+      if (s.direccion || s.ciudad || s.whatsapp || s.telefono || s.web) html += `<div class="info-sheet-sep"></div>`;
     }
 
     // Info
@@ -770,14 +767,17 @@
         <div><div class="info-sheet-lbl">Ciudad</div><div class="info-sheet-val">${s.ciudad}</div></div>
       </div>`;
       html += `</div>`;
-      if (s.descripcion) html += `<div class="info-sheet-sep"></div>`;
+      if (s.whatsapp || s.telefono || s.web) html += `<div class="info-sheet-sep"></div>`;
     }
 
-    // Descripción
-    if (s.descripcion) {
-      html += `<div><div class="info-sec-label">Sobre el negocio</div>
-        <p class="info-sheet-desc">${s.descripcion}</p>
-      </div>`;
+    // Contacto
+    const hayContacto = s.whatsapp || s.telefono || s.web;
+    if (hayContacto) {
+      html += `<div><div class="info-sec-label">Contactar</div><div class="info-sheet-btns">`;
+      if (s.whatsapp) html += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`;
+      if (s.telefono) html += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
+      if (s.web)      html += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`;
+      html += `</div></div>`;
     }
 
     document.getElementById('info-sheet-body').innerHTML = html;
