@@ -403,9 +403,16 @@ export default function SociosScreen() {
                 </View>
               )}
               {/* Info ℹ️ arriba izquierda */}
-              {s.descripcion ? (
+              {(s.descripcion || s.direccion) ? (
                 <TouchableOpacity
-                  onPress={() => Alert.alert(s.nombre, s.descripcion ?? '')}
+                  onPress={() => Alert.alert(
+                    s.nombre,
+                    [s.descripcion, s.direccion ? `📍 ${s.direccion}` : null].filter(Boolean).join('\n\n'),
+                    [
+                      ...(s.direccion ? [{ text: '🗺 Ver en mapa', onPress: () => abrirMapa(s.direccion) }] : []),
+                      { text: 'Cerrar', style: 'cancel' as const },
+                    ]
+                  )}
                   style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5 }}>
                   <Ionicons name="information-circle-outline" size={18} color="#fff" />
                 </TouchableOpacity>
@@ -441,22 +448,13 @@ export default function SociosScreen() {
             </View>
 
             <View style={[styles.modalCuerpo, { backgroundColor: Colors.background }]}>
-              {/* Categoría + Dirección debajo de los botones */}
-              {(subcatNombre || s.direccion) ? (
+              {/* Categoría debajo de los botones */}
+              {subcatNombre ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 }}>
-                  {subcatNombre ? (
-                    <View style={[styles.modalHeroTag, { backgroundColor: Colors.accent + '22' }]}>
-                      <Ionicons name="grid-outline" size={13} color={Colors.accent} />
-                      <Text style={[styles.modalHeroTagText, { color: Colors.accent }]}>{subcatNombre}</Text>
-                    </View>
-                  ) : null}
-                  <View style={{ flex: 1 }} />
-                  {s.direccion ? (
-                    <TouchableOpacity style={[styles.modalHeroTag, { backgroundColor: Colors.accent + '22' }]} onPress={() => abrirMapa(s.direccion)} activeOpacity={0.8}>
-                      <Ionicons name="navigate-outline" size={13} color={Colors.accent} />
-                      <Text style={[styles.modalHeroTagText, { color: Colors.accent }]} numberOfLines={1}>{s.direccion}</Text>
-                    </TouchableOpacity>
-                  ) : null}
+                  <View style={[styles.modalHeroTag, { backgroundColor: Colors.accent + '22' }]}>
+                    <Ionicons name="grid-outline" size={13} color={Colors.accent} />
+                    <Text style={[styles.modalHeroTagText, { color: Colors.accent }]}>{subcatNombre}</Text>
+                  </View>
                 </View>
               ) : null}
 
