@@ -326,6 +326,12 @@ export default function SociosScreen() {
 
   const esFavorita = (id: string) => favoritas.includes(id);
 
+  // Solo cuenta favoritas que aún existen en la lista de socios
+  const favoritasActivas = useMemo(
+    () => socios.filter(s => favoritas.includes(s.id)),
+    [socios, favoritas]
+  );
+
   const toggleFavorita = async (id: string) => {
     const nuevas = favoritas.includes(id)
       ? favoritas.filter(f => f !== id)
@@ -1014,13 +1020,13 @@ export default function SociosScreen() {
           </TouchableOpacity>
           {/* Btn 4: Favoritas */}
           <TouchableOpacity
-            style={[styles.hBtnIcon, { backgroundColor: favoritas.length > 0 ? '#ef444418' : Colors.border + '66', borderColor: favoritas.length > 0 ? '#ef4444' : Colors.border }]}
+            style={[styles.hBtnIcon, { backgroundColor: favoritasActivas.length > 0 ? '#ef444418' : Colors.border + '66', borderColor: favoritasActivas.length > 0 ? '#ef4444' : Colors.border }]}
             onPress={() => setModalFavoritas(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name={favoritas.length > 0 ? 'heart' : 'heart-outline'} size={16} color={favoritas.length > 0 ? '#ef4444' : Colors.text} />
-            {favoritas.length > 0 && (
-              <Text style={{ fontSize: 10, fontWeight: '800', color: '#ef4444', marginLeft: 2 }}>{favoritas.length}</Text>
+            <Ionicons name={favoritasActivas.length > 0 ? 'heart' : 'heart-outline'} size={16} color={favoritasActivas.length > 0 ? '#ef4444' : Colors.text} />
+            {favoritasActivas.length > 0 && (
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#ef4444', marginLeft: 2 }}>{favoritasActivas.length}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -1155,7 +1161,7 @@ export default function SociosScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Tiendas deseadas</Text>
                 <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 }}>
-                  {favoritas.length === 0 ? 'Guarda las tiendas que te interesan' : `${favoritas.length} tienda${favoritas.length > 1 ? 's' : ''} guardada${favoritas.length > 1 ? 's' : ''}`}
+                  {favoritasActivas.length === 0 ? 'Guarda las tiendas que te interesan' : `${favoritasActivas.length} tienda${favoritasActivas.length > 1 ? 's' : ''} guardada${favoritasActivas.length > 1 ? 's' : ''}`}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setModalFavoritas(false)} style={{ padding: 4 }}>
@@ -1163,7 +1169,7 @@ export default function SociosScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }} showsVerticalScrollIndicator={false}>
-              {favoritas.length === 0 ? (
+              {favoritasActivas.length === 0 ? (
                 <View style={{ paddingVertical: 32, alignItems: 'center', gap: 8 }}>
                   <Ionicons name="heart-outline" size={48} color={Colors.textMuted + '66'} />
                   <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' }}>
@@ -1171,7 +1177,7 @@ export default function SociosScreen() {
                   </Text>
                 </View>
               ) : (
-                socios.filter(s => favoritas.includes(s.id)).map(s => (
+                favoritasActivas.map(s => (
                   <TouchableOpacity key={s.id}
                     onPress={() => { setModalFavoritas(false); setSocioModal(s); }}
                     activeOpacity={0.85}
