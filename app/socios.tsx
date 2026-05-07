@@ -74,6 +74,24 @@ export default function SociosScreen() {
     });
   }, []);
 
+  const [sociosCiudad, setSociosCiudad] = useState<SocioComercial[]>([]);
+
+  // Función reutilizable para mezclar y guardar
+  const mezclarSociosCiudad = useCallback((listaSocios: SocioComercial[], ciudad: string) => {
+    const destacadosIds = new Set(listaSocios.filter(s => s.destacado).map(s => s.id));
+    const lista = listaSocios.filter(s => {
+      if (destacadosIds.has(s.id)) return false;
+      if (ciudad) return s.ciudad?.toLowerCase().includes(ciudad.toLowerCase());
+      return true;
+    });
+    const arr = [...lista];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    setSociosCiudad(arr);
+  }, []);
+
   const cargar = useCallback(async (esRefresh = false) => {
     if (esRefresh) setRefrescando(true); else setCargando(true);
     setError(null);
@@ -191,15 +209,15 @@ export default function SociosScreen() {
         supabase
           .from('socios_comerciales')
           .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
-          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`),
-        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
+          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`) as unknown as Promise<any>,
+        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single() as unknown as Promise<any>,
       ];
       if (idsGuardados.length > 0) {
         promesas.push(
           supabase
             .from('socios_comerciales')
             .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
-            .in('id', idsGuardados)
+            .in('id', idsGuardados) as unknown as Promise<any>
         );
       }
 
@@ -230,25 +248,6 @@ export default function SociosScreen() {
     return lista;
   }, [socios, subcatFiltro, ubicacionCiudad]);
 
-  const [sociosCiudad, setSociosCiudad] = useState<SocioComercial[]>([]);
-
-  // Función reutilizable para mezclar y guardar
-  const mezclarSociosCiudad = useCallback((listaSocios: SocioComercial[], ciudad: string) => {
-    const destacadosIds = new Set(listaSocios.filter(s => s.destacado).map(s => s.id));
-    const lista = listaSocios.filter(s => {
-      if (destacadosIds.has(s.id)) return false;
-      // Con ciudad: solo esa ciudad. Sin ciudad: todas las tiendas
-      if (ciudad) return s.ciudad?.toLowerCase().includes(ciudad.toLowerCase());
-      return true;
-    });
-    // Fisher-Yates con Math.random() — diferente cada llamada
-    const arr = [...lista];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    setSociosCiudad(arr);
-  }, []);
 
   const sugerencias = useMemo(() => {
     if (!busqueda.trim()) return [];

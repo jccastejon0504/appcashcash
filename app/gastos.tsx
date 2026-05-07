@@ -254,7 +254,6 @@ export default function GastosScreen() {
   const guardarAceite = async (data: CambioAceite[]) => {
     setCambiosAceite(data);
     await setItem(ACEITE_KEY, data);
-    console.log('[Aceite] guardado:', JSON.stringify(data[0]));
   };
 
   const programarNotificacionAceite = async (fechaProximo: Date, producto: string) => {
@@ -283,15 +282,12 @@ export default function GastosScreen() {
       },
     });
     await setItem('aceite_notif_id', id);
-    console.log('[Notif] programada para:', trigger.toISOString(), 'id:', id);
   };
 
   const registrarCambioAceite = async () => {
     if (!formAceite) return;
-    console.log('[Aceite] intentando guardar:', JSON.stringify(formAceite));
     const kmA = parseFloat(formAceite.kmActual.replace(',', '.'));
     const kmP = parseFloat(formAceite.kmProximo.replace(',', '.'));
-    console.log('[Aceite] kmA:', kmA, 'kmP:', kmP);
     if (!formAceite.producto.trim())      { Alert.alert('Falta producto'); return; }
     if (isNaN(kmA) || kmA <= 0)          { Alert.alert('Km actual inválido'); return; }
     if (isNaN(kmP) || kmP <= kmA)        { Alert.alert('El próximo km debe ser mayor al actual'); return; }

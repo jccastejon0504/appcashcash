@@ -93,12 +93,10 @@ export default function CalculadoraBCVScreen() {
       const visto = await getItem<string>('alerta_car_vista');
       setAlertaVista(visto ?? null);
       const ultimo = data?.[0];
-      console.log('[AlertaCar] ultimo:', JSON.stringify(ultimo));
       if (ultimo?.fechaProximo) {
         const hd = new Date(); hd.setHours(0,0,0,0);
         const fd = new Date(ultimo.fechaProximo); fd.setHours(0,0,0,0);
         const dias = Math.round((fd.getTime() - hd.getTime()) / 86400000);
-        console.log('[AlertaCar] diasRestantes:', dias, 'visto:', visto, 'id:', ultimo.id);
         setAlertaCar({ id: ultimo.id, kmProximo: ultimo.kmProximo, fechaProximo: ultimo.fechaProximo, producto: ultimo.producto });
       } else {
         setAlertaCar(null);

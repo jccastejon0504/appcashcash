@@ -72,7 +72,7 @@ export default function DirectorioScreen() {
     if (err) setError('No se pudo cargar el directorio');
     else setSubcategorias(subs ?? []);
     setTodosComercios(coms ?? []);
-    setSubcatsGlobal(subsG ?? []);
+    setSubcatsGlobal((subsG ?? []) as any);
     setCiudades(cats ?? []);
     if (esRefresh) setRefrescando(false); else setCargando(false);
   }, []);
@@ -1148,9 +1148,9 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   configRadioChipText: { fontSize: FontSize.sm, fontWeight: '600' },
   configMapBox: {
-    height: 140, borderRadius: Radius.lg, borderWidth: 1,
+    height: 180, borderRadius: Radius.lg, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 16, overflow: 'hidden',
   },
   configMapCircle: {
     width: 100, height: 100, borderRadius: 50,
@@ -1171,7 +1171,6 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   configSugBox:       { borderRadius: Radius.md, borderWidth: 1, marginTop: -8, marginBottom: 10, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6 },
   configSugItem:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   configSugText:      { fontSize: FontSize.sm, fontWeight: '600' },
-  configMapBox:       { height: 180, borderRadius: Radius.lg, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
   configMapLabel:     { position: 'absolute', top: 8, left: 12, zIndex: 10, fontSize: FontSize.sm, fontWeight: '700', backgroundColor: '#00000066', color: '#fff', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   configMapExpandHint:{ position: 'absolute', bottom: 8, right: 8, backgroundColor: '#00000066', borderRadius: 8, padding: 5 },
   mapaFullCerrar:     { position: 'absolute', top: 50, right: 16, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6 },

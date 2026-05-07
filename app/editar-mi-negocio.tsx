@@ -25,7 +25,7 @@ type Subcategoria = { id: string; nombre: string; categoria_id: string };
 
 type Socio = {
   id: string; nombre: string; telefono: string; whatsapp: string;
-  web: string; direccion: string; descripcion: string;
+  web: string; direccion: string; descripcion: string; ciudad: string | null;
   subcategoria_id: string | null;
   imagen: string;
   imagen2: string; imagen3: string; imagen4: string;
