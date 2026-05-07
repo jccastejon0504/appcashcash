@@ -307,6 +307,83 @@
       text-align: center; font-size: 11px; color: var(--muted2);
     }
 
+    /* ── BTN INFO TOPBAR ────────────────────────── */
+    .btn-info {
+      margin-left: auto; background: none; border: none;
+      cursor: pointer; padding: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 22px; flex-shrink: 0;
+      transition: color .15s;
+    }
+    .btn-info:hover { color: var(--accent); }
+
+    /* ── MODAL INFO TIENDA ──────────────────────── */
+    .info-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      z-index: 400;
+      align-items: flex-end; justify-content: center;
+    }
+    .info-overlay.open { display: flex; }
+    .info-sheet {
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      width: 100%; max-width: 520px;
+      max-height: 85vh; overflow-y: auto;
+      animation: slideUp .25s ease;
+      padding: 0 0 36px;
+    }
+    @media (min-width: 540px) {
+      .info-overlay { align-items: center; }
+      .info-sheet { border-radius: 24px; max-height: 80vh; }
+    }
+    .info-sheet-handle {
+      width: 40px; height: 4px; background: #e5e7eb;
+      border-radius: 4px; margin: 14px auto 0;
+    }
+    @media (min-width: 540px) { .info-sheet-handle { display: none; } }
+    .info-sheet-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-sheet-title {
+      flex: 1; font-size: 18px; font-weight: 800; color: var(--text);
+    }
+    .info-sheet-close {
+      background: #f3f4f6; border: none; border-radius: 50%;
+      width: 32px; height: 32px; cursor: pointer; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: background .15s;
+    }
+    .info-sheet-close:hover { background: #e5e7eb; }
+    .info-sheet-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
+    .info-sec-label {
+      font-size: 10px; font-weight: 800; color: var(--muted2);
+      letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .info-sheet-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .info-sheet-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-sheet-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .info-sheet-lbl { font-size: 10px; color: var(--muted2); font-weight: 600; margin-bottom: 2px; }
+    .info-sheet-val { font-size: 14px; color: var(--text); font-weight: 500; line-height: 1.5; }
+    .info-sheet-desc { font-size: 14px; color: #374151; line-height: 1.7; }
+    .info-sheet-btns { display: flex; flex-direction: column; gap: 8px; }
+    .info-sheet-sep { height: 1px; background: var(--border); }
+    .btn-maps {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 16px; border-radius: 12px; border: none;
+      font-size: 14px; font-weight: 700; color: #fff; cursor: pointer;
+      text-decoration: none; background: linear-gradient(135deg, #ea4335, #c5221f);
+      transition: filter .15s;
+    }
+    .btn-maps:hover { filter: brightness(1.08); }
+
     /* ── BANNER DESCARGA ────────────────────────── */
     .banner {
       position: fixed; bottom: 0; left: 0; right: 0;
@@ -382,6 +459,7 @@
       <div class="topbar-sub">CashCach · Directorio de Tiendas</div>
     </div>
     <div id="top-dest" class="topbar-badge" style="display:none">⭐ Destacada</div>
+    <button class="btn-info" id="btn-info" onclick="abrirInfo()" style="display:none" title="Información de la tienda">ℹ️</button>
   </div>
 
   <!-- Hero -->
@@ -430,6 +508,19 @@
 
 </div><!-- /pagina -->
 
+<!-- Modal Info Tienda -->
+<div class="info-overlay" id="info-overlay" onclick="cerrarInfoOverlay(event)">
+  <div class="info-sheet" id="info-sheet">
+    <div class="info-sheet-handle"></div>
+    <div class="info-sheet-header">
+      <span style="font-size:20px">🏪</span>
+      <div class="info-sheet-title" id="is-nombre">—</div>
+      <button class="info-sheet-close" onclick="cerrarInfo()">✕</button>
+    </div>
+    <div class="info-sheet-body" id="info-sheet-body"></div>
+  </div>
+</div>
+
 <!-- Modal Producto -->
 <div class="overlay" id="overlay" onclick="cerrarOverlay(event)">
   <div class="modal" id="modal">
@@ -475,7 +566,8 @@
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let _waGlobal = null;
+  let _waGlobal  = null;
+  let _socioData = null;
 
   const DEMO = {
     s: {
@@ -520,7 +612,9 @@
 
     if (!s) return mostrarError('Tienda no encontrada', 'Este link ya no está disponible.');
 
-    _waGlobal = s.whatsapp;
+    _waGlobal  = s.whatsapp;
+    _socioData = s;
+    document.getElementById('btn-info').style.display = 'flex';
 
     // Meta OG
     document.title = `${s.nombre} · CashCach`;
@@ -670,6 +764,67 @@
 
   function cerrarOverlay(e) {
     if (e.target === document.getElementById('overlay')) cerrarModal();
+  }
+
+  function abrirInfo() {
+    const s = _socioData;
+    if (!s) return;
+    document.getElementById('is-nombre').textContent = s.nombre;
+
+    let html = '';
+
+    // Contacto
+    const hayContacto = s.whatsapp || s.telefono || s.web;
+    if (hayContacto) {
+      html += `<div><div class="info-sec-label">Contactar</div><div class="info-sheet-btns">`;
+      if (s.whatsapp) html += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`;
+      if (s.telefono) html += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
+      if (s.web)      html += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`;
+      html += `</div></div>`;
+      if (s.direccion || s.ciudad || s.descripcion) html += `<div class="info-sheet-sep"></div>`;
+    }
+
+    // Info
+    if (s.direccion || s.ciudad) {
+      html += `<div><div class="info-sec-label">Información</div>`;
+      if (s.direccion) {
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.direccion+(s.ciudad?', '+s.ciudad:''))}`;
+        html += `<div class="info-sheet-row">
+          <span class="info-sheet-icon">📌</span>
+          <div><div class="info-sheet-lbl">Dirección</div>
+          <div class="info-sheet-val">${s.direccion}</div></div>
+        </div>
+        <a class="btn-maps" href="${mapsUrl}" target="_blank" style="margin-top:10px">
+          📍 Ver en Google Maps
+        </a>`;
+      }
+      if (s.ciudad) html += `<div class="info-sheet-row">
+        <span class="info-sheet-icon">🏙</span>
+        <div><div class="info-sheet-lbl">Ciudad</div><div class="info-sheet-val">${s.ciudad}</div></div>
+      </div>`;
+      html += `</div>`;
+      if (s.descripcion) html += `<div class="info-sheet-sep"></div>`;
+    }
+
+    // Descripción
+    if (s.descripcion) {
+      html += `<div><div class="info-sec-label">Sobre el negocio</div>
+        <p class="info-sheet-desc">${s.descripcion}</p>
+      </div>`;
+    }
+
+    document.getElementById('info-sheet-body').innerHTML = html;
+    document.getElementById('info-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarInfo() {
+    document.getElementById('info-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function cerrarInfoOverlay(e) {
+    if (e.target === document.getElementById('info-overlay')) cerrarInfo();
   }
 
   function mostrarError(titulo, sub) {
