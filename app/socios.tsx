@@ -407,7 +407,7 @@ export default function SociosScreen() {
                 <TouchableOpacity
                   onPress={() => Alert.alert(
                     s.nombre,
-                    [s.descripcion, s.direccion ? `📍 ${s.direccion}` : null].filter(Boolean).join('\n\n'),
+                    [s.descripcion, s.direccion ? `──────────────\n📍 ${s.direccion}` : null].filter(Boolean).join('\n\n'),
                     [
                       ...(s.direccion ? [{ text: '🗺 Ver en mapa', onPress: () => abrirMapa(s.direccion) }] : []),
                       { text: 'Cerrar', style: 'cancel' as const },
