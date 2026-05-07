@@ -479,19 +479,6 @@
         </div>
       </div>
 
-      <!-- Info -->
-      <div class="card" id="card-info" style="display:none">
-        <div class="card-head">Información</div>
-        <div class="card-body" id="info-body"></div>
-      </div>
-
-      <!-- Descripción -->
-      <div class="card" id="card-desc" style="display:none">
-        <div class="card-head">Sobre el negocio</div>
-        <div class="card-body">
-          <p class="desc-text" id="desc-text"></p>
-        </div>
-      </div>
 
     </aside>
 
@@ -650,26 +637,6 @@
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`; hayContacto = true; }
     if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
-
-    // Info
-    const info = [];
-    if (s.direccion) info.push({ i: '📌', l: 'Dirección', v: s.direccion });
-    if (s.ciudad)    info.push({ i: '🏙', l: 'Ciudad',    v: s.ciudad    });
-    if (info.length) {
-      document.getElementById('info-body').innerHTML = info.map(r =>
-        `<div class="info-row">
-          <span class="info-icon">${r.i}</span>
-          <div><div class="info-label">${r.l}</div><div class="info-val">${r.v}</div></div>
-        </div>`
-      ).join('');
-      document.getElementById('card-info').style.display = 'block';
-    }
-
-    // Descripción
-    if (s.descripcion) {
-      document.getElementById('desc-text').textContent = s.descripcion;
-      document.getElementById('card-desc').style.display = 'block';
-    }
 
     // Galería
     if (galeria?.length) {
