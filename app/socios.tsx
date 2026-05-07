@@ -1158,8 +1158,8 @@ export default function SociosScreen() {
                     </View>
                     <TouchableOpacity
                       onPress={() => toggleFavorita(s.id)}
-                      style={{ padding: 12 }}>
-                      <Ionicons name="heart" size={20} color="#ef4444" />
+                      style={{ padding: 12, marginRight: 4 }}>
+                      <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
                     </TouchableOpacity>
                   </TouchableOpacity>
                 ))
