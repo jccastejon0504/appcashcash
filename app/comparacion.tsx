@@ -48,6 +48,7 @@ export default function ComparacionScreen() {
   const [nuevoImagen,    setNuevoImagen]    = useState<string | undefined>(undefined);
   const [fotoAmpliada,   setFotoAmpliada]   = useState<string | undefined>(undefined);
   const [sugerenciasNombre, setSugerenciasNombre] = useState<string[]>([]);
+  const [modalInfoVisible,  setModalInfoVisible]  = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
@@ -289,6 +290,9 @@ export default function ComparacionScreen() {
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Comparación de Precios</Text>
+          <TouchableOpacity onPress={() => setModalInfoVisible(true)} style={styles.backBtn}>
+            <Ionicons name="information-circle-outline" size={24} color={Colors.textMuted} />
+          </TouchableOpacity>
           {comercios.length >= 2 && (
             <TouchableOpacity style={styles.compareBtn} onPress={() => setVista('comparar')}>
               <Ionicons name="bar-chart-outline" size={16} color="#fff" />
@@ -329,10 +333,19 @@ export default function ComparacionScreen() {
           </View>
 
           {comercios.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="storefront-outline" size={52} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>Sin comercios</Text>
-              <Text style={styles.emptyText}>Agrega los locales que quieres comparar</Text>
+            <View style={styles.guiaCard}>
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Ionicons name="storefront-outline" size={52} color={Colors.textMuted} />
+                <Text style={styles.guiaTituloMain}>Compara precios entre comercios</Text>
+                <Text style={styles.guiaDescMain}>
+                  Agrega los locales donde compras habitualmente, registra los productos con su precio en $ o Bs y la app te muestra al instante dónde sale más barato cada uno.{'\n\n'}
+                  Con 2 o más comercios activa "Comparar" para ver de un vistazo cuál local te conviene más para toda tu lista.
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm, opacity: 0.5 }}>
+                  <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Toca el ícono de información para más detalles</Text>
+                </View>
+              </View>
             </View>
           ) : (
             comercios.map(c => (
@@ -363,6 +376,51 @@ export default function ComparacionScreen() {
           )}
 
         </ScrollView>
+
+        {/* Modal información del módulo */}
+        <Modal transparent visible={modalInfoVisible} animationType="slide" onRequestClose={() => setModalInfoVisible(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setModalInfoVisible(false)}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalHandle} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="bar-chart-outline" size={22} color={Colors.blue} />
+                <Text style={styles.modalTitulo}>¿Cómo funciona Mercado?</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Ionicons name="storefront-outline" size={18} color={Colors.blue} />
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoBold}>Agrega comercios</Text> — registra los supermercados o tiendas donde haces tus compras (ej: Rio, Mercafur, Bicentenario).
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Ionicons name="pricetag-outline" size={18} color={Colors.blue} />
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoBold}>Registra productos</Text> — dentro de cada comercio anota los precios en $ o Bs. Puedes escanear el código de barras y tomar foto del producto.
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Ionicons name="trophy-outline" size={18} color={Colors.success} />
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoBold}>Compara precios</Text> — busca un producto y ve al instante en qué local sale más barato y dónde te cobran más.
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Ionicons name="share-outline" size={18} color={Colors.accent} />
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoBold}>Comparte con tu familia</Text> — exporta tus datos e importa los de otro familiar para tener una lista de precios compartida.
+                </Text>
+              </View>
+
+              <TouchableOpacity style={styles.modalCerrar} onPress={() => setModalInfoVisible(false)}>
+                <Text style={styles.modalCerrarText}>Entendido</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
       </SafeAreaView>
     );
@@ -1071,6 +1129,30 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     alignItems: 'center', justifyContent: 'center',
   },
   photoShutterInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff' },
+
+  guiaCard: {
+    backgroundColor: Colors.background, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border + '55',
+    padding: Spacing.lg, gap: Spacing.md,
+    opacity: 0.95, marginTop: Spacing.xl,
+  },
+  guiaStep:    { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  guiaNum: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.blue + '22', borderWidth: 1, borderColor: Colors.blue + '55',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  guiaNumText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.blue },
+  guiaInfo:    { flex: 1, gap: 3 },
+  guiaTituloMain: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  guiaDescMain:   { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  guiaTitulo:  { fontSize: FontSize.sm, fontWeight: '800', color: Colors.text },
+  guiaDesc:    { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
+  guiaDivider: { height: 1, backgroundColor: Colors.border, marginLeft: 42 },
+
+  infoRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  infoText: { flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
+  infoBold: { fontWeight: '800', color: Colors.text },
 
   editBtns:         { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
   editBtn:          { flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },

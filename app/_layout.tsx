@@ -87,6 +87,16 @@ function AppTabs() {
         listeners={{ tabPress: () => registrarEvento('tab_click', 'Cash') }}
       />
       <Tabs.Screen
+        name="comparacion"
+        options={{
+          title: 'Mercado',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" size={size} color={color} />
+          ),
+        }}
+        listeners={{ tabPress: () => registrarEvento('tab_click', 'Mercado') }}
+      />
+      <Tabs.Screen
         name="listado"
         options={{
           title: 'Comprar',
@@ -95,16 +105,6 @@ function AppTabs() {
           ),
         }}
         listeners={{ tabPress: () => registrarEvento('tab_click', 'Comprar') }}
-      />
-      <Tabs.Screen
-        name="comparacion"
-        options={{
-          title: 'Mercados',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
-          ),
-        }}
-        listeners={{ tabPress: () => registrarEvento('tab_click', 'Mercados') }}
       />
       <Tabs.Screen
         name="gastos"

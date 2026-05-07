@@ -54,6 +54,7 @@ export default function ListadoMercadoScreen() {
   const [busquedaModal,     setBusquedaModal]     = useState('');
   const [modalCantidad,     setModalCantidad]     = useState<{ nombre: string; mercado?: string } | null>(null);
   const [cantidadTemp,      setCantidadTemp]      = useState('1');
+  const [modalInfoVisible,  setModalInfoVisible]  = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -246,7 +247,10 @@ export default function ListadoMercadoScreen() {
         <TouchableOpacity onPress={() => router.navigate('/')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Compras / Presupuesto</Text>
+        <Text style={styles.headerTitle}>Lista de Mercado</Text>
+        <TouchableOpacity onPress={() => setModalInfoVisible(true)} style={styles.backBtn}>
+          <Ionicons name="information-circle-outline" size={24} color={Colors.textMuted} />
+        </TouchableOpacity>
         {pendientes > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{pendientes}</Text>
@@ -422,10 +426,19 @@ export default function ListadoMercadoScreen() {
 
         {/* Items */}
         {items.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="cart-outline" size={52} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Lista vacía</Text>
-            <Text style={styles.emptyText}>Agrega los productos que necesitas comprar</Text>
+          <View style={styles.guiaCard}>
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <Ionicons name="cart-outline" size={52} color={Colors.textMuted} />
+              <Text style={styles.guiaTituloMain}>Organiza tu mercado del mes</Text>
+              <Text style={styles.guiaDescMain}>
+                Anota los productos que necesitas, indica la cantidad y la app te dice automáticamente en qué comercio sale más barato cada uno.{'\n\n'}
+                Agenda tu lista para cualquier fecha, marca cada producto al comprarlo y lleva el control de tu presupuesto mensual sin esfuerzo.
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm, opacity: 0.5 }}>
+                <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Toca el ícono de información para más detalles</Text>
+              </View>
+            </View>
           </View>
         ) : (
           items.map(item => {
@@ -730,6 +743,48 @@ export default function ListadoMercadoScreen() {
                 <Text style={styles.modalBtnConfirmText}>Agendar</Text>
               </TouchableOpacity>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal información del módulo */}
+      <Modal transparent visible={modalInfoVisible} animationType="slide" onRequestClose={() => setModalInfoVisible(false)}>
+        <Pressable style={styles.infoOverlay} onPress={() => setModalInfoVisible(false)}>
+          <Pressable style={styles.infoCard} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="cart-outline" size={22} color={Colors.blue} />
+              <Text style={styles.modalComerciosTitulo}>¿Cómo funciona Comprar?</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Ionicons name="create-outline" size={18} color={Colors.blue} />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoBold}>Arma tu lista</Text> — escribe los productos que necesitas con su cantidad antes de salir a comprar.
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="trophy-outline" size={18} color={Colors.success} />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoBold}>Precio más económico</Text> — si registraste precios en Mercado, la app te muestra automáticamente en qué local sale más barato cada producto.
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="storefront-outline" size={18} color={Colors.blue} />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoBold}>Evalúa por mercado</Text> — compara cuánto costaría comprar toda la lista en cada local y elige el más conveniente.
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={18} color={Colors.accent} />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoBold}>Agenda tu compra</Text> — guarda la lista para una fecha específica y consúltala cuando vayas al mercado.
+              </Text>
+            </View>
+
+            <TouchableOpacity style={styles.mcBtnCerrar} onPress={() => setModalInfoVisible(false)}>
+              <Text style={styles.mcBtnCerrarText}>Entendido</Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1162,6 +1217,36 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   emptyState: { alignItems: 'center', paddingVertical: Spacing.xl, gap: 10 },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.textSecondary },
   emptyText:  { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+
+  guiaCard: {
+    backgroundColor: Colors.background, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border + '55',
+    padding: Spacing.lg, gap: Spacing.md,
+    opacity: 0.95, marginTop: Spacing.xl,
+  },
+  guiaStep:    { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  guiaNum: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.blue + '22', borderWidth: 1, borderColor: Colors.blue + '55',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  guiaNumText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.blue },
+  guiaInfo:    { flex: 1, gap: 3 },
+  guiaTituloMain: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  guiaDescMain:   { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  guiaTitulo:  { fontSize: FontSize.sm, fontWeight: '800', color: Colors.text },
+  guiaDesc:    { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
+  guiaDivider: { height: 1, backgroundColor: Colors.border, marginLeft: 42 },
+
+  infoOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  infoCard: {
+    backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: Spacing.lg, paddingBottom: 36, gap: Spacing.md,
+    borderTopWidth: 1, borderColor: Colors.border,
+  },
+  infoRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  infoText: { flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
+  infoBold: { fontWeight: '800', color: Colors.text },
 
   sugerenciasCard: {
     backgroundColor: Colors.card, borderRadius: Radius.md,
