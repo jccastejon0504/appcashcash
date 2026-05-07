@@ -1022,8 +1022,8 @@ export default function SociosScreen() {
                     <View style={{ flexDirection: 'row', gap: 6, marginRight: 12 }}>
                       <TouchableOpacity
                         onPress={() => Share.share({
-                          message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/tienda.html?id=${s.id}`,
-                          url: `https://appcashcash.com/tienda.html?id=${s.id}`,
+                          message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${s.id}`,
+                          url: `https://appcashcash.com/admin/tienda.html?id=${s.id}`,
                         })}
                         style={{ backgroundColor: Colors.accent + '18', paddingHorizontal: 12, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' }}>
                         <Ionicons name="share-outline" size={16} color={Colors.accent} />
