@@ -886,6 +886,7 @@ export default function SociosScreen() {
         subsecciones: [
           { sub: '📱 Detección automática', desc: 'Al abrir la app con el número que registraste, tus tiendas aprobadas aparecen de inmediato sin necesidad de iniciar sesión.' },
           { sub: '🏪 Múltiples tiendas', desc: 'Puedes tener más de una tienda registrada con el mismo número, hasta el límite permitido por el administrador.' },
+          { sub: '📤 Compartir mi tienda', desc: 'Cada tienda tiene un botón de compartir (📤). Al tocarlo, genera un link web (appcashcash.com) que puedes enviar por WhatsApp, Instagram, Telegram o cualquier red. El cliente lo abre desde el navegador y ve tu perfil, productos y contacto.' },
           { sub: '⚠️ Membresía vencida', desc: 'Si tu membresía venció, la tarjeta se muestra en rojo. Entra a editar y renueva desde el panel para que tu negocio vuelva a aparecer en el directorio.' },
         ],
       },
