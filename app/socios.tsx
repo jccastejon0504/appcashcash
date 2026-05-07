@@ -52,6 +52,7 @@ export default function SociosScreen() {
   const [socioModal,    setSocioModal]    = useState<SocioComercial | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [modalInfo,     setModalInfo]     = useState(false);
+  const [modalInfoTienda, setModalInfoTienda] = useState(false);
   type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null; descripcion: string | null };
   const [galeriaItems,        setGaleriaItems]        = useState<ItemGaleria[]>([]);
   const [productoModal,       setProductoModal]       = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
@@ -405,14 +406,7 @@ export default function SociosScreen() {
               {/* Info ℹ️ arriba izquierda */}
               {(s.descripcion || s.direccion) ? (
                 <TouchableOpacity
-                  onPress={() => Alert.alert(
-                    s.nombre,
-                    [s.descripcion, s.direccion ? `\n────────────────────\n\n📍 ${s.direccion}` : null].filter(Boolean).join('\n'),
-                    [
-                      ...(s.direccion ? [{ text: '🗺 Ver en mapa', onPress: () => abrirMapa(s.direccion) }] : []),
-                      { text: 'Cerrar', style: 'cancel' as const },
-                    ]
-                  )}
+                  onPress={() => setModalInfoTienda(true)}
                   style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5 }}>
                   <Ionicons name="information-circle-outline" size={18} color="#fff" />
                 </TouchableOpacity>
@@ -490,6 +484,43 @@ export default function SociosScreen() {
               <View style={{ height: 32 }} />
             </View>
           </ScrollView>
+
+          {/* Modal ℹ️ info tienda — descripción + dirección */}
+          <Modal visible={modalInfoTienda} transparent animationType="fade" onRequestClose={() => setModalInfoTienda(false)}>
+            <View style={{ flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: 24 }}>
+              <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setModalInfoTienda(false)} />
+              <View style={{ backgroundColor: Colors.card, borderRadius: 20, overflow: 'hidden', elevation: 12, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16 }}>
+                <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="information-circle" size={20} color={Colors.accent} />
+                  <Text style={{ flex: 1, fontSize: FontSize.md, fontWeight: '800', color: Colors.text }} numberOfLines={1}>{s.nombre}</Text>
+                  <TouchableOpacity onPress={() => setModalInfoTienda(false)} style={{ padding: 2 }}>
+                    <Ionicons name="close" size={20} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                {s.descripcion ? (
+                  <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: s.direccion ? 0 : 20 }}>
+                    <Text style={{ fontSize: FontSize.sm, color: Colors.text, lineHeight: 22 }}>{s.descripcion}</Text>
+                  </View>
+                ) : null}
+                {s.descripcion && s.direccion ? (
+                  <View style={{ marginHorizontal: 20, marginVertical: 16, height: 1, backgroundColor: Colors.border }} />
+                ) : null}
+                {s.direccion ? (
+                  <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: s.descripcion ? 0 : 16 }}>
+                    <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Dirección</Text>
+                    <Text style={{ fontSize: FontSize.sm, color: Colors.text, marginBottom: 14 }}>{s.direccion}</Text>
+                    <TouchableOpacity
+                      onPress={() => { setModalInfoTienda(false); abrirMapa(s.direccion); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.md, paddingVertical: 12 }}>
+                      <Ionicons name="navigate" size={16} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.sm }}>Ver en Google Maps</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </Modal>
+
         </SafeAreaView>
       </Modal>
     );
@@ -692,6 +723,7 @@ export default function SociosScreen() {
             </View>
           </View>
         </View>
+
       </Modal>
     );
   };
