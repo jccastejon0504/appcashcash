@@ -237,6 +237,13 @@ export default function SociosScreen() {
       await AsyncStorage.setItem('mis_socios_ids', JSON.stringify(todosIds));
 
       setMisSocios(resultado);
+
+      // Si no se encontró ninguna tienda aprobada, resetear el flag
+      // para que no quede atascado mostrando "en revisión" indefinidamente
+      if (resultado.length === 0) {
+        await AsyncStorage.removeItem('solicitud_socio_enviada');
+        setYaEnvioSolicitud(false);
+      }
     };
     cargarMisSocios();
   }, []));
@@ -1115,14 +1122,28 @@ export default function SociosScreen() {
                 );
               })}
 
-              {/* Sin negocios */}
-              {misSocios.length === 0 && (
-                <View style={{ paddingVertical: 20, alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="storefront-outline" size={40} color={Colors.textMuted + '66'} />
-                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' }}>
-                    {yaEnvioSolicitud
-                      ? 'Tu solicitud está en revisión.\nCuando sea aprobada, tu negocio aparecerá aquí.'
-                      : '¿Tienes un negocio? ¡Regístralo y llega a más clientes!\nDestaca tu tienda, muestra tu catálogo y recibe contactos directo por WhatsApp.'}
+              {/* Sin negocios — en revisión */}
+              {misSocios.length === 0 && yaEnvioSolicitud && (
+                <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.md, gap: 8, alignItems: 'center' }}>
+                  <Ionicons name="time-outline" size={32} color="#d97706" />
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: '#92400e', textAlign: 'center' }}>Solicitud en revisión</Text>
+                  <Text style={{ fontSize: FontSize.sm, color: '#78350f', textAlign: 'center', lineHeight: 20 }}>
+                    El equipo de CashCach está verificando tu información. Cuando sea aprobada, tu negocio aparecerá aquí.
+                  </Text>
+                </View>
+              )}
+
+              {/* Sin negocios — sin solicitud */}
+              {misSocios.length === 0 && !yaEnvioSolicitud && (
+                <View style={{ backgroundColor: Colors.accent + '0D', borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.accent + '33', padding: Spacing.md, gap: 10, alignItems: 'center' }}>
+                  <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: Colors.accent + '22', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.accent, textAlign: 'center' }}>
+                    ¡Registra tu negocio gratis!
+                  </Text>
+                  <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                    Llega a más clientes en tu ciudad. Muestra tu catálogo, recibe contactos por WhatsApp y destaca entre los mejores negocios de CashCach.
                   </Text>
                 </View>
               )}
