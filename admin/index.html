@@ -4061,6 +4061,50 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
   }, 1000);
 
+  // ── Realtime: solicitudes ─────────────────────────────────────────────────
+
+  let _solicitudesNuevas = 0;
+
+  function _mostrarBadgeSol(n) {
+    let badge = document.getElementById('badge-solicitudes');
+    if (!badge) {
+      const navItem = document.querySelector('.nav-item[data-section="solicitudes"]');
+      if (!navItem) return;
+      badge = document.createElement('span');
+      badge.id = 'badge-solicitudes';
+      badge.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:6px;min-width:18px;text-align:center;display:inline-block';
+      navItem.appendChild(badge);
+    }
+    if (n > 0) { badge.textContent = n; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }
+
+  db.channel('solicitudes-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes' }, (payload) => {
+      if (_seccionActual === 'solicitudes') {
+        // Si estamos en la sección, recargar directo
+        cargarSolicitudes();
+        _cuenta = _REFRESH_SEG;
+      } else {
+        // Si estamos en otra sección, mostrar badge en el nav
+        if (payload.eventType === 'INSERT') {
+          _solicitudesNuevas++;
+          _mostrarBadgeSol(_solicitudesNuevas);
+        }
+      }
+    })
+    .subscribe();
+
+  // Limpiar badge al entrar a solicitudes
+  const _navToOriginal2 = navTo;
+  navTo = function(id) {
+    _navToOriginal2(id);
+    if (id === 'solicitudes') {
+      _solicitudesNuevas = 0;
+      _mostrarBadgeSol(0);
+    }
+  };
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   cargarDashboard();
