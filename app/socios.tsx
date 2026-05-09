@@ -394,15 +394,26 @@ export default function SociosScreen() {
               <Ionicons name="arrow-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <Text style={[styles.modalHeaderTitle, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-            <TouchableOpacity
-              onPress={() => toggleFavorita(s.id)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: esFavorita(s.id) ? '#ef444418' : Colors.border + '44' }}
-            >
-              <Ionicons name={esFavorita(s.id) ? 'heart' : 'heart-outline'} size={16} color={esFavorita(s.id) ? '#ef4444' : Colors.textMuted} />
-              <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: esFavorita(s.id) ? '#ef4444' : Colors.textMuted }}>
-                {esFavorita(s.id) ? 'Guardada' : 'Guardar'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                onPress={() => Share.share({
+                  message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${s.id}`,
+                  url: `https://appcashcash.com/admin/tienda.html?id=${s.id}`,
+                })}
+                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: Colors.border + '44' }}
+              >
+                <Ionicons name="share-outline" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => toggleFavorita(s.id)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: esFavorita(s.id) ? '#ef444418' : Colors.border + '44' }}
+              >
+                <Ionicons name={esFavorita(s.id) ? 'heart' : 'heart-outline'} size={16} color={esFavorita(s.id) ? '#ef4444' : Colors.textMuted} />
+                <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: esFavorita(s.id) ? '#ef4444' : Colors.textMuted }}>
+                  {esFavorita(s.id) ? 'Guardada' : 'Guardar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -699,6 +710,14 @@ export default function SociosScreen() {
                     <Ionicons name="information-circle-outline" size={18} color={infoProductoVisible ? Colors.accent : Colors.textMuted} />
                   </TouchableOpacity>
                 ) : null}
+                <TouchableOpacity
+                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
+                  onPress={() => Share.share({
+                    message: `Mira la tienda *${socioModal?.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${socioModal?.id}`,
+                    url: `https://appcashcash.com/admin/tienda.html?id=${socioModal?.id}`,
+                  })}>
+                  <Ionicons name="share-outline" size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
                   onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
@@ -1081,15 +1100,16 @@ export default function SociosScreen() {
             <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }} showsVerticalScrollIndicator={false}>
               {/* Negocios detectados */}
               {misSocios.map(s => {
-                const vencida = s.fecha_vencimiento ? new Date(s.fecha_vencimiento).getTime() < Date.now() : false;
-                const mesVenc = s.fecha_vencimiento
-                  ? new Date(s.fecha_vencimiento).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+                const diasRestantes = s.fecha_vencimiento
+                  ? Math.ceil((new Date(s.fecha_vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                   : null;
+                const vencida   = diasRestantes !== null ? diasRestantes <= 0 : false;
+                const porVencer = diasRestantes !== null && diasRestantes > 0 && diasRestantes <= 7;
                 return (
                   <TouchableOpacity key={s.id}
                     onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/editar-mi-negocio', params: { id: s.id } }); }}
                     activeOpacity={0.85}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.background, borderRadius: Radius.lg, borderWidth: 1, borderColor: vencida ? '#ef4444' : Colors.border, overflow: 'hidden' }}>
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.background, borderRadius: Radius.lg, borderWidth: 1, borderColor: vencida ? '#ef4444' : porVencer ? '#f97316' : Colors.border, overflow: 'hidden' }}>
                     {s.imagen ? (
                       <Image source={{ uri: s.imagen }} style={{ width: 64, height: 64 }} resizeMode="cover" />
                     ) : (
@@ -1099,8 +1119,12 @@ export default function SociosScreen() {
                     )}
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: Colors.text, fontSize: FontSize.sm, fontWeight: '800' }}>{s.nombre}</Text>
-                      {vencida && mesVenc ? (
-                        <Text style={{ color: '#ef4444', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>⚠ Membresía vencida · {mesVenc}</Text>
+                      {vencida ? (
+                        <Text style={{ color: '#ef4444', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>⚠ Membresía vencida</Text>
+                      ) : porVencer ? (
+                        <Text style={{ color: '#f97316', fontSize: FontSize.xs, fontWeight: '700', marginTop: 2 }}>⚠ Vence en {diasRestantes} día{diasRestantes !== 1 ? 's' : ''}</Text>
+                      ) : diasRestantes !== null ? (
+                        <Text style={{ color: Colors.success, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>✓ {diasRestantes} día{diasRestantes !== 1 ? 's' : ''} restantes</Text>
                       ) : (
                         <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 }}>Editar · subir imágenes</Text>
                       )}

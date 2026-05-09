@@ -595,23 +595,39 @@ export default function EditarMiNegocioScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
 
         {/* Contador membresía */}
-        {socio?.fecha_vencimiento && (() => {
-          const diasRestantes = Math.ceil((new Date(socio.fecha_vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          const vigente = diasRestantes > 0;
+        {(() => {
+          const fv = socio?.fecha_vencimiento;
+          if (fv) {
+            const diasRestantes = Math.ceil((new Date(fv).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            const vigente = diasRestantes > 0;
+            return (
+              <View style={[styles.contadorBox, { backgroundColor: vigente ? Colors.success + '12' : '#ef444412', borderColor: vigente ? Colors.success + '33' : '#ef444433' }]}>
+                <View style={styles.contadorFila}>
+                  <View style={[styles.contadorDot, { backgroundColor: vigente ? Colors.success : '#ef4444' }]} />
+                  <Text style={[styles.contadorLabel, { color: Colors.textMuted }]}>Membresía:</Text>
+                  <Text style={[styles.contadorValor, { color: vigente ? Colors.success : '#ef4444' }]}>
+                    {vigente ? `${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restantes` : `Vencida hace ${Math.abs(diasRestantes)}d`}
+                  </Text>
+                </View>
+                <View style={styles.contadorFila}>
+                  <Text style={[styles.contadorLabel, { color: Colors.textMuted }]}>Vence:</Text>
+                  <Text style={[styles.contadorValor, { color: Colors.textMuted }]}>
+                    {new Date(fv).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </Text>
+                </View>
+              </View>
+            );
+          }
           return (
-            <View style={[styles.contadorBox, { backgroundColor: vigente ? Colors.success + '12' : '#ef444412', borderColor: vigente ? Colors.success + '33' : '#ef444433' }]}>
+            <View style={[styles.contadorBox, { backgroundColor: Colors.accent + '0D', borderColor: Colors.accent + '33' }]}>
               <View style={styles.contadorFila}>
-                <View style={[styles.contadorDot, { backgroundColor: vigente ? Colors.success : '#ef4444' }]} />
+                <View style={[styles.contadorDot, { backgroundColor: Colors.accent }]} />
                 <Text style={[styles.contadorLabel, { color: Colors.textMuted }]}>Membresía:</Text>
-                <Text style={[styles.contadorValor, { color: vigente ? Colors.success : '#ef4444' }]}>
-                  {vigente ? `${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restantes` : `Vencida hace ${Math.abs(diasRestantes)}d`}
-                </Text>
+                <Text style={[styles.contadorValor, { color: Colors.accent }]}>Sin fecha asignada</Text>
               </View>
               <View style={styles.contadorFila}>
                 <Text style={[styles.contadorLabel, { color: Colors.textMuted }]}>Vence:</Text>
-                <Text style={[styles.contadorValor, { color: Colors.textMuted }]}>
-                  {new Date(socio.fecha_vencimiento).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </Text>
+                <Text style={[styles.contadorValor, { color: Colors.textMuted }]}>— —</Text>
               </View>
             </View>
           );
