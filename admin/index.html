@@ -2465,13 +2465,18 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         let fechaVenc = null;
         if (sol.plan === 'gratis') {
           const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
-          if (cfg?.valor) fechaVenc = new Date(cfg.valor).toISOString();
-        } else if (sol.plan && sol.periodo) {
+          // Si hay fecha fin configurada úsala; sino 31 días desde hoy como fallback
+          fechaVenc = cfg?.valor
+            ? new Date(cfg.valor).toISOString()
+            : new Date(hoy.getTime() + 31 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (sol.plan) {
+          // Si viene periodo úsalo; si no, asumir mensual
+          const periodo = sol.periodo || 'mensual';
           const clavesDias = ['dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual'];
           const { data: cfgDias } = await db.from('config_app').select('clave,valor').in('clave', clavesDias);
           const diasCfg = Object.fromEntries((cfgDias || []).map(r => [r.clave, parseInt(r.valor)]));
-          const clave = `dias_${sol.plan}_${sol.periodo}`;
-          const fallback = sol.periodo === 'anual' ? 365 : 31;
+          const clave = `dias_${sol.plan}_${periodo}`;
+          const fallback = periodo === 'anual' ? 365 : 31;
           const dias = diasCfg[clave] || fallback;
           fechaVenc = new Date(hoy.getTime() + dias * 24 * 60 * 60 * 1000).toISOString();
         }
@@ -2974,9 +2979,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const hoy = new Date();
       const venc = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
       const dias = venc ? Math.ceil((venc - hoy) / 86400000) : null;
-      const vencBadge = dias == null ? '<span class="badge badge-gray">Sin fecha</span>'
+      const vencBadge = dias == null
+        ? `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-gray">Sin fecha</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`
         : dias > 0 ? `<span class="badge badge-green">${dias}d</span>`
-        : `<span class="badge badge-red">Vencido</span>`;
+        : `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-red">Vencido</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`;
       return `
         <tr>
           <td><b>${s.nombre}</b></td>
@@ -4060,6 +4066,34 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       _recargarSeccion();
     }
   }, 1000);
+
+  // ── Asignar fecha rápida ──────────────────────────────────────────────────
+
+  async function asignarFechaRapida(socioId, nombre) {
+    const opciones = [
+      { label: '30 días (mensual)',  dias: 30  },
+      { label: '60 días',            dias: 60  },
+      { label: '90 días',            dias: 90  },
+      { label: '180 días (6 meses)', dias: 180 },
+      { label: '365 días (anual)',   dias: 365 },
+    ];
+    const msg = opciones.map((o,i) => `${i+1}. ${o.label}`).join('\n');
+    const resp = prompt(`Asignar membresía a "${nombre}"\n\nElige el período:\n${msg}\n\nEscribe el número (1-5) o los días directamente:`, '1');
+    if (!resp) return;
+    const num = parseInt(resp.trim());
+    let dias = 30;
+    if (num >= 1 && num <= 5) {
+      dias = opciones[num - 1].dias;
+    } else if (num > 5) {
+      dias = num; // ingresó días directamente
+    }
+    const fechaVenc = new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await db.from('socios_comerciales').update({ fecha_vencimiento: fechaVenc, activo: true }).eq('id', socioId);
+    if (error) { alert('Error: ' + error.message); return; }
+    // Sincronizar solicitud vinculada
+    await db.from('solicitudes').update({ fecha_vencimiento: fechaVenc }).eq('socio_id', socioId);
+    cargarSocios();
+  }
 
   // ── Realtime: solicitudes ─────────────────────────────────────────────────
 
