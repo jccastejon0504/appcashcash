@@ -25,6 +25,7 @@ export default function SociosScreen() {
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
   const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
+  const [solicitudRechazada, setSolicitudRechazada] = useState<{ motivo: string | null } | null>(null);
   const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null }[]>([]);
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
   const [submenu,           setSubmenu]           = useState(false);
@@ -238,11 +239,27 @@ export default function SociosScreen() {
 
       setMisSocios(resultado);
 
-      // Si no se encontró ninguna tienda aprobada, resetear el flag
-      // para que no quede atascado mostrando "en revisión" indefinidamente
+      // Si no se encontró ninguna tienda aprobada, verificar estado de solicitud
       if (resultado.length === 0) {
-        await AsyncStorage.removeItem('solicitud_socio_enviada');
-        setYaEnvioSolicitud(false);
+        // Buscar si hay solicitud rechazada para este teléfono
+        const { data: solRechazada } = await (supabase
+          .from('solicitudes')
+          .select('id, nota_admin')
+          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+          .eq('estado', 'rechazado')
+          .order('created_at', { ascending: false })
+          .limit(1) as unknown as Promise<any>);
+
+        if (solRechazada?.length > 0) {
+          setSolicitudRechazada({ motivo: solRechazada[0].nota_admin ?? null });
+          setYaEnvioSolicitud(false);
+        } else {
+          setSolicitudRechazada(null);
+          await AsyncStorage.removeItem('solicitud_socio_enviada');
+          setYaEnvioSolicitud(false);
+        }
+      } else {
+        setSolicitudRechazada(null);
       }
     };
     cargarMisSocios();
@@ -1157,8 +1174,40 @@ export default function SociosScreen() {
                 </View>
               )}
 
+              {/* Sin negocios — solicitud rechazada */}
+              {misSocios.length === 0 && !yaEnvioSolicitud && solicitudRechazada && (
+                <View style={{ backgroundColor: '#fef2f2', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fecaca', padding: Spacing.md, gap: 10, alignItems: 'center' }}>
+                  <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="close-circle-outline" size={28} color="#ef4444" />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: '#b91c1c', textAlign: 'center' }}>
+                    Solicitud rechazada
+                  </Text>
+                  {solicitudRechazada.motivo ? (
+                    <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
+                      {solicitudRechazada.motivo}
+                    </Text>
+                  ) : (
+                    <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
+                      Tu solicitud no pudo ser aprobada en esta oportunidad. Puedes corregir tu información e intentarlo nuevamente.
+                    </Text>
+                  )}
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setSolicitudRechazada(null);
+                      await AsyncStorage.removeItem('solicitud_socio_enviada');
+                      setModalMisTiendas(false);
+                      router.push('/unirse-socio');
+                    }}
+                    activeOpacity={0.85}
+                    style={{ backgroundColor: '#ef4444', borderRadius: Radius.md, paddingHorizontal: 24, paddingVertical: 10, marginTop: 4 }}>
+                    <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: '800' }}>Intentar de nuevo</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Sin negocios — sin solicitud */}
-              {misSocios.length === 0 && !yaEnvioSolicitud && (
+              {misSocios.length === 0 && !yaEnvioSolicitud && !solicitudRechazada && (
                 <View style={{ backgroundColor: Colors.accent + '0D', borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.accent + '33', padding: Spacing.md, gap: 10, alignItems: 'center' }}>
                   <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: Colors.accent + '22', alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
