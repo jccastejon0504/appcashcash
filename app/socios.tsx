@@ -241,17 +241,26 @@ export default function SociosScreen() {
 
       // Si no se encontró ninguna tienda aprobada, verificar estado de solicitud
       if (resultado.length === 0) {
-        // Buscar si hay solicitud rechazada para este teléfono
-        const { data: solRechazada } = await (supabase
+        // Buscar si hay solicitud rechazada para este teléfono (solo columnas seguras)
+        const { data: solRechazada, error: errRech } = await (supabase
           .from('solicitudes')
-          .select('id, nota_admin')
+          .select('id')
           .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
           .eq('estado', 'rechazado')
           .order('created_at', { ascending: false })
           .limit(1) as unknown as Promise<any>);
 
-        if (solRechazada?.length > 0) {
-          setSolicitudRechazada({ motivo: solRechazada[0].nota_admin ?? null });
+        if (!errRech && solRechazada?.length > 0) {
+          // Intentar leer el motivo si existe la columna nota_admin
+          let motivo: string | null = null;
+          const { data: detalle, error: errDetalle } = await (supabase
+            .from('solicitudes')
+            .select('nota_admin')
+            .eq('id', solRechazada[0].id)
+            .single() as unknown as Promise<any>);
+          if (!errDetalle && detalle?.nota_admin) motivo = detalle.nota_admin;
+
+          setSolicitudRechazada({ motivo });
           setYaEnvioSolicitud(false);
         } else {
           setSolicitudRechazada(null);
