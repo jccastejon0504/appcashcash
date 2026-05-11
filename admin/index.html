@@ -2463,7 +2463,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     // Deshabilitar botones de esa solicitud mientras procesa
     document.querySelectorAll(`[onclick*="cambiarEstado('${id}'"]`).forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
     try {
-    await db.from('solicitudes').update({ estado, ...(nota_admin !== null ? { nota_admin } : {}) }).eq('id', id);
+    // Actualizar estado (siempre — columna garantizada)
+    const { error: errEstado } = await db.from('solicitudes').update({ estado }).eq('id', id);
+    if (errEstado) { alert('Error al cambiar estado: ' + errEstado.message); return; }
+    // Intentar guardar nota_admin por separado (columna puede no existir — ignorar error)
+    if (nota_admin !== null) {
+      await db.from('solicitudes').update({ nota_admin }).eq('id', id);
+    }
 
     if (estado === 'aprobado') {
       const { data: sol } = await db.from('solicitudes').select('*').eq('id', id).single();

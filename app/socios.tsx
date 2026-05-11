@@ -193,11 +193,28 @@ export default function SociosScreen() {
 
   useFocusEffect(useCallback(() => {
     const cargarMisSocios = async () => {
-      const enviada = await AsyncStorage.getItem('solicitud_socio_enviada');
-      if (enviada === 'true') setYaEnvioSolicitud(true);
-      const telefono = await AsyncStorage.getItem('socio_telefono');
-      if (!telefono) return;
-      const tel = telefono.replace(/\D/g, '');
+      // ── Leer estado local persistido ────────────────────────────────────
+      const [enviada, telefonoRaw, solicitudId, rechazadaRaw] = await Promise.all([
+        AsyncStorage.getItem('solicitud_socio_enviada'),
+        AsyncStorage.getItem('socio_telefono'),
+        AsyncStorage.getItem('solicitud_id'),
+        AsyncStorage.getItem('solicitud_rechazada'),
+      ]);
+
+      // Mostrar estado local mientras carga DB (evita parpadeo)
+      if (rechazadaRaw) {
+        try {
+          const cached = JSON.parse(rechazadaRaw);
+          setSolicitudRechazada(cached);
+          setYaEnvioSolicitud(false);
+        } catch { /* ignorar parse error */ }
+      } else if (enviada === 'true') {
+        setYaEnvioSolicitud(true);
+      }
+
+      if (!telefonoRaw) return;
+      const telefono = telefonoRaw;
+      const tel = telefonoRaw.replace(/\D/g, '');
 
       type MiSocio = { id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; telefono?: string | null; whatsapp?: string | null };
 
@@ -239,36 +256,81 @@ export default function SociosScreen() {
 
       setMisSocios(resultado);
 
-      // Si no se encontró ninguna tienda aprobada, verificar estado de solicitud
       if (resultado.length === 0) {
-        // Buscar si hay solicitud rechazada para este teléfono (solo columnas seguras)
-        const { data: solRechazada, error: errRech } = await (supabase
-          .from('solicitudes')
-          .select('id')
-          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
-          .eq('estado', 'rechazado')
-          .order('created_at', { ascending: false })
-          .limit(1) as unknown as Promise<any>);
+        // ── Verificar estado de solicitud en DB ──────────────────────────
+        let solData: any[] | null = null;
+        let errSol: any = null;
 
-        if (!errRech && solRechazada?.length > 0) {
-          // Intentar leer el motivo si existe la columna nota_admin
-          let motivo: string | null = null;
-          const { data: detalle, error: errDetalle } = await (supabase
+        // 1) Buscar por ID directo (más confiable, evita problemas de formato de teléfono)
+        if (solicitudId) {
+          const res = await (supabase
             .from('solicitudes')
-            .select('nota_admin')
-            .eq('id', solRechazada[0].id)
-            .single() as unknown as Promise<any>);
-          if (!errDetalle && detalle?.nota_admin) motivo = detalle.nota_admin;
-
-          setSolicitudRechazada({ motivo });
-          setYaEnvioSolicitud(false);
-        } else {
-          setSolicitudRechazada(null);
-          await AsyncStorage.removeItem('solicitud_socio_enviada');
-          setYaEnvioSolicitud(false);
+            .select('id, estado')
+            .eq('id', solicitudId)
+            .in('estado', ['pendiente', 'rechazado'])
+            .limit(1) as unknown as Promise<any>);
+          solData = res.data;
+          errSol  = res.error;
         }
+
+        // 2) Fallback por teléfono: prueba tanto el número crudo como solo dígitos
+        if (!errSol && (!solData || solData.length === 0) && telefono) {
+          const filtrosTel: string[] = [];
+          if (tel) filtrosTel.push(`telefono.ilike.%${tel}%`, `whatsapp.ilike.%${tel}%`);
+          if (telefono !== tel) filtrosTel.push(`telefono.ilike.%${telefono}%`, `whatsapp.ilike.%${telefono}%`);
+          const res = await (supabase
+            .from('solicitudes')
+            .select('id, estado')
+            .or(filtrosTel.join(','))
+            .in('estado', ['pendiente', 'rechazado'])
+            .order('created_at', { ascending: false })
+            .limit(1) as unknown as Promise<any>);
+          solData = res.data;
+          errSol  = res.error;
+        }
+
+        if (!errSol && solData && solData.length > 0) {
+          const sol = solData[0];
+          if (sol.estado === 'rechazado') {
+            // Intentar leer nota_admin en query separada (columna puede no existir)
+            let motivo: string | null = null;
+            const { data: detalle, error: errDetalle } = await (supabase
+              .from('solicitudes')
+              .select('nota_admin')
+              .eq('id', sol.id)
+              .single() as unknown as Promise<any>);
+            if (!errDetalle && detalle?.nota_admin) motivo = detalle.nota_admin;
+            const info = { motivo };
+            setSolicitudRechazada(info);
+            setYaEnvioSolicitud(false);
+            // Persistir rechazo localmente: sobrevive aunque el admin borre el registro de DB
+            await AsyncStorage.setItem('solicitud_rechazada', JSON.stringify(info));
+            await AsyncStorage.removeItem('solicitud_socio_enviada');
+          } else {
+            // estado === 'pendiente': en revisión
+            setSolicitudRechazada(null);
+            setYaEnvioSolicitud(true);
+            await AsyncStorage.removeItem('solicitud_rechazada');
+            await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
+          }
+        } else if (!errSol) {
+          // Query OK pero no hay solicitud activa en DB
+          if (rechazadaRaw) {
+            // Si teníamos un rechazo persistido localmente y ya no está en DB
+            // (el admin lo borró) → mantener el aviso hasta que el usuario pulse "Intentar de nuevo"
+            // (no limpiar aquí — ya se mostró el estado al inicio de la función)
+          } else {
+            // Nunca hubo solicitud → mostrar formulario de registro
+            setSolicitudRechazada(null);
+            setYaEnvioSolicitud(false);
+            await AsyncStorage.removeItem('solicitud_socio_enviada');
+            await AsyncStorage.removeItem('solicitud_id');
+          }
+        }
+        // Si la query falló (errSol): no cambiar estado, se mantiene lo del AsyncStorage
       } else {
         setSolicitudRechazada(null);
+        await AsyncStorage.removeItem('solicitud_rechazada');
       }
     };
     cargarMisSocios();
@@ -1173,7 +1235,7 @@ export default function SociosScreen() {
               })}
 
               {/* Sin negocios — en revisión */}
-              {misSocios.length === 0 && yaEnvioSolicitud && (
+              {misSocios.length === 0 && yaEnvioSolicitud && !solicitudRechazada && (
                 <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.md, gap: 8, alignItems: 'center' }}>
                   <Ionicons name="time-outline" size={32} color="#d97706" />
                   <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: '#92400e', textAlign: 'center' }}>Solicitud en revisión</Text>
@@ -1205,6 +1267,8 @@ export default function SociosScreen() {
                     onPress={async () => {
                       setSolicitudRechazada(null);
                       await AsyncStorage.removeItem('solicitud_socio_enviada');
+                      await AsyncStorage.removeItem('solicitud_id');
+                      await AsyncStorage.removeItem('solicitud_rechazada');
                       setModalMisTiendas(false);
                       router.push('/unirse-socio');
                     }}

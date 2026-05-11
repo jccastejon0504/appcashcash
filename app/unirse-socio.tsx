@@ -293,7 +293,7 @@ export default function UnirseSocioScreen() {
     const galeriaDataJson = catalogoSubido.some(it => it.imagen || it.titulo)
       ? JSON.stringify(catalogoSubido) : null;
 
-    const { error } = await supabase.from('solicitudes').insert({
+    const { data: insertData, error } = await supabase.from('solicitudes').insert({
       nombre:          nombre.trim(),
       ciudad:          ciudad.trim(),
       telefono:        telefono.trim() || null,
@@ -311,12 +311,13 @@ export default function UnirseSocioScreen() {
       galeria_data: galeriaDataJson,
       comprobante:  precio > 0 ? urlComprobante : null,
       ...(coordenadas ? { latitud: coordenadas.lat, longitud: coordenadas.lng } : {}),
-    });
+    }).select('id').single();
 
     setGuardando(false);
     if (error) { Alert.alert('Error al enviar', error.message); return; }
     await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
     await AsyncStorage.setItem('socio_telefono', telefono.trim() || whatsapp.trim());
+    if (insertData?.id) await AsyncStorage.setItem('solicitud_id', insertData.id);
     setPaso(5);
   };
 
