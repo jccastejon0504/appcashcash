@@ -1168,7 +1168,11 @@
       <div class="card">
         <div class="card-header">
           <h2>Socios Activos</h2>
-          <button class="btn btn-outline btn-sm" onclick="cargarSocios()">Actualizar</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="msg-geocod" style="font-size:12px;color:var(--muted)"></span>
+            <button class="btn btn-outline btn-sm" onclick="geocodificarSocios()" id="btn-geocod" title="Asignar coordenadas a tiendas que solo tienen dirección">📡 Geocodificar</button>
+            <button class="btn btn-outline btn-sm" onclick="cargarSocios()">Actualizar</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -2976,6 +2980,66 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (!confirm('¿Eliminar esta ciudad?')) return;
     await db.from('subcategorias').delete().eq('id', id);
     cargarCiudades();
+  }
+
+  // ── Geocodificar tiendas sin coordenadas ──────────────────────────────────
+
+  async function geocodificarSocios() {
+    const btn = document.getElementById('btn-geocod');
+    const msg = document.getElementById('msg-geocod');
+    btn.disabled = true;
+
+    // Traer solo las que no tienen coordenadas pero sí dirección o ciudad
+    const { data, error } = await db.from('socios_comerciales')
+      .select('id,nombre,direccion,ciudad')
+      .is('latitud', null)
+      .or('direccion.not.is.null,ciudad.not.is.null');
+
+    if (error || !data?.length) {
+      msg.textContent = data?.length === 0 ? '✓ Todas las tiendas ya tienen coordenadas.' : 'Error al cargar tiendas.';
+      msg.style.color = 'var(--muted)';
+      btn.disabled = false;
+      return;
+    }
+
+    // Filtrar las que tienen al menos dirección o ciudad
+    const pendientes = data.filter(s => s.direccion || s.ciudad);
+    msg.textContent = `Geocodificando 0 / ${pendientes.length}…`;
+    msg.style.color = 'var(--muted)';
+
+    let ok = 0, fallo = 0;
+
+    for (let i = 0; i < pendientes.length; i++) {
+      const s = pendientes[i];
+      msg.textContent = `Geocodificando ${i + 1} / ${pendientes.length}: ${s.nombre}…`;
+
+      const q = encodeURIComponent([s.direccion, s.ciudad, 'Venezuela'].filter(Boolean).join(', '));
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=ve`,
+          { headers: { 'User-Agent': 'CashCachAdmin/1.0' } }
+        );
+        const json = await res.json();
+        if (json?.length > 0) {
+          const lat = parseFloat(json[0].lat);
+          const lon = parseFloat(json[0].lon);
+          await db.from('socios_comerciales').update({ latitud: lat, longitud: lon }).eq('id', s.id);
+          ok++;
+        } else {
+          fallo++;
+        }
+      } catch {
+        fallo++;
+      }
+
+      // Nominatim exige máximo 1 req/seg
+      await new Promise(r => setTimeout(r, 1100));
+    }
+
+    msg.textContent = `✓ ${ok} geocodificada${ok !== 1 ? 's' : ''}${fallo ? ` · ${fallo} sin resultado` : ''}.`;
+    msg.style.color = ok > 0 ? 'var(--green)' : 'var(--red)';
+    btn.disabled = false;
+    cargarSocios(); // refrescar tabla
   }
 
   // ── Socios activos ────────────────────────────────────────────────────────
