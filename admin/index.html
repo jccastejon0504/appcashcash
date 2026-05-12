@@ -1972,8 +1972,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             </div>
           </div>
           <span class="badge status-${estado}">${estado}</span>
-          ${estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" style="background:#dcfce7;color:#16a34a;border-color:#16a34a;white-space:nowrap" onclick="event.stopPropagation();cambiarEstado('${s.id}','aprobado')">✓ Aprobar</button>` : ''}
-          ${estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger" style="white-space:nowrap" onclick="event.stopPropagation();cambiarEstado('${s.id}','rechazado')">✗ Rechazar</button>` : ''}
           <span onclick="toggleSol('${uid}')" id="arrow-${uid}" style="font-size:12px;color:var(--muted);transition:transform .2s;cursor:pointer">▼</span>
         </div>
         <!-- Detalle (colapsable) -->

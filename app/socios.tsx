@@ -261,64 +261,65 @@ export default function SociosScreen() {
         let solData: any[] | null = null;
         let errSol: any = null;
 
-        // 1) Buscar por ID directo (más confiable, evita problemas de formato de teléfono)
+        // 1) Buscar por ID directo — sin filtro de estado para que RLS no bloquee rechazados
         if (solicitudId) {
           const res = await (supabase
             .from('solicitudes')
-            .select('id, estado')
+            .select('id, estado, nota_admin')
             .eq('id', solicitudId)
-            .in('estado', ['pendiente', 'rechazado'])
             .limit(1) as unknown as Promise<any>);
           solData = res.data;
           errSol  = res.error;
         }
 
-        // 2) Fallback por teléfono: prueba tanto el número crudo como solo dígitos
-        if (!errSol && (!solData || solData.length === 0) && telefono) {
+        // 2) Fallback por teléfono — también si la consulta por ID falló (RLS/red)
+        if ((!solData || solData.length === 0) && telefono) {
           const filtrosTel: string[] = [];
           if (tel) filtrosTel.push(`telefono.ilike.%${tel}%`, `whatsapp.ilike.%${tel}%`);
           if (telefono !== tel) filtrosTel.push(`telefono.ilike.%${telefono}%`, `whatsapp.ilike.%${telefono}%`);
           const res = await (supabase
             .from('solicitudes')
-            .select('id, estado')
+            .select('id, estado, nota_admin')
             .or(filtrosTel.join(','))
-            .in('estado', ['pendiente', 'rechazado'])
             .order('created_at', { ascending: false })
             .limit(1) as unknown as Promise<any>);
-          solData = res.data;
-          errSol  = res.error;
+          if (!res.error) {
+            solData = res.data;
+            errSol  = null;
+          } else if (!solData) {
+            errSol = res.error;
+          }
         }
 
         if (!errSol && solData && solData.length > 0) {
           const sol = solData[0];
           if (sol.estado === 'rechazado') {
-            // Intentar leer nota_admin en query separada (columna puede no existir)
-            let motivo: string | null = null;
-            const { data: detalle, error: errDetalle } = await (supabase
-              .from('solicitudes')
-              .select('nota_admin')
-              .eq('id', sol.id)
-              .single() as unknown as Promise<any>);
-            if (!errDetalle && detalle?.nota_admin) motivo = detalle.nota_admin;
+            const motivo: string | null = sol.nota_admin ?? null;
             const info = { motivo };
             setSolicitudRechazada(info);
             setYaEnvioSolicitud(false);
             // Persistir rechazo localmente: sobrevive aunque el admin borre el registro de DB
             await AsyncStorage.setItem('solicitud_rechazada', JSON.stringify(info));
             await AsyncStorage.removeItem('solicitud_socio_enviada');
-          } else {
-            // estado === 'pendiente': en revisión
+          } else if (sol.estado === 'pendiente') {
             setSolicitudRechazada(null);
             setYaEnvioSolicitud(true);
             await AsyncStorage.removeItem('solicitud_rechazada');
             await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
+          } else {
+            // estado = 'aprobado' u otro: la tienda ya no existe (admin la eliminó)
+            // → resetear para permitir re-registrar
+            setSolicitudRechazada(null);
+            setYaEnvioSolicitud(false);
+            await AsyncStorage.removeItem('solicitud_rechazada');
+            await AsyncStorage.removeItem('solicitud_socio_enviada');
+            await AsyncStorage.removeItem('solicitud_id');
           }
         } else if (!errSol) {
-          // Query OK pero no hay solicitud activa en DB
+          // Query OK pero no hay solicitud en DB
           if (rechazadaRaw) {
-            // Si teníamos un rechazo persistido localmente y ya no está en DB
-            // (el admin lo borró) → mantener el aviso hasta que el usuario pulse "Intentar de nuevo"
-            // (no limpiar aquí — ya se mostró el estado al inicio de la función)
+            // Rechazo persistido localmente (admin borró el registro) →
+            // mantener el aviso hasta que el usuario pulse "Intentar de nuevo"
           } else {
             // Nunca hubo solicitud → mostrar formulario de registro
             setSolicitudRechazada(null);
@@ -327,7 +328,7 @@ export default function SociosScreen() {
             await AsyncStorage.removeItem('solicitud_id');
           }
         }
-        // Si la query falló (errSol): no cambiar estado, se mantiene lo del AsyncStorage
+        // errSol != null: fallo de red — mantener estado local sin cambios
       } else {
         setSolicitudRechazada(null);
         await AsyncStorage.removeItem('solicitud_rechazada');
@@ -1242,6 +1243,17 @@ export default function SociosScreen() {
                   <Text style={{ fontSize: FontSize.sm, color: '#78350f', textAlign: 'center', lineHeight: 20 }}>
                     El equipo de CashCach está verificando tu información. Cuando sea aprobada, tu negocio aparecerá aquí.
                   </Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setYaEnvioSolicitud(false);
+                      await AsyncStorage.removeItem('solicitud_socio_enviada');
+                      await AsyncStorage.removeItem('solicitud_id');
+                      await AsyncStorage.removeItem('solicitud_rechazada');
+                    }}
+                    activeOpacity={0.7}
+                    style={{ marginTop: 2, paddingVertical: 6, paddingHorizontal: 14, borderRadius: Radius.md, borderWidth: 1, borderColor: '#d97706' }}>
+                    <Text style={{ fontSize: FontSize.xs, color: '#92400e', fontWeight: '700' }}>¿No enviaste solicitud? Limpiar estado</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -1294,8 +1306,8 @@ export default function SociosScreen() {
                 </View>
               )}
 
-              {/* Registrar nueva tienda */}
-              {misSocios.length < limiteTiendas && (
+              {/* Registrar nueva tienda — ocultar si hay solicitud pendiente o rechazada */}
+              {misSocios.length < limiteTiendas && !yaEnvioSolicitud && !solicitudRechazada && (
                 <TouchableOpacity
                   onPress={() => { setModalMisTiendas(false); router.push('/unirse-socio'); }}
                   activeOpacity={0.8}
