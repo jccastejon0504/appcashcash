@@ -1902,8 +1902,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       btn.disabled = false; btn.textContent = 'Guardar'; return;
     }
 
-    const dbPlan  = planDbKey(plan);
-    const payload = { plan: dbPlan, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
+    // plan = 'basico-mensual' → planBase = 'basico', periodo = 'mensual'
+    const parts    = plan.split('-');
+    const planBase = parts[0];                     // 'basico' | 'pro'
+    const periodo  = parts.slice(1).join('_');     // 'mensual' | 'anual'
+    const payload  = { plan: planBase, periodo, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
     const { error } = id
       ? await db.from('planes_ofertas').update(payload).eq('id', id)
       : await db.from('planes_ofertas').insert(payload);

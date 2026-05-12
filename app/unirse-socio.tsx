@@ -139,7 +139,9 @@ export default function UnirseSocioScreen() {
       if (!data) return;
       const map: Partial<Record<PlanKey, Oferta>> = {};
       data.forEach((o: any) => {
-        if (o.plan) map[o.plan as PlanKey] = o;
+        // El DB guarda plan='basico' + periodo='mensual' por separado
+        const key = o.periodo ? `${o.plan}_${o.periodo}` : o.plan;
+        if (key) map[key as PlanKey] = o;
       });
       setOfertas(map);
     });
