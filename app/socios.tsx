@@ -265,7 +265,7 @@ export default function SociosScreen() {
         if (solicitudId) {
           const res = await (supabase
             .from('solicitudes')
-            .select('id, estado, nota_admin')
+            .select('id, estado, notas')
             .eq('id', solicitudId)
             .limit(1) as unknown as Promise<any>);
           solData = res.data;
@@ -279,7 +279,7 @@ export default function SociosScreen() {
           if (telefono !== tel) filtrosTel.push(`telefono.ilike.%${telefono}%`, `whatsapp.ilike.%${telefono}%`);
           const res = await (supabase
             .from('solicitudes')
-            .select('id, estado, nota_admin')
+            .select('id, estado, notas')
             .or(filtrosTel.join(','))
             .order('created_at', { ascending: false })
             .limit(1) as unknown as Promise<any>);
@@ -294,7 +294,7 @@ export default function SociosScreen() {
         if (!errSol && solData && solData.length > 0) {
           const sol = solData[0];
           if (sol.estado === 'rechazado') {
-            const motivo: string | null = sol.nota_admin ?? null;
+            const motivo: string | null = sol.notas ?? null;
             const info = { motivo };
             setSolicitudRechazada(info);
             setYaEnvioSolicitud(false);
