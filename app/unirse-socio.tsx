@@ -80,6 +80,7 @@ export default function UnirseSocioScreen() {
   const [descripcion, setDescripcion] = useState('');
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
   const [obtenGPS,    setObtenGPS]    = useState(false);
+  const [geocodificando, setGeocodificando] = useState(false);
 
   // Selector ciudad → categoría
   type CiudadItem     = { id: string; nombre: string };
@@ -206,6 +207,27 @@ export default function UnirseSocioScreen() {
         if (data.comprobante) setComprobanteExistente(data.comprobante);
       });
   }, [reintentoId]);
+
+  // Geocodificar dirección automáticamente cuando cambia dirección o ciudad
+  useEffect(() => {
+    if (!direccion.trim() || !ciudad.trim()) return;
+    const timer = setTimeout(async () => {
+      setGeocodificando(true);
+      try {
+        const q = encodeURIComponent(`${direccion.trim()}, ${ciudad.trim()}, Venezuela`);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=ve`,
+          { headers: { 'User-Agent': 'CashCachApp/1.0' } }
+        );
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setCoordenadas({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        }
+      } catch { /* sin internet, ignorar */ }
+      setGeocodificando(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [direccion, ciudad]);
 
   const pickImage = (onSelect: (uri: string) => void) => {
     Alert.alert('Agregar foto', '¿Desde dónde quieres tomar la foto?', [
@@ -400,7 +422,10 @@ export default function UnirseSocioScreen() {
         }}>
         <Ionicons name={coordenadas ? 'location' : 'location-outline'} size={18} color={coordenadas ? Colors.accent : Colors.textMuted} />
         <Text style={{ flex: 1, fontSize: FontSize.sm, fontWeight: '600', color: coordenadas ? Colors.accent : Colors.textMuted }}>
-          {obtenGPS ? 'Obteniendo ubicación…' : coordenadas ? `✓ ${toDMS(coordenadas.lat, true)}  ${toDMS(coordenadas.lng, false)}` : 'Marcar ubicación exacta de mi tienda'}
+          {obtenGPS ? 'Obteniendo ubicación GPS…'
+            : geocodificando ? 'Buscando dirección en el mapa…'
+            : coordenadas ? `✓ Ubicación encontrada · ${coordenadas.lat.toFixed(5)}, ${coordenadas.lng.toFixed(5)}`
+            : 'Usar GPS para marcar ubicación exacta'}
         </Text>
         {coordenadas && (
           <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>

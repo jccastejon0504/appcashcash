@@ -78,6 +78,26 @@ export default function SociosScreen() {
 
   const [sociosCiudad, setSociosCiudad] = useState<SocioComercial[]>([]);
 
+  // Haversine: distancia en km entre dos coordenadas
+  const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // Filtro de tienda por ubicación: radio si hay coords, ciudad si no
+  const cumpleFiltroUbicacion = useCallback((s: SocioComercial) => {
+    const radio = parseFloat(ubicacionRadio);
+    if (mapCoords && s.latitud != null && s.longitud != null) {
+      return haversine(mapCoords.latitude, mapCoords.longitude, s.latitud, s.longitud) <= radio;
+    }
+    if (ubicacionCiudad) return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
+    return true;
+  }, [mapCoords, ubicacionRadio, ubicacionCiudad]);
+
   // Función reutilizable para mezclar y guardar
   const mezclarSociosCiudad = useCallback((listaSocios: SocioComercial[], ciudad: string) => {
     const destacadosIds = new Set(listaSocios.filter(s => s.destacado).map(s => s.id));
@@ -99,7 +119,7 @@ export default function SociosScreen() {
     setError(null);
     const { data, error: err } = await supabase
       .from('socios_comerciales')
-      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,subcategoria_id,activo,fecha_vencimiento,orden,created_at')
+      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud')
       .or('activo.is.null,activo.eq.true')
       .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
@@ -341,9 +361,9 @@ export default function SociosScreen() {
   const destacados = useMemo(() => {
     let lista = socios.filter(s => s.destacado);
     if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
-    if (ubicacionCiudad) lista = lista.filter(s => s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()));
+    lista = lista.filter(cumpleFiltroUbicacion);
     return lista;
-  }, [socios, subcatFiltro, ubicacionCiudad]);
+  }, [socios, subcatFiltro, cumpleFiltroUbicacion]);
 
 
   const sugerencias = useMemo(() => {
@@ -376,8 +396,7 @@ export default function SociosScreen() {
   }, [busqueda, socios, subcats, todasSubcats]);
 
   const sociosFiltrados = useMemo(() => {
-    let lista = socios;
-    if (ubicacionCiudad) lista = lista.filter(s => s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()));
+    let lista = socios.filter(cumpleFiltroUbicacion);
     if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
     const q = (filtroAplicado || busqueda).trim().toLowerCase();
     if (q) {
@@ -393,7 +412,7 @@ export default function SociosScreen() {
       });
     }
     return lista;
-  }, [socios, busqueda, filtroAplicado, subcatFiltro, subcats, ubicacionCiudad]);
+  }, [socios, busqueda, filtroAplicado, subcatFiltro, subcats, cumpleFiltroUbicacion]);
 
   const seleccionarSugerencia = (texto: string) => {
     setFiltroAplicado(texto);

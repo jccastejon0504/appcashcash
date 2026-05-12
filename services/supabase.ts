@@ -50,4 +50,6 @@ export type SocioComercial = {
   fecha_vencimiento: string | null;
   ciudad: string | null;
   descripcion: string | null;
+  latitud: number | null;
+  longitud: number | null;
 };
