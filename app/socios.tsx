@@ -1266,28 +1266,32 @@ export default function SociosScreen() {
                   <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: '#b91c1c', textAlign: 'center' }}>
                     Solicitud rechazada
                   </Text>
-                  {solicitudRechazada.motivo ? (
-                    <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
-                      {solicitudRechazada.motivo}
-                    </Text>
-                  ) : (
-                    <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
-                      Tu solicitud no pudo ser aprobada en esta oportunidad. Puedes corregir tu información e intentarlo nuevamente.
-                    </Text>
-                  )}
-                  <TouchableOpacity
-                    onPress={async () => {
-                      setSolicitudRechazada(null);
-                      await AsyncStorage.removeItem('solicitud_socio_enviada');
-                      await AsyncStorage.removeItem('solicitud_id');
-                      await AsyncStorage.removeItem('solicitud_rechazada');
-                      setModalMisTiendas(false);
-                      router.push('/unirse-socio');
-                    }}
-                    activeOpacity={0.85}
-                    style={{ backgroundColor: '#ef4444', borderRadius: Radius.md, paddingHorizontal: 24, paddingVertical: 10, marginTop: 4 }}>
-                    <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: '800' }}>Intentar de nuevo</Text>
-                  </TouchableOpacity>
+                  <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
+                    Tu solicitud no pudo ser aprobada. Podés corregir tu información e intentarlo nuevamente.
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    {solicitudRechazada.motivo ? (
+                      <TouchableOpacity
+                        onPress={() => Alert.alert('Motivo del rechazo', solicitudRechazada.motivo!, [{ text: 'Cerrar' }])}
+                        activeOpacity={0.85}
+                        style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 10, borderWidth: 1.5, borderColor: '#ef4444', alignItems: 'center' }}>
+                        <Text style={{ color: '#ef4444', fontSize: FontSize.sm, fontWeight: '800' }}>Ver motivo</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    <TouchableOpacity
+                      onPress={async () => {
+                        setSolicitudRechazada(null);
+                        await AsyncStorage.removeItem('solicitud_socio_enviada');
+                        await AsyncStorage.removeItem('solicitud_id');
+                        await AsyncStorage.removeItem('solicitud_rechazada');
+                        setModalMisTiendas(false);
+                        router.push('/unirse-socio');
+                      }}
+                      activeOpacity={0.85}
+                      style={{ flex: 1, backgroundColor: '#ef4444', borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center' }}>
+                      <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: '800' }}>Intentar de nuevo</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
