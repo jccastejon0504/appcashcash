@@ -16,6 +16,14 @@ import * as Notifications from 'expo-notifications';
 const CACHE_KEY    = 'bcv_cache';
 const CUATRO_HORAS = 4 * 60 * 60 * 1000;
 
+const esDiaDistinto = (ts: number) => {
+  const hoy   = new Date();
+  const cache = new Date(ts);
+  return hoy.getFullYear() !== cache.getFullYear() ||
+    hoy.getMonth()    !== cache.getMonth()    ||
+    hoy.getDate()     !== cache.getDate();
+};
+
 // Paleta oscura estilo Rial con acento amarillo
 const C = {
   bg:           '#F5F7FA',
@@ -81,9 +89,14 @@ export default function CalculadoraBCVScreen() {
 
   useEffect(() => { fetchTasa(); fetchUSDT(); }, []);
 
-  // Auto-refresh tasa BCV cada 5 minutos mientras la pantalla está visible
+  // Auto-refresh: cada 5 minutos revisa; si es un día nuevo fuerza el fetch
   useFocusEffect(React.useCallback(() => {
-    const timer = setInterval(() => { fetchTasa(); fetchUSDT(); }, 300000);
+    const timer = setInterval(async () => {
+      const cache = await getItem<{ ts: number }>('bcv_cache');
+      const forzar = !cache || esDiaDistinto(cache.ts);
+      fetchTasa(forzar);
+      fetchUSDT(forzar);
+    }, 300000);
     return () => clearInterval(timer);
   }, []));
 
@@ -110,17 +123,24 @@ export default function CalculadoraBCVScreen() {
     if (!isNaN(n)) setBs((n * tasa).toFixed(2));
   }, [moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
 
-  const fetchConTimeout = async (url: string, ms = 8000) => {
+  const fetchConTimeout = async (url: string, ms = 15000) => {
     const ctrl = new AbortController();
     const id   = setTimeout(() => ctrl.abort(), ms);
-    try   { const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(id); return r; }
-    catch (e) { clearTimeout(id); throw e; }
+    try {
+      const r = await fetch(url, {
+        signal: ctrl.signal,
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
+      clearTimeout(id);
+      return r;
+    } catch (e) { clearTimeout(id); throw e; }
   };
 
   const fetchTasa = async (forzar = false) => {
     setError('');
     const cache = await getItem<{ usd: number; eur: number; fecha: string; ts: number }>(CACHE_KEY);
-    if (!forzar && cache && Date.now() - cache.ts < CUATRO_HORAS) {
+    const cacheValido = cache && Date.now() - cache.ts < CUATRO_HORAS && !esDiaDistinto(cache.ts);
+    if (!forzar && cacheValido) {
       setTasaUSD(cache.usd); setTasaEUR(cache.eur); setFecha(cache.fecha); return;
     }
     setLoading(true);
@@ -142,6 +162,22 @@ export default function CalculadoraBCVScreen() {
         const d = await r.json();
         tasaUsdVal = parseFloat(d?.monitors?.usd?.price) || null;
         fechaStr   = d?.monitors?.usd?.last_update ?? '';
+      } catch { }
+    }
+
+    // Fallback: endpoint general de ve.dolarapi.com (array con todas las tasas)
+    if (!tasaUsdVal) {
+      try {
+        const r = await fetchConTimeout('https://ve.dolarapi.com/v1/dolares');
+        const d = await r.json();
+        const item = Array.isArray(d)
+          ? d.find((x: any) => /bcv|oficial/i.test(x.fuente ?? x.nombre ?? ''))
+          : null;
+        const precio = parseFloat(item?.promedio ?? item?.promedio_real);
+        if (!isNaN(precio) && precio > 0) {
+          tasaUsdVal = precio;
+          fechaStr   = item?.fechaActualizacion ?? item?.fecha ?? '';
+        }
       } catch { }
     }
 
@@ -175,7 +211,8 @@ export default function CalculadoraBCVScreen() {
   const fetchUSDT = async (forzar = false) => {
     const CACHE_BIN = 'binance_cache';
     const cache = await getItem<{ usdt: number; fecha: string; ts: number }>(CACHE_BIN);
-    if (!forzar && cache && Date.now() - cache.ts < CUATRO_HORAS) {
+    const cacheValido = cache && Date.now() - cache.ts < CUATRO_HORAS && !esDiaDistinto(cache.ts);
+    if (!forzar && cacheValido) {
       setTasaBinance(cache.usdt); setFechaBinance(cache.fecha); return;
     }
     setLoadingBin(true);
