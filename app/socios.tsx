@@ -1281,12 +1281,13 @@ export default function SociosScreen() {
                     ) : null}
                     <TouchableOpacity
                       onPress={async () => {
+                        const prevId = await AsyncStorage.getItem('solicitud_id');
                         setSolicitudRechazada(null);
                         await AsyncStorage.removeItem('solicitud_socio_enviada');
                         await AsyncStorage.removeItem('solicitud_id');
                         await AsyncStorage.removeItem('solicitud_rechazada');
                         setModalMisTiendas(false);
-                        router.push('/unirse-socio');
+                        router.push({ pathname: '/unirse-socio', params: prevId ? { reintentoId: prevId } : {} });
                       }}
                       activeOpacity={0.85}
                       style={{ flex: 1, backgroundColor: '#ef4444', borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center' }}>

@@ -4,7 +4,7 @@ import {
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
@@ -49,6 +49,8 @@ export default function UnirseSocioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
+  const { reintentoId } = useLocalSearchParams<{ reintentoId?: string }>();
+  const [comprobanteExistente, setComprobanteExistente] = useState<string | null>(null);
 
   const [paso,      setPaso]      = useState<1|2|3|4|5>(1);
   const [guardando,         setGuardando]         = useState(false);
@@ -179,6 +181,32 @@ export default function UnirseSocioScreen() {
       });
   }, []);
 
+  // Pre-llenar campos si viene de un reintento tras rechazo
+  useEffect(() => {
+    if (!reintentoId) return;
+    supabase
+      .from('solicitudes')
+      .select('nombre,ciudad,telefono,whatsapp,redes,direccion,descripcion,subcategoria_id,plan,periodo,metodo_pago,referencia,comprobante')
+      .eq('id', reintentoId)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.nombre)      setNombre(data.nombre);
+        if (data.ciudad)      setCiudad(data.ciudad);
+        if (data.telefono)    setTelefono(data.telefono);
+        if (data.whatsapp)    setWhatsapp(data.whatsapp);
+        if (data.redes)       setRedes(data.redes);
+        if (data.direccion)   setDireccion(data.direccion);
+        if (data.descripcion) setDescripcion(data.descripcion);
+        if (data.subcategoria_id) setSubcatSelId(data.subcategoria_id);
+        if (data.plan && ['gratis','basico','pro'].includes(data.plan)) setPlan(data.plan as Plan);
+        if (data.periodo && ['mensual','anual'].includes(data.periodo)) setPeriodo(data.periodo as Periodo);
+        if (data.metodo_pago) setMetodo(data.metodo_pago as MetodoPago);
+        if (data.referencia)  setReferencia(data.referencia);
+        if (data.comprobante) setComprobanteExistente(data.comprobante);
+      });
+  }, [reintentoId]);
+
   const pickImage = (onSelect: (uri: string) => void) => {
     Alert.alert('Agregar foto', '¿Desde dónde quieres tomar la foto?', [
       {
@@ -222,7 +250,7 @@ export default function UnirseSocioScreen() {
   const pasoValido = () => {
     if (paso === 1) return nombre.trim().length > 0 && ciudad.trim().length > 0 &&
       (telefono.trim().length > 0 || whatsapp.trim().length > 0);
-    if (paso === 4) return referencia.trim().length > 0 && comprobante !== null;
+    if (paso === 4) return referencia.trim().length > 0 && (comprobante !== null || comprobanteExistente !== null);
     return true;
   };
 
@@ -274,7 +302,9 @@ export default function UnirseSocioScreen() {
       }
     }
 
-    const urlComprobante = comprobante ? await subirImagen(comprobante, 'comprobante') : null;
+    const urlComprobante = comprobante
+      ? await subirImagen(comprobante, 'comprobante')
+      : (comprobanteExistente ?? null);
     const urlPortada     = portada     ? await subirImagen(portada, 'portada')         : null;
 
     // Subir catálogo de productos (galería con título/precio)
@@ -761,6 +791,19 @@ export default function UnirseSocioScreen() {
 
       <View style={styles.campo}>
         <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante *</Text>
+        {/* Preview comprobante anterior (reintento) */}
+        {!comprobante && comprobanteExistente && (
+          <View style={{ marginBottom: 8, borderRadius: Radius.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.accent + '55' }}>
+            <Image source={{ uri: comprobanteExistente }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
+            <View style={{ backgroundColor: Colors.accent + '18', paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="checkmark-circle" size={14} color={Colors.accent} />
+              <Text style={{ fontSize: FontSize.xs, color: Colors.accent, fontWeight: '700', flex: 1 }}>Comprobante anterior · toca abajo para reemplazarlo</Text>
+              <TouchableOpacity onPress={() => setComprobanteExistente(null)}>
+                <Ionicons name="close-circle-outline" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <TouchableOpacity
           style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.card }]}
           onPress={() => pickImage(setComprobante)} activeOpacity={0.8}>
@@ -769,7 +812,9 @@ export default function UnirseSocioScreen() {
           ) : (
             <View style={styles.portadaPlaceholder}>
               <Ionicons name="receipt-outline" size={28} color={Colors.textMuted} />
-              <Text style={[styles.portadaTexto, { color: Colors.textMuted }]}>Toca para adjuntar comprobante</Text>
+              <Text style={[styles.portadaTexto, { color: Colors.textMuted }]}>
+                {comprobanteExistente ? 'Toca para reemplazar el comprobante' : 'Toca para adjuntar comprobante'}
+              </Text>
             </View>
           )}
           {comprobante && (
