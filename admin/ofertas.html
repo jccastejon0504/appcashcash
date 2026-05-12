@@ -264,144 +264,7 @@
 <div class="container">
 
   <div class="planes-grid">
-    <!-- Plan Mensual -->
-    <div class="plan-card" id="card-mensual">
-      <div class="plan-header">
-        <h2>Plan Mensual</h2>
-        <span class="badge-inactivo" id="badge-mensual">Sin oferta</span>
-      </div>
-
-      <!-- Preview -->
-      <div class="preview-box" id="preview-mensual">
-        <p class="preview-sin-oferta" id="preview-mensual-content">$15 / mes</p>
-      </div>
-
-      <hr class="divider" />
-
-      <form id="form-mensual">
-        <input type="hidden" id="id-mensual" />
-
-        <div>
-          <label>Descripción / Tagline</label>
-          <textarea id="descripcion-mensual" placeholder="Todo lo que necesitas para empezar"></textarea>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Precio original ($)</label>
-            <input type="number" id="precio-original-mensual" placeholder="15" step="0.01" />
-          </div>
-          <div>
-            <label>Precio oferta ($)</label>
-            <input type="number" id="precio-oferta-mensual" placeholder="2.99" step="0.01" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Descuento (%)</label>
-            <input type="number" id="descuento-mensual" placeholder="79" min="0" max="99" />
-          </div>
-          <div>
-            <label>Meses gratis</label>
-            <input type="number" id="meses-mensual" placeholder="3" min="0" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Fecha inicio</label>
-            <input type="date" id="inicio-mensual" />
-          </div>
-          <div>
-            <label>Fecha fin</label>
-            <input type="date" id="fin-mensual" />
-          </div>
-        </div>
-
-        <div class="toggle-row">
-          <span>Oferta activa</span>
-          <label class="toggle">
-            <input type="checkbox" id="activo-mensual" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="msg" id="msg-mensual"></div>
-
-        <button type="submit" class="btn-guardar" id="btn-mensual">Guardar oferta mensual</button>
-        <button type="button" class="btn-borrar" id="btn-borrar-mensual" style="display:none">Eliminar oferta</button>
-      </form>
-    </div>
-
-    <!-- Plan Anual -->
-    <div class="plan-card" id="card-anual">
-      <div class="plan-header">
-        <h2>Plan Anual</h2>
-        <span class="badge-inactivo" id="badge-anual">Sin oferta</span>
-      </div>
-
-      <div class="preview-box" id="preview-anual">
-        <p class="preview-sin-oferta" id="preview-anual-content">$150 / año</p>
-      </div>
-
-      <hr class="divider" />
-
-      <form id="form-anual">
-        <input type="hidden" id="id-anual" />
-
-        <div>
-          <label>Descripción / Tagline</label>
-          <textarea id="descripcion-anual" placeholder="Más herramientas y potencia para crecer"></textarea>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Precio original ($)</label>
-            <input type="number" id="precio-original-anual" placeholder="150" step="0.01" />
-          </div>
-          <div>
-            <label>Precio oferta ($)</label>
-            <input type="number" id="precio-oferta-anual" placeholder="4.39" step="0.01" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Descuento (%)</label>
-            <input type="number" id="descuento-anual" placeholder="80" min="0" max="99" />
-          </div>
-          <div>
-            <label>Meses gratis</label>
-            <input type="number" id="meses-anual" placeholder="3" min="0" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div>
-            <label>Fecha inicio</label>
-            <input type="date" id="inicio-anual" />
-          </div>
-          <div>
-            <label>Fecha fin</label>
-            <input type="date" id="fin-anual" />
-          </div>
-        </div>
-
-        <div class="toggle-row">
-          <span>Oferta activa</span>
-          <label class="toggle">
-            <input type="checkbox" id="activo-anual" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="msg" id="msg-anual"></div>
-
-        <button type="submit" class="btn-guardar" id="btn-anual">Guardar oferta anual</button>
-        <button type="button" class="btn-borrar" id="btn-borrar-anual" style="display:none">Eliminar oferta</button>
-      </form>
-    </div>
+    <!-- Las 4 tarjetas se generan dinámicamente en JS -->
   </div>
 
   <!-- Historial -->
@@ -435,6 +298,83 @@
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  const PLANES = [
+    { key: 'basico_mensual', label: 'Básico Mensual', defPrecio: '$15 / mes',  placeholder: '15',  periodoLabel: '/mes'  },
+    { key: 'basico_anual',   label: 'Básico Anual',   defPrecio: '$150 / año', placeholder: '150', periodoLabel: '/año'  },
+    { key: 'pro_mensual',    label: 'Pro Mensual',    defPrecio: '$30 / mes',  placeholder: '30',  periodoLabel: '/mes'  },
+    { key: 'pro_anual',      label: 'Pro Anual',      defPrecio: '$300 / año', placeholder: '300', periodoLabel: '/año'  },
+  ];
+
+  // Generar tarjetas dinámicamente
+  const grid = document.querySelector('.planes-grid');
+  PLANES.forEach(p => {
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="plan-card" id="card-${p.key}">
+        <div class="plan-header">
+          <h2>${p.label}</h2>
+          <span class="badge-inactivo" id="badge-${p.key}">Sin oferta</span>
+        </div>
+        <div class="preview-box" id="preview-${p.key}">
+          <p class="preview-sin-oferta" id="preview-${p.key}-content">${p.defPrecio}</p>
+        </div>
+        <hr class="divider" />
+        <form id="form-${p.key}">
+          <input type="hidden" id="id-${p.key}" />
+          <div>
+            <label>Descripción / Tagline</label>
+            <textarea id="descripcion-${p.key}" placeholder="Ej: La mejor oferta del año"></textarea>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Precio original ($)</label>
+              <input type="number" id="precio-original-${p.key}" placeholder="${p.placeholder}" step="0.01" />
+            </div>
+            <div>
+              <label>Precio oferta ($)</label>
+              <input type="number" id="precio-oferta-${p.key}" placeholder="" step="0.01" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Descuento (%)</label>
+              <input type="number" id="descuento-${p.key}" placeholder="0" min="0" max="99" />
+            </div>
+            <div>
+              <label>Meses gratis</label>
+              <input type="number" id="meses-${p.key}" placeholder="0" min="0" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Fecha inicio</label>
+              <input type="date" id="inicio-${p.key}" />
+            </div>
+            <div>
+              <label>Fecha fin</label>
+              <input type="date" id="fin-${p.key}" />
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span>Oferta activa</span>
+            <label class="toggle">
+              <input type="checkbox" id="activo-${p.key}" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="msg" id="msg-${p.key}"></div>
+          <button type="submit" class="btn-guardar" id="btn-${p.key}">Guardar oferta ${p.label}</button>
+          <button type="button" class="btn-borrar" id="btn-borrar-${p.key}" style="display:none">Eliminar oferta</button>
+        </form>
+      </div>
+    `);
+
+    // Eventos cálculo automático
+    document.getElementById(`precio-original-${p.key}`).addEventListener('input', () => calcularOferta(p.key));
+    document.getElementById(`descuento-${p.key}`).addEventListener('input',        () => calcularOferta(p.key));
+    document.getElementById(`form-${p.key}`).addEventListener('submit',            e  => guardarPlan(p.key, e));
+    document.getElementById(`btn-borrar-${p.key}`).addEventListener('click',       ()  => borrarPlan(p.key));
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function showMsg(plan, text, tipo) {
@@ -445,15 +385,14 @@
     setTimeout(() => { el.style.display = 'none'; }, 3500);
   }
 
-  function renderPreview(plan, oferta) {
-    const box = document.getElementById(`preview-${plan}`);
-    const content = document.getElementById(`preview-${plan}-content`);
-    const badge   = document.getElementById(`badge-${plan}`);
+  function renderPreview(planKey, oferta) {
+    const p      = PLANES.find(x => x.key === planKey);
+    const box    = document.getElementById(`preview-${planKey}`);
+    const badge  = document.getElementById(`badge-${planKey}`);
 
     if (!oferta) {
       box.className = 'preview-box';
-      const def = plan === 'mensual' ? '$15 / mes' : '$150 / año';
-      content.outerHTML = `<p class="preview-sin-oferta" id="preview-${plan}-content">${def}</p>`;
+      box.innerHTML = `<p class="preview-sin-oferta" id="preview-${planKey}-content">${p.defPrecio}</p>`;
       badge.textContent = 'Sin oferta';
       badge.className = 'badge-inactivo';
       return;
@@ -463,7 +402,7 @@
     badge.className   = oferta.activo ? 'badge-activo' : 'badge-inactivo';
     box.className     = oferta.activo ? 'preview-box activo' : 'preview-box';
 
-    const periodo = plan === 'mensual' ? '/mes' : '/año';
+    const periodo = p.periodoLabel;
     const meses   = oferta.meses_gratis > 0
       ? `<p class="preview-meses">+${oferta.meses_gratis} mes(es) gratis</p>` : '';
     const descuento = oferta.descuento_pct
@@ -511,21 +450,21 @@
       return;
     }
 
-    const mensual = data.find(o => o.plan === 'mensual') ?? null;
-    const anual   = data.find(o => o.plan === 'anual')   ?? null;
-
-    fillForm('mensual', mensual);
-    fillForm('anual', anual);
-    renderPreview('mensual', mensual);
-    renderPreview('anual', anual);
+    // Cargar cada plan en su tarjeta
+    PLANES.forEach(p => {
+      const oferta = data.find(o => o.plan === p.key) ?? null;
+      fillForm(p.key, oferta);
+      renderPreview(p.key, oferta);
+    });
 
     // Historial
     const tbody = document.getElementById('historial-body');
     tbody.innerHTML = '';
     data.forEach(o => {
+      const planLabel = PLANES.find(p => p.key === o.plan)?.label ?? o.plan;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><b>${o.plan === 'mensual' ? 'Mensual' : 'Anual'}</b></td>
+        <td><b>${planLabel}</b></td>
         <td>${o.descripcion ?? '—'}</td>
         <td>${o.precio_original ? '$' + Number(o.precio_original).toFixed(2) : '—'}</td>
         <td>${o.precio_oferta ? '$' + Number(o.precio_oferta).toFixed(2) : '—'}</td>
@@ -545,30 +484,31 @@
 
   // ── Guardar ───────────────────────────────────────────────────────────────
 
-  async function guardarPlan(plan, e) {
+  async function guardarPlan(planKey, e) {
     e.preventDefault();
-    const btn = document.getElementById(`btn-${plan}`);
+    const p   = PLANES.find(x => x.key === planKey);
+    const btn = document.getElementById(`btn-${planKey}`);
     btn.disabled = true;
     btn.textContent = 'Guardando…';
 
-    const id              = document.getElementById(`id-${plan}`).value;
-    const precio_original = parseFloat(document.getElementById(`precio-original-${plan}`).value) || null;
-    const precio_oferta   = parseFloat(document.getElementById(`precio-oferta-${plan}`).value) || null;
-    const descuento_pct   = parseInt(document.getElementById(`descuento-${plan}`).value) || null;
-    const meses_gratis    = parseInt(document.getElementById(`meses-${plan}`).value) || 0;
-    const descripcion     = document.getElementById(`descripcion-${plan}`).value.trim() || null;
-    const fecha_inicio    = document.getElementById(`inicio-${plan}`).value || null;
-    const fecha_fin       = document.getElementById(`fin-${plan}`).value || null;
-    const activo          = document.getElementById(`activo-${plan}`).checked;
+    const id              = document.getElementById(`id-${planKey}`).value;
+    const precio_original = parseFloat(document.getElementById(`precio-original-${planKey}`).value) || null;
+    const precio_oferta   = parseFloat(document.getElementById(`precio-oferta-${planKey}`).value)   || null;
+    const descuento_pct   = parseInt(document.getElementById(`descuento-${planKey}`).value)         || null;
+    const meses_gratis    = parseInt(document.getElementById(`meses-${planKey}`).value)             || 0;
+    const descripcion     = document.getElementById(`descripcion-${planKey}`).value.trim()          || null;
+    const fecha_inicio    = document.getElementById(`inicio-${planKey}`).value                      || null;
+    const fecha_fin       = document.getElementById(`fin-${planKey}`).value                         || null;
+    const activo          = document.getElementById(`activo-${planKey}`).checked;
 
     if (!precio_oferta) {
-      showMsg(plan, 'El precio oferta es obligatorio.', 'err');
+      showMsg(planKey, 'El precio oferta es obligatorio.', 'err');
       btn.disabled = false;
-      btn.textContent = `Guardar oferta ${plan}`;
+      btn.textContent = `Guardar oferta ${p.label}`;
       return;
     }
 
-    const payload = { plan, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
+    const payload = { plan: planKey, precio_original, precio_oferta, descuento_pct, meses_gratis, descripcion, fecha_inicio, fecha_fin, activo };
 
     let error;
     if (id) {
@@ -578,50 +518,38 @@
     }
 
     btn.disabled = false;
-    btn.textContent = `Guardar oferta ${plan}`;
+    btn.textContent = `Guardar oferta ${p.label}`;
 
     if (error) {
-      showMsg(plan, 'Error: ' + error.message, 'err');
+      showMsg(planKey, 'Error: ' + error.message, 'err');
     } else {
-      showMsg(plan, '¡Oferta guardada correctamente!', 'ok');
+      showMsg(planKey, '¡Oferta guardada!', 'ok');
       await cargar();
     }
   }
 
   // ── Borrar ────────────────────────────────────────────────────────────────
 
-  async function borrarPlan(plan) {
-    const id = document.getElementById(`id-${plan}`).value;
+  async function borrarPlan(planKey) {
+    const p  = PLANES.find(x => x.key === planKey);
+    const id = document.getElementById(`id-${planKey}`).value;
     if (!id) return;
-    if (!confirm(`¿Eliminar la oferta del plan ${plan}?`)) return;
+    if (!confirm(`¿Eliminar la oferta de ${p.label}?`)) return;
     const { error } = await db.from('planes_ofertas').delete().eq('id', id);
-    if (error) { showMsg(plan, 'Error: ' + error.message, 'err'); return; }
-    showMsg(plan, 'Oferta eliminada.', 'ok');
+    if (error) { showMsg(planKey, 'Error: ' + error.message, 'err'); return; }
+    showMsg(planKey, 'Oferta eliminada.', 'ok');
     await cargar();
   }
 
   // ── Cálculo automático precio oferta ─────────────────────────────────────
 
-  function calcularOferta(plan) {
-    const orig = parseFloat(document.getElementById(`precio-original-${plan}`).value);
-    const pct  = parseFloat(document.getElementById(`descuento-${plan}`).value);
+  function calcularOferta(planKey) {
+    const orig = parseFloat(document.getElementById(`precio-original-${planKey}`).value);
+    const pct  = parseFloat(document.getElementById(`descuento-${planKey}`).value);
     if (!isNaN(orig) && !isNaN(pct) && pct > 0 && pct < 100) {
-      const oferta = orig * (1 - pct / 100);
-      document.getElementById(`precio-oferta-${plan}`).value = oferta.toFixed(2);
+      document.getElementById(`precio-oferta-${planKey}`).value = (orig * (1 - pct / 100)).toFixed(2);
     }
   }
-
-  ['mensual', 'anual'].forEach(plan => {
-    document.getElementById(`precio-original-${plan}`).addEventListener('input', () => calcularOferta(plan));
-    document.getElementById(`descuento-${plan}`).addEventListener('input', () => calcularOferta(plan));
-  });
-
-  // ── Eventos ───────────────────────────────────────────────────────────────
-
-  document.getElementById('form-mensual').addEventListener('submit', e => guardarPlan('mensual', e));
-  document.getElementById('form-anual').addEventListener('submit', e => guardarPlan('anual', e));
-  document.getElementById('btn-borrar-mensual').addEventListener('click', () => borrarPlan('mensual'));
-  document.getElementById('btn-borrar-anual').addEventListener('click', () => borrarPlan('anual'));
 
   cargar();
 </script>
