@@ -540,6 +540,7 @@ export default function UnirseSocioScreen() {
       </View>
 
       {/* Cards de los 3 planes */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
       {PLANES_DEF.filter(p =>
         (p.key === 'gratis' && planGratisVisible) ||
         (p.key === 'basico' && planBasicoVisible) ||
@@ -552,65 +553,86 @@ export default function UnirseSocioScreen() {
         const original   = oferta?.precio_original;
         const descuento  = oferta?.descuento_pct;
         const meses      = oferta?.meses_gratis ?? 0;
+        const periodoLabel = periodo === 'anual' ? '/año' : '/mes';
 
         return (
           <TouchableOpacity key={p.key} onPress={() => setPlan(p.key)}
+            activeOpacity={0.85}
             style={[styles.planCard3, {
               borderColor:     activo ? Colors.accent : Colors.border,
-              backgroundColor: activo ? Colors.accent + '10' : Colors.card,
+              backgroundColor: Colors.card,
+              shadowColor: activo ? Colors.accent : '#000',
+              shadowOpacity: activo ? 0.18 : 0.06,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: activo ? 6 : 2,
             }]}>
-            {/* Badge descuento */}
+
+            {/* Badge descuento — esquina superior izquierda */}
             {descuento ? (
-              <View style={[styles.planBadge, { backgroundColor: Colors.accent }]}>
-                <Text style={styles.planBadgeText}>-{descuento}%</Text>
+              <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: '#ef4444', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{descuento}% off</Text>
               </View>
             ) : null}
 
-            {/* Radio */}
-            <View style={[styles.planRadio, { borderColor: activo ? Colors.accent : Colors.border }]}>
-              {activo && <View style={[styles.planRadioInner, { backgroundColor: Colors.accent }]} />}
+            {/* Icono + nombre */}
+            <View style={{ alignItems: 'center', marginTop: descuento ? 22 : 4, gap: 4 }}>
+              <Text style={{ fontSize: 26 }}>{p.icono}</Text>
+              <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Plan {p.label}</Text>
             </View>
 
-            {/* Info */}
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 15 }}>{p.icono}</Text>
-                <Text style={[styles.planNombre, { color: Colors.text }]}>Plan {p.label}</Text>
-              </View>
-              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-                {`Perfil + portada + galería de ${p.galSlots} fotos`}
+            {/* Descripción */}
+            <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 16, marginTop: 4 }}>
+              {`Perfil + portada + galería de ${p.galSlots} fotos`}
+            </Text>
+            {p.free && gratisMeses != null && gratisMeses > 0 && (
+              <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700', textAlign: 'center' }}>
+                {gratisMeses} {gratisMeses === 1 ? 'mes' : 'meses'} gratis
               </Text>
-              {p.free && gratisMeses != null && gratisMeses > 0 && (
-                <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700' }}>
-                  {gratisMeses} {gratisMeses === 1 ? 'mes' : 'meses'} gratis
-                </Text>
-              )}
-              {!p.free && meses > 0 && (
-                <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700' }}>
-                  +{meses} mes{meses !== 1 ? 'es' : ''} gratis
-                </Text>
-              )}
-            </View>
+            )}
+            {!p.free && meses > 0 && (
+              <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700', textAlign: 'center' }}>
+                +{meses} mes{meses !== 1 ? 'es' : ''} gratis
+              </Text>
+            )}
 
             {/* Precio */}
-            <View style={{ alignItems: 'flex-end', gap: 2 }}>
-              {original ? (
-                <Text style={{ fontSize: 11, color: Colors.textMuted, textDecorationLine: 'line-through' }}>
-                  ${original}
-                </Text>
-              ) : null}
-              <Text style={[styles.planPrecio, { color: activo ? Colors.accent : Colors.text }]}>
+            <View style={{ alignItems: 'center', marginTop: 'auto', paddingTop: 10 }}>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: activo ? Colors.accent : Colors.text }}>
                 {p.free ? 'Gratis' : `$${precioPlan}`}
               </Text>
+              {!p.free && (
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>{periodoLabel}</Text>
+              )}
+              {original ? (
+                <Text style={{ fontSize: 11, color: Colors.textMuted, textDecorationLine: 'line-through', marginTop: 2 }}>
+                  Antes ${original}{periodoLabel}
+                </Text>
+              ) : null}
               {!p.free && tasaBCV && precioPlan > 0 && (
-                <Text style={{ fontSize: 10, color: Colors.textMuted, fontWeight: '600', marginTop: 1 }}>
+                <Text style={{ fontSize: 10, color: Colors.textMuted, marginTop: 1 }}>
                   Bs {(precioPlan * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               )}
             </View>
+
+            {/* Botón seleccionar */}
+            <View style={{ marginTop: 12, borderRadius: Radius.md, overflow: 'hidden' }}>
+              <View style={{
+                backgroundColor: activo ? Colors.accent : Colors.accent + '18',
+                paddingVertical: 9,
+                alignItems: 'center',
+                borderRadius: Radius.md,
+              }}>
+                <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: activo ? '#fff' : Colors.accent }}>
+                  {activo ? 'Seleccionado ✓' : 'Seleccionar'}
+                </Text>
+              </View>
+            </View>
           </TouchableOpacity>
         );
       })}
+      </View>
 
       {/* Beneficios del plan seleccionado */}
       <View style={[styles.beneficios, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
@@ -975,21 +997,10 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
 
   /* Plan cards (3 planes) */
   planCard3: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md, gap: 12,
+    flex: 1,
+    flexDirection: 'column',
+    borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md,
   },
-  planBadge: {
-    position: 'absolute', top: -10, right: 12,
-    borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  planBadgeText:  { color: '#fff', fontSize: 10, fontWeight: '800' },
-  planRadio: {
-    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  planRadioInner: { width: 10, height: 10, borderRadius: 5 },
-  planNombre:     { fontSize: FontSize.md, fontWeight: '700' },
-  planPrecio:     { fontSize: FontSize.xl, fontWeight: '800' },
 
   beneficios: {
     borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: 8,

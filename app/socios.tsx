@@ -77,6 +77,8 @@ export default function SociosScreen() {
   }, []);
 
   const [sociosCiudad, setSociosCiudad] = useState<SocioComercial[]>([]);
+  type OfertaPromo = { plan: string; periodo: string | null; precio_oferta: number; precio_original: number | null; descuento_pct: number | null; tagline: string | null };
+  const [ofertasPromo, setOfertasPromo] = useState<OfertaPromo[]>([]);
 
   // Haversine: distancia en km entre dos coordenadas
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -135,6 +137,12 @@ export default function SociosScreen() {
   }, [mezclarSociosCiudad]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    supabase.from('planes_ofertas').select('plan,periodo,precio_oferta,precio_original,descuento_pct,tagline')
+      .eq('activo', true)
+      .then(({ data }) => { if (data) setOfertasPromo(data as OfertaPromo[]); });
+  }, []);
 
   useEffect(() => {
     if (!socioModal) { setGaleriaItems([]); return; }
@@ -1328,6 +1336,37 @@ export default function SociosScreen() {
                   <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
                     Llega a más clientes en tu ciudad. Muestra tu catálogo, recibe contactos por WhatsApp y destaca entre los mejores negocios de CashCach.
                   </Text>
+                </View>
+              )}
+
+              {/* Banner ofertas activas */}
+              {misSocios.length < limiteTiendas && !yaEnvioSolicitud && !solicitudRechazada && ofertasPromo.length > 0 && (
+                <View style={{ borderRadius: Radius.md, overflow: 'hidden' }}>
+                  {ofertasPromo.map((o, i) => {
+                    const planLabel = o.plan === 'pro' ? 'Pro' : 'Básico';
+                    const periodoLabel = o.periodo === 'anual' ? '/año' : '/mes';
+                    return (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f59e0b22', borderRadius: Radius.md, padding: Spacing.sm, borderWidth: 1, borderColor: '#f59e0b55', marginBottom: i < ofertasPromo.length - 1 ? 6 : 0 }}>
+                        <Text style={{ fontSize: 18 }}>🏷️</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: FontSize.xs, fontWeight: '800', color: '#b45309' }}>
+                            {o.tagline ? o.tagline : `¡Oferta! Plan ${planLabel}`}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                            {o.precio_original ? (
+                              <Text style={{ fontSize: 11, color: '#92400e', textDecorationLine: 'line-through' }}>${o.precio_original}{periodoLabel}</Text>
+                            ) : null}
+                            <Text style={{ fontSize: FontSize.sm, fontWeight: '800', color: '#b45309' }}>${o.precio_oferta}{periodoLabel}</Text>
+                            {o.descuento_pct ? (
+                              <View style={{ backgroundColor: '#f59e0b', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff' }}>-{o.descuento_pct}%</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
 

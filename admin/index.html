@@ -1122,9 +1122,9 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Plan</th><th>Tagline</th><th>Precio orig.</th><th>Precio oferta</th><th>Descuento</th><th>Meses gratis</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr>
+              <tr><th>Plan</th><th>Tagline</th><th>Precio orig.</th><th>Precio oferta</th><th>Descuento</th><th>Meses gratis</th><th>Inicio</th><th>Fin</th><th>Estado</th><th></th></tr>
             </thead>
-            <tbody id="historial-body"><tr><td colspan="9" class="loading">Cargando…</td></tr></tbody>
+            <tbody id="historial-body"><tr><td colspan="10" class="loading">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1793,7 +1793,31 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         <td>${o.fecha_inicio ?? '—'}</td>
         <td>${o.fecha_fin ?? '—'}</td>
         <td><span class="badge ${o.activo ? 'badge-green' : 'badge-gray'}">${o.activo ? 'Activa' : 'Inactiva'}</span></td>
+        <td style="white-space:nowrap;display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px"
+            onclick="toggleOferta('${o.id}', ${o.activo})">
+            ${o.activo ? 'Desactivar' : 'Activar'}
+          </button>
+          <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer"
+            onclick="eliminarOferta('${o.id}')">
+            Eliminar
+          </button>
+        </td>
       </tr>`).join('');
+  }
+
+  async function toggleOferta(id, activoActual) {
+    const nuevoEstado = !activoActual;
+    const { error } = await _sb.from('planes_ofertas').update({ activo: nuevoEstado }).eq('id', id);
+    if (error) { alert('Error al actualizar: ' + error.message); return; }
+    await cargarOfertas();
+  }
+
+  async function eliminarOferta(id) {
+    if (!confirm('¿Eliminar esta oferta? Esta acción no se puede deshacer.')) return;
+    const { error } = await _sb.from('planes_ofertas').delete().eq('id', id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    await cargarOfertas();
   }
 
   async function guardarPlanGratis() {
