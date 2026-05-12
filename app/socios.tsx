@@ -54,6 +54,7 @@ export default function SociosScreen() {
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [modalInfo,     setModalInfo]     = useState(false);
   const [modalInfoTienda, setModalInfoTienda] = useState(false);
+  const [modalMotivoRechazo, setModalMotivoRechazo] = useState(false);
   type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null; descripcion: string | null };
   const [galeriaItems,        setGaleriaItems]        = useState<ItemGaleria[]>([]);
   const [productoModal,       setProductoModal]       = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
@@ -1272,7 +1273,7 @@ export default function SociosScreen() {
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                     {solicitudRechazada.motivo ? (
                       <TouchableOpacity
-                        onPress={() => Alert.alert('Motivo del rechazo', solicitudRechazada.motivo!, [{ text: 'Cerrar' }])}
+                        onPress={() => setModalMotivoRechazo(true)}
                         activeOpacity={0.85}
                         style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 10, borderWidth: 1.5, borderColor: '#ef4444', alignItems: 'center' }}>
                         <Text style={{ color: '#ef4444', fontSize: FontSize.sm, fontWeight: '800' }}>Ver motivo</Text>
@@ -1327,6 +1328,39 @@ export default function SociosScreen() {
         </View>
       </Modal>
 
+
+      {/* Modal Motivo Rechazo */}
+      <Modal visible={modalMotivoRechazo} animationType="fade" transparent onRequestClose={() => setModalMotivoRechazo(false)}>
+        <View style={{ flex: 1, backgroundColor: '#00000080', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: Colors.card, borderRadius: 20, width: '100%', maxWidth: 360, overflow: 'hidden' }}>
+            {/* Header rojo */}
+            <View style={{ backgroundColor: '#ef4444', paddingVertical: 20, paddingHorizontal: 24, alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#ffffff33', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close-circle" size={28} color="#fff" />
+              </View>
+              <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: '800', textAlign: 'center' }}>Solicitud rechazada</Text>
+              <Text style={{ color: '#ffffff99', fontSize: FontSize.xs, textAlign: 'center' }}>Mensaje del equipo CashCach</Text>
+            </View>
+            {/* Cuerpo del mensaje */}
+            <View style={{ padding: 24, gap: 16 }}>
+              <View style={{ backgroundColor: '#fef2f2', borderRadius: Radius.md, padding: 16, borderLeftWidth: 3, borderLeftColor: '#ef4444' }}>
+                <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', lineHeight: 22 }}>
+                  {solicitudRechazada?.motivo ?? ''}
+                </Text>
+              </View>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 }}>
+                Podés corregir tu información e intentar nuevamente.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setModalMotivoRechazo(false)}
+                activeOpacity={0.85}
+                style={{ backgroundColor: '#ef4444', borderRadius: Radius.md, paddingVertical: 12, alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: '800' }}>Entendido</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Favoritas */}
       <Modal visible={modalFavoritas} animationType="slide" transparent onRequestClose={() => setModalFavoritas(false)}>
