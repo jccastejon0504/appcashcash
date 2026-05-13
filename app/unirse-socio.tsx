@@ -621,11 +621,12 @@ export default function UnirseSocioScreen() {
               <View style={{
                 backgroundColor: activo ? Colors.accent : Colors.accent + '18',
                 paddingVertical: 9,
+                paddingHorizontal: 16,
                 alignItems: 'center',
                 borderRadius: Radius.md,
               }}>
-                <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: activo ? '#fff' : Colors.accent }}>
-                  {activo ? 'Seleccionado ✓' : 'Seleccionar'}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: activo ? '#fff' : Colors.accent }} numberOfLines={1}>
+                  {activo ? '✓ Elegido' : 'Seleccionar'}
                 </Text>
               </View>
             </View>

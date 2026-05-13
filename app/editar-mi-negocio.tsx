@@ -258,7 +258,8 @@ export default function EditarMiNegocioScreen() {
       if (!data) return;
       const map: Partial<Record<PlanKey, Oferta>> = {};
       data.forEach((o: any) => {
-        if (o.plan) map[o.plan as PlanKey] = o;
+        const key = o.periodo ? `${o.plan}_${o.periodo}` : o.plan;
+        if (key) map[key as PlanKey] = o;
       });
       setOfertas(map);
     });
@@ -961,34 +962,73 @@ export default function EditarMiNegocioScreen() {
                   const oferta = ofertas[key];
                   const activo = planRenov === p;
                   const precioPlan = oferta?.precio_oferta ?? preciosBase[key];
+                  const periodoLabel = periodoRenov === 'anual' ? '/año' : '/mes';
                   return (
                     <TouchableOpacity key={p} onPress={() => setPlanRenov(p)}
+                      activeOpacity={0.85}
                       style={[styles.planBtn, {
                         borderColor:     activo ? Colors.accent : Colors.border,
-                        backgroundColor: activo ? Colors.accent + '12' : Colors.card,
-                        flex: 1, position: 'relative',
+                        backgroundColor: Colors.card,
+                        flex: 1,
+                        shadowColor: activo ? Colors.accent : '#000',
+                        shadowOpacity: activo ? 0.18 : 0.06,
+                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: 3 },
+                        elevation: activo ? 6 : 2,
                       }]}>
+                      {/* Badge descuento */}
                       {oferta?.descuento_pct ? (
-                        <View style={{ position: 'absolute', top: -10, right: -6, backgroundColor: Colors.accent, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 }}>
-                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>-{oferta.descuento_pct}%</Text>
+                        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: '#ef4444', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{oferta.descuento_pct}% off</Text>
                         </View>
                       ) : null}
-                      <Text style={[styles.planBtnLabel, { color: activo ? Colors.accent : Colors.text }]}>
-                        {p === 'basico' ? '⭐ Básico' : '🚀 Pro'}
-                      </Text>
-                      {oferta?.precio_original ? (
-                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textDecorationLine: 'line-through' }}>
-                          ${oferta.precio_original}
+                      {/* Icono + nombre */}
+                      <View style={{ alignItems: 'center', marginTop: oferta?.descuento_pct ? 22 : 4, gap: 4 }}>
+                        <Text style={{ fontSize: 24 }}>{p === 'basico' ? '⭐' : '🚀'}</Text>
+                        <Text style={[styles.planBtnLabel, { color: activo ? Colors.accent : Colors.text }]}>
+                          Plan {p === 'basico' ? 'Básico' : 'Pro'}
                         </Text>
-                      ) : null}
-                      <Text style={[styles.planBtnPrecio, { color: activo ? Colors.accent : Colors.textMuted }]}>
-                        ${precioPlan}
-                      </Text>
-                      {oferta?.meses_gratis ? (
-                        <Text style={[styles.planBtnAhorro, { color: Colors.success }]}>
-                          +{oferta.meses_gratis} mes{oferta.meses_gratis !== 1 ? 'es' : ''} gratis
+                        {oferta ? (
+                          <View style={{ backgroundColor: '#f59e0b22', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#f59e0b55' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309' }}>
+                              {oferta.descripcion ? oferta.descripcion : '🏷️ Precio promocional'}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {/* Precio */}
+                      <View style={{ alignItems: 'center', marginTop: 'auto', paddingTop: 10 }}>
+                        <Text style={[styles.planBtnPrecio, { color: activo ? Colors.accent : Colors.text }]}>
+                          ${precioPlan}
                         </Text>
-                      ) : null}
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>{periodoLabel}</Text>
+                        {oferta?.precio_original ? (
+                          <Text style={{ fontSize: 11, color: Colors.textMuted, textDecorationLine: 'line-through', marginTop: 2 }}>
+                            Antes ${oferta.precio_original}{periodoLabel}
+                          </Text>
+                        ) : null}
+                        {tasaBCV && precioPlan > 0 && (
+                          <Text style={{ fontSize: 10, color: Colors.textMuted, marginTop: 1 }}>
+                            Bs {(precioPlan * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </Text>
+                        )}
+                        {oferta?.meses_gratis ? (
+                          <Text style={[styles.planBtnAhorro, { color: Colors.success, marginTop: 2 }]}>
+                            +{oferta.meses_gratis} mes{oferta.meses_gratis !== 1 ? 'es' : ''} gratis
+                          </Text>
+                        ) : null}
+                      </View>
+                      {/* Botón */}
+                      <View style={{ marginTop: 12, borderRadius: Radius.md, overflow: 'hidden' }}>
+                        <View style={{
+                          backgroundColor: activo ? Colors.accent : Colors.accent + '18',
+                          paddingVertical: 9, paddingHorizontal: 16, alignItems: 'center', borderRadius: Radius.md,
+                        }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: activo ? '#fff' : Colors.accent }} numberOfLines={1}>
+                            {activo ? '✓ Elegido' : 'Seleccionar'}
+                          </Text>
+                        </View>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}

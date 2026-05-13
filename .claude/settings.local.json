@@ -66,7 +66,21 @@
       "Bash(ipconfig)",
       "Bash(ipconfig.exe)",
       "Bash(cmd.exe /c ipconfig)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(wc -l \"F:/Proyectos app/CalculadoraBCVApp/app\"/*.tsx)",
+      "Bash(ls -la .vercel)",
+      "Bash(ls -la *.json)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel ls *)",
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel link *)",
+      "Bash(vercel domains *)",
+      "Bash(nslookup www.appcashcash.com)",
+      "Bash(vercel project *)",
+      "Bash(vercel alias *)",
+      "Read(//c/Users/yohanna/**)",
+      "Read(//c/Users/yohanna/.vercel/**)"
     ]
   }
 }
