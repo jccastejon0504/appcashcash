@@ -495,29 +495,44 @@
     tbody.innerHTML = '';
     data.forEach(o => {
       const planLabel = PLANES.find(p => p.key === o.plan)?.label ?? o.plan;
+      const estaActivo = !!o.activo;
+
       const tr = document.createElement('tr');
-      tr.id = `hist-row-${o.id}`;
-      tr.innerHTML = `
-        <td><b>${planLabel}</b></td>
-        <td>${o.descripcion ?? '—'}</td>
-        <td>${o.precio_original ? '$' + Number(o.precio_original).toFixed(2) : '—'}</td>
-        <td>${o.precio_oferta ? '$' + Number(o.precio_oferta).toFixed(2) : '—'}</td>
-        <td>${o.descuento_pct != null ? '-' + o.descuento_pct + '%' : '—'}</td>
-        <td>${o.meses_gratis ?? 0}</td>
-        <td>${o.fecha_inicio ?? '—'}</td>
-        <td>${o.fecha_fin ?? '—'}</td>
-        <td>${o.activo ? '<span class="badge-activo">Activa</span>' : '<span class="badge-inactivo">Inactiva</span>'}</td>
-        <td class="acciones-td">
-          <button class="btn-accion btn-toggle-activo ${o.activo ? 'es-activo' : ''}"
-                  onclick="toggleActivoHistorial('${o.id}', ${!!o.activo}, this)">
-            ${o.activo ? 'Desactivar' : 'Activar'}
-          </button>
-          <button class="btn-accion btn-eliminar-hist"
-                  onclick="eliminarOfertaHistorial('${o.id}', '${planLabel.replace(/'/g,"\\'")}', this)">
-            Eliminar
-          </button>
-        </td>
-      `;
+
+      const tdPlan = document.createElement('td');
+      tdPlan.innerHTML = `<b>${planLabel}</b>`;
+
+      const tdDesc   = document.createElement('td'); tdDesc.textContent   = o.descripcion ?? '—';
+      const tdOrig   = document.createElement('td'); tdOrig.textContent   = o.precio_original ? '$' + Number(o.precio_original).toFixed(2) : '—';
+      const tdOferta = document.createElement('td'); tdOferta.textContent = o.precio_oferta   ? '$' + Number(o.precio_oferta).toFixed(2)   : '—';
+      const tdDesc2  = document.createElement('td'); tdDesc2.textContent  = o.descuento_pct != null ? '-' + o.descuento_pct + '%' : '—';
+      const tdMeses  = document.createElement('td'); tdMeses.textContent  = o.meses_gratis ?? 0;
+      const tdIni    = document.createElement('td'); tdIni.textContent    = o.fecha_inicio ?? '—';
+      const tdFin    = document.createElement('td'); tdFin.textContent    = o.fecha_fin    ?? '—';
+
+      const tdEstado = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.textContent = estaActivo ? 'Activa' : 'Inactiva';
+      badge.className   = estaActivo ? 'badge-activo' : 'badge-inactivo';
+      tdEstado.appendChild(badge);
+
+      const tdAcciones = document.createElement('td');
+      tdAcciones.className = 'acciones-td';
+
+      const btnToggle = document.createElement('button');
+      btnToggle.className = 'btn-accion btn-toggle-activo' + (estaActivo ? ' es-activo' : '');
+      btnToggle.textContent = estaActivo ? 'Desactivar' : 'Activar';
+      btnToggle.addEventListener('click', () => toggleActivoHistorial(o.id, estaActivo, btnToggle));
+
+      const btnElim = document.createElement('button');
+      btnElim.className = 'btn-accion btn-eliminar-hist';
+      btnElim.textContent = 'Eliminar';
+      btnElim.addEventListener('click', () => eliminarOfertaHistorial(o.id, planLabel, btnElim));
+
+      tdAcciones.appendChild(btnToggle);
+      tdAcciones.appendChild(btnElim);
+
+      [tdPlan, tdDesc, tdOrig, tdOferta, tdDesc2, tdMeses, tdIni, tdFin, tdEstado, tdAcciones].forEach(td => tr.appendChild(td));
       tbody.appendChild(tr);
     });
 
