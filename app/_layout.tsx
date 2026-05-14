@@ -1,18 +1,17 @@
-import '../global.css';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { registrarEvento } from '@/services/analytics';
+import { supabase } from '@/services/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HeroUINativeProvider } from 'heroui-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/services/supabase';
-import { registrarEvento } from '@/services/analytics';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import '../global.css';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
