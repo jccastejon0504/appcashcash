@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal,
+  SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal, Animated,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Location from 'expo-location';
@@ -105,6 +105,28 @@ export default function EditarMiNegocioScreen() {
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
   const [obtenGPS,    setObtenGPS]    = useState(false);
 
+  // Modal personalizado
+  const [appModal, setAppModal] = useState<{
+    visible: boolean;
+    tipo: 'exito' | 'error' | 'info';
+    titulo: string;
+    mensaje: string;
+    onOk?: () => void;
+  }>({ visible: false, tipo: 'exito', titulo: '', mensaje: '' });
+  const modalScale = useState(new Animated.Value(0))[0];
+
+  const mostrarModal = (tipo: 'exito' | 'error' | 'info', titulo: string, mensaje: string, onOk?: () => void) => {
+    modalScale.setValue(0);
+    setAppModal({ visible: true, tipo, titulo, mensaje, onOk });
+    Animated.spring(modalScale, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 200 }).start();
+  };
+
+  const cerrarModal = () => {
+    const cb = appModal.onOk;
+    setAppModal(prev => ({ ...prev, visible: false }));
+    cb?.();
+  };
+
   const toDMS = (deg: number, esLat: boolean) => {
     const dir = esLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'O');
     const abs = Math.abs(deg);
@@ -120,16 +142,16 @@ export default function EditarMiNegocioScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Necesitamos acceso a tu ubicación para guardar las coordenadas.');
+        mostrarModal('info', 'Permiso denegado', 'Necesitamos acceso a tu ubicación para guardar las coordenadas.');
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const lat = loc.coords.latitude;
       const lng = loc.coords.longitude;
       setCoordenadas({ lat, lng });
-      Alert.alert('Ubicación capturada', `${toDMS(lat, true)}\n${toDMS(lng, false)}\n\nPresiona Guardar para actualizar.`);
+      mostrarModal('exito', 'Ubicación capturada', `${toDMS(lat, true)}\n${toDMS(lng, false)}\n\nPresiona Guardar para actualizar.`);
     } catch (e) {
-      Alert.alert('Error GPS', 'No se pudo obtener la ubicación.');
+      mostrarModal('error', 'Error GPS', 'No se pudo obtener la ubicación.');
     } finally {
       setObtenGPS(false);
     }
@@ -285,7 +307,7 @@ export default function EditarMiNegocioScreen() {
         text: 'Cámara',
         onPress: async () => {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara.'); return; }
+          if (status !== 'granted') { mostrarModal('info', 'Permiso requerido', 'Necesitamos acceso a tu cámara.'); return; }
           const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5, allowsEditing: true, exif: false });
           if (!r.canceled && r.assets[0]) onSelect(r.assets[0].uri);
         },
@@ -294,7 +316,7 @@ export default function EditarMiNegocioScreen() {
         text: 'Galería',
         onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
+          if (status !== 'granted') { mostrarModal('info', 'Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
           const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5, allowsEditing: true, exif: false });
           if (!r.canceled && r.assets[0]) onSelect(r.assets[0].uri);
         },
@@ -320,8 +342,8 @@ export default function EditarMiNegocioScreen() {
   };
 
   const enviarRenovacion = async () => {
-    if (!referenciaRenov.trim()) { Alert.alert('Campo requerido', 'Ingresa el número de referencia.'); return; }
-    if (!comprobanteRenov) { Alert.alert('Campo requerido', 'Adjunta la foto del comprobante de pago.'); return; }
+    if (!referenciaRenov.trim()) { mostrarModal('info', 'Campo requerido', 'Ingresa el número de referencia.'); return; }
+    if (!comprobanteRenov) { mostrarModal('info', 'Campo requerido', 'Adjunta la foto del comprobante de pago.'); return; }
     setEnviandoRenov(true);
     let urlComprobante: string | null = null;
     if (comprobanteRenov) urlComprobante = await subirImagen(comprobanteRenov, 'comprobante_renov');
@@ -346,7 +368,7 @@ export default function EditarMiNegocioScreen() {
       socio_id:       resolvedId,
     });
     setEnviandoRenov(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { mostrarModal('error', 'Error', error.message); return; }
     setModalRenovar(false);
     setReferenciaRenov('');
     setComprobanteRenov(null);
@@ -410,7 +432,7 @@ export default function EditarMiNegocioScreen() {
       const { data, error: insErr } = await supabase.from('galeria_items').insert(itemsSubidos).select();
       if (insErr) {
         setGuardandoCat(false);
-        Alert.alert('Error al guardar', insErr.message);
+        mostrarModal('error', 'Error al guardar', insErr.message);
         return;
       }
       // Insert exitoso: borrar los viejos (los que no son los recién insertados)
@@ -436,7 +458,7 @@ export default function EditarMiNegocioScreen() {
       setGaleriaItems([]);
     }
     setGuardandoCat(false);
-    Alert.alert('¡Listo!', 'Catálogo guardado correctamente.');
+    mostrarModal('exito', '¡Listo!', 'Catálogo guardado correctamente.');
   };
 
   const agregarItemGaleria = () => {
@@ -454,7 +476,7 @@ export default function EditarMiNegocioScreen() {
   };
 
   const guardar = async () => {
-    if (!nombre.trim()) { Alert.alert('Campo requerido', 'El nombre de mi tienda no puede estar vacío.'); return; }
+    if (!nombre.trim()) { mostrarModal('info', 'Campo requerido', 'El nombre de tu tienda no puede estar vacío.'); return; }
     setGuardando(true);
 
     const urlPortada = await subirImagen(portada, 'portada');
@@ -533,7 +555,7 @@ export default function EditarMiNegocioScreen() {
       const { data: galData, error: galErr } = await supabase.from('galeria_items').insert(itemsSubidos).select('id');
       if (galErr) {
         setGuardando(false);
-        Alert.alert('Error al guardar galería', galErr.message);
+        mostrarModal('error', 'Error al guardar galería', galErr.message);
         return;
       }
       const newIds = (galData ?? []).map((d: any) => d.id);
@@ -551,7 +573,7 @@ export default function EditarMiNegocioScreen() {
     if (nuevoTel) await AsyncStorage.setItem('socio_telefono', nuevoTel);
 
     setGuardando(false);
-    Alert.alert('¡Listo!', 'Tu perfil fue actualizado.', [{ text: 'OK', onPress: () => router.replace('/socios') }]);
+    mostrarModal('exito', '¡Listo!', 'Tu perfil fue actualizado correctamente.', () => router.replace('/socios'));
   };
 
   if (renovEnviada) return (
@@ -926,6 +948,48 @@ export default function EditarMiNegocioScreen() {
 
       </ScrollView>
 
+      {/* Modal personalizado (éxito / error / info) */}
+      <Modal visible={appModal.visible} transparent animationType="fade" onRequestClose={cerrarModal}>
+        <View style={styles.appModalOverlay}>
+          <Animated.View style={[styles.appModalBox, { backgroundColor: Colors.card, transform: [{ scale: modalScale }] }]}>
+            {/* Ícono */}
+            <View style={[
+              styles.appModalIconWrap,
+              { backgroundColor:
+                  appModal.tipo === 'exito' ? '#dcfce7' :
+                  appModal.tipo === 'error' ? '#fee2e2' : '#fef9c3' },
+            ]}>
+              <Ionicons
+                name={
+                  appModal.tipo === 'exito' ? 'checkmark-circle' :
+                  appModal.tipo === 'error' ? 'close-circle'     : 'information-circle'
+                }
+                size={52}
+                color={
+                  appModal.tipo === 'exito' ? '#16a34a' :
+                  appModal.tipo === 'error' ? '#dc2626' : '#ca8a04'
+                }
+              />
+            </View>
+            {/* Texto */}
+            <Text style={[styles.appModalTitulo, { color: Colors.text }]}>{appModal.titulo}</Text>
+            <Text style={[styles.appModalMensaje, { color: Colors.textMuted }]}>{appModal.mensaje}</Text>
+            {/* Botón */}
+            <TouchableOpacity
+              style={[styles.appModalBtn, { backgroundColor:
+                appModal.tipo === 'exito' ? '#16a34a' :
+                appModal.tipo === 'error' ? '#dc2626' : Colors.accent
+              }]}
+              onPress={cerrarModal}
+              activeOpacity={0.85}>
+              <Text style={styles.appModalBtnText}>
+                {appModal.tipo === 'exito' ? 'Perfecto' : 'Entendido'}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
+
       {/* Modal renovación */}
       <Modal visible={modalRenovar} animationType="slide" transparent onRequestClose={() => setModalRenovar(false)}>
         <View style={styles.modalOverlay}>
@@ -1184,6 +1248,31 @@ function makeStyles(Colors: any) { return StyleSheet.create({
     borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 11,
   },
   btnAgregarText: { fontSize: FontSize.sm, fontWeight: '700' },
+
+  // Modal personalizado
+  appModalOverlay: {
+    flex: 1, backgroundColor: '#00000099',
+    justifyContent: 'center', alignItems: 'center', padding: Spacing.xl,
+  },
+  appModalBox: {
+    width: '100%', borderRadius: 24,
+    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.xl,
+    alignItems: 'center', gap: Spacing.md,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 }, elevation: 12,
+  },
+  appModalIconWrap: {
+    width: 88, height: 88, borderRadius: 44,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  appModalTitulo: { fontSize: FontSize.xl, fontWeight: '800', textAlign: 'center' },
+  appModalMensaje: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
+  appModalBtn: {
+    width: '100%', borderRadius: Radius.lg,
+    paddingVertical: 14, alignItems: 'center', marginTop: 4,
+  },
+  appModalBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: '800' },
 
   modalOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
   modalBox:     { borderTopLeftRadius: Radius.lg * 2, borderTopRightRadius: Radius.lg * 2, maxHeight: '90%' },
