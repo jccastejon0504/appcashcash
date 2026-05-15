@@ -18,6 +18,18 @@ import * as Location from 'expo-location';
 
 type Nivel = 'subcategorias' | 'comercios';
 
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDist(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
+
 export default function DirectorioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
@@ -49,6 +61,7 @@ export default function DirectorioScreen() {
   const [mostrarRadioList,    setMostrarRadioList]    = useState(false);
   const [mapCoords,           setMapCoords]           = useState<{ latitude: number; longitude: number } | null>(null);
   const [buscandoUbicacion,   setBuscandoUbicacion]   = useState(false);
+  const [coordsGlobal,        setCoordsGlobal]        = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapaExpandido,       setMapaExpandido]       = useState(false);
   const [comercioModal,   setComercioModal]   = useState<SocioComercial | null>(null);
   const [imagenAmpliada,  setImagenAmpliada]  = useState<string | null>(null);
@@ -85,6 +98,7 @@ export default function DirectorioScreen() {
         const cfg = JSON.parse(raw);
         setCiudadGlobal(cfg.ciudad ?? '');
         setRadioGlobal(cfg.radio ?? '3');
+        if (cfg.latitud && cfg.longitud) setCoordsGlobal({ latitude: cfg.latitud, longitude: cfg.longitud });
       }
       cargarSubcategorias();
     };
@@ -149,10 +163,23 @@ export default function DirectorioScreen() {
       .eq('subcategoria_id', sub.id)
       .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
-    const filtCiudad = ciudadActiva || ciudadGlobal;
+    const filtCiudad = ciudadActiva || (coordsGlobal ? null : ciudadGlobal);
     if (filtCiudad) q = q.eq('ciudad', filtCiudad);
     const { data } = await q;
-    setComercios(data ?? []);
+    let results = data ?? [];
+    if (coordsGlobal) {
+      const radio = parseFloat(radioGlobal);
+      results = results.filter(c => {
+        if (!c.latitud || !c.longitud) return true; // sin coords: incluir
+        return haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud, c.longitud) <= radio;
+      });
+      results.sort((a, b) => {
+        const dA = a.latitud && a.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud, a.longitud) : 9999;
+        const dB = b.latitud && b.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud, b.longitud) : 9999;
+        return dA - dB;
+      });
+    }
+    setComercios(results);
     setCargando(false);
     setNivel('comercios');
   };
@@ -204,15 +231,40 @@ export default function DirectorioScreen() {
     return Array.from(set).sort();
   }, [comerciosBuscadosBase]);
 
-  // Comercios filtrados por ciudad global y/o chip de ciudad
+  // Comercios filtrados por coordenadas/radio o ciudad global y/o chip de ciudad
   const comerciosBuscados = useMemo(() => {
     let base = comerciosBuscadosBase;
-    if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
+    if (coordsGlobal) {
+      const radio = parseFloat(radioGlobal);
+      base = base.filter(c => {
+        if (!c.latitud || !c.longitud) return true;
+        return haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud, c.longitud) <= radio;
+      });
+      base = [...base].sort((a, b) => {
+        const dA = a.latitud && a.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud, a.longitud) : 9999;
+        const dB = b.latitud && b.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud, b.longitud) : 9999;
+        return dA - dB;
+      });
+    } else {
+      if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
+    }
     if (!ciudadFiltro) return base;
     return base.filter(c => c.ciudad === ciudadFiltro);
-  }, [comerciosBuscadosBase, ciudadFiltro, ciudadGlobal]);
+  }, [comerciosBuscadosBase, ciudadFiltro, ciudadGlobal, coordsGlobal, radioGlobal]);
 
   const enBusqueda = busqueda.trim().length > 0;
+
+  // Mapa id → distancia en km (solo cuando hay coordsGlobal)
+  const distanciasMap = useMemo(() => {
+    if (!coordsGlobal) return new Map<string, number>();
+    const map = new Map<string, number>();
+    todosComercios.forEach(c => {
+      if (c.latitud && c.longitud) {
+        map.set(c.id, haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud, c.longitud));
+      }
+    });
+    return map;
+  }, [coordsGlobal, todosComercios]);
 
   const seleccionarSugerencia = (texto: string) => {
     setBusqueda(texto);
@@ -312,6 +364,12 @@ export default function DirectorioScreen() {
       <View style={styles.miniCardBody}>
         <Text style={[styles.miniCardNombre, { color: Colors.text }]} numberOfLines={1}>{c.nombre}</Text>
         {c.direccion ? <Text style={[styles.miniCardDir, { color: Colors.textMuted }]} numberOfLines={1}>{c.direccion}</Text> : null}
+        {distanciasMap.has(c.id) ? (
+          <View style={styles.miniCardDistRow}>
+            <Ionicons name="navigate-circle-outline" size={11} color={Colors.accent} />
+            <Text style={[styles.miniCardDist, { color: Colors.accent }]}>{formatDist(distanciasMap.get(c.id)!)}</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -543,6 +601,29 @@ export default function DirectorioScreen() {
               Buscar por ciudad, localidad o código postal
             </Text>
 
+            {/* Botón GPS */}
+            <TouchableOpacity
+              style={[styles.gpsBtn, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '44' }]}
+              onPress={async () => {
+                setBuscandoUbicacion(true);
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                  setMapCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+                  const geo = await Location.reverseGeocodeAsync(loc.coords);
+                  if (geo[0]) {
+                    const nombre = geo[0].city ?? geo[0].district ?? geo[0].subregion ?? '';
+                    if (nombre) setCiudadInputTemp(nombre);
+                  }
+                }
+                setBuscandoUbicacion(false);
+              }}>
+              <Ionicons name="navigate" size={16} color={Colors.accent} />
+              <Text style={[styles.gpsBtnText, { color: Colors.accent }]}>
+                {buscandoUbicacion ? 'Obteniendo GPS…' : 'Usar mi ubicación GPS'}
+              </Text>
+            </TouchableOpacity>
+
             {/* Input ciudad con autocomplete */}
             <View style={{ zIndex: 10 }}>
               <View style={[styles.configInput, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
@@ -654,9 +735,14 @@ export default function DirectorioScreen() {
                 const radio  = radioInputTemp;
                 setCiudadGlobal(ciudad);
                 setRadioGlobal(radio);
+                setCoordsGlobal(mapCoords);
                 setCiudadFiltro(null);
                 setModalConfigVisible(false);
-                AsyncStorage.setItem('ubicacion_config', JSON.stringify({ ciudad, radio }));
+                AsyncStorage.setItem('ubicacion_config', JSON.stringify({
+                  ciudad, radio,
+                  latitud: mapCoords?.latitude ?? null,
+                  longitud: mapCoords?.longitude ?? null,
+                }));
                 setNivel('subcategorias');
               }}>
               <Text style={styles.configApplyText}>Aplicar</Text>
@@ -979,8 +1065,10 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   miniCardImg: { width: '100%', height: 160 },
   miniCardBody: { padding: 8 },
-  miniCardNombre: { fontSize: FontSize.sm, fontWeight: '700' },
-  miniCardDir:    { fontSize: 11, marginTop: 2 },
+  miniCardNombre:  { fontSize: FontSize.sm, fontWeight: '700' },
+  miniCardDir:     { fontSize: 11, marginTop: 2 },
+  miniCardDistRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  miniCardDist:    { fontSize: 10, fontWeight: '700' },
   badge: {
     position: 'absolute', top: 6, right: 6,
     borderRadius: 20, padding: 3,
@@ -1168,6 +1256,8 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   configApplyText:    { color: '#fff', fontSize: FontSize.md, fontWeight: '700' },
   ciudadBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, borderWidth: 1 },
   ciudadBtnText: { fontSize: FontSize.sm, fontWeight: '700' },
+  gpsBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+  gpsBtnText: { fontSize: FontSize.sm, fontWeight: '700' },
   configSugBox:       { borderRadius: Radius.md, borderWidth: 1, marginTop: -8, marginBottom: 10, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6 },
   configSugItem:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   configSugText:      { fontSize: FontSize.sm, fontWeight: '600' },
