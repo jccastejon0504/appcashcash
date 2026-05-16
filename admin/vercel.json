@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/t/:slug", "destination": "/t.html" }
+    { "source": "/t/:slug", "destination": "/api/t/:slug" }
   ],
   "headers": [
     {
