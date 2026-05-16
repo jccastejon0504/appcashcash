@@ -230,11 +230,12 @@ export default function SociosScreen() {
   useFocusEffect(useCallback(() => {
     const cargarMisSocios = async () => {
       // ── Leer estado local persistido ────────────────────────────────────
-      const [enviada, telefonoRaw, solicitudId, rechazadaRaw] = await Promise.all([
+      const [enviada, telefonoRaw, solicitudId, rechazadaRaw, idsRaw] = await Promise.all([
         AsyncStorage.getItem('solicitud_socio_enviada'),
         AsyncStorage.getItem('socio_telefono'),
         AsyncStorage.getItem('solicitud_id'),
         AsyncStorage.getItem('solicitud_rechazada'),
+        AsyncStorage.getItem('mis_socios_ids'),
       ]);
 
       // Mostrar estado local mientras carga DB (evita parpadeo)
@@ -248,56 +249,72 @@ export default function SociosScreen() {
         setYaEnvioSolicitud(true);
       }
 
-      if (!telefonoRaw) return;
-      const telefono = telefonoRaw;
-      const tel = telefonoRaw.replace(/\D/g, '');
+      const telefono = telefonoRaw ?? '';
+      const tel = telefono.replace(/\D/g, '');
+      const idsGuardados: string[] = idsRaw ? JSON.parse(idsRaw) : [];
+
+      // Si no hay teléfono ni IDs guardados, no hay nada que buscar
+      if (!telefono && idsGuardados.length === 0) return;
 
       type MiSocio = { id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; telefono?: string | null; whatsapp?: string | null; slug?: string | null };
 
-      // Cargar IDs guardados previamente y el límite en paralelo
-      const idsRaw = await AsyncStorage.getItem('mis_socios_ids');
-      const idsGuardados: string[] = idsRaw ? JSON.parse(idsRaw) : [];
-
-      // Buscar por teléfono actual + por IDs guardados + límite, todo en paralelo
+      // Construir consultas en paralelo
       const promesas: Promise<any>[] = [
-        supabase
-          .from('socios_comerciales')
-          .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp, slug')
-          .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`) as unknown as Promise<any>,
+        // Consulta por teléfono (solo si tenemos teléfono)
+        tel
+          ? supabase.from('socios_comerciales')
+              .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp, slug')
+              .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`) as unknown as Promise<any>
+          : Promise.resolve({ data: [], error: null }),
         supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single() as unknown as Promise<any>,
       ];
       if (idsGuardados.length > 0) {
         promesas.push(
-          supabase
-            .from('socios_comerciales')
+          supabase.from('socios_comerciales')
             .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp, slug')
             .in('id', idsGuardados) as unknown as Promise<any>
         );
       }
 
-      const [{ data: porTel }, { data: cfgLimite }, porIdRes] = await Promise.all(promesas);
+      const [porTelRes, { data: cfgLimite }, porIdRes] = await Promise.all(promesas);
       setLimiteTiendas(cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100);
 
-      // Unir resultados por teléfono e IDs, sin duplicados
+      // Detectar si las consultas fallaron por red (error real, no "sin resultados")
+      const porTelOk = !porTelRes.error;
+      const porIdOk  = idsGuardados.length === 0 || !porIdRes?.error;
+      const consultasOk = porTelOk && porIdOk;
+
+      // Unir resultados sin duplicados
       const mapaResultados = new Map<string, MiSocio>();
-      for (const s of [...(porTel ?? []), ...(porIdRes?.data ?? [])]) {
+      for (const s of [...(porTelRes.data ?? []), ...(porIdRes?.data ?? [])]) {
         mapaResultados.set(s.id, s as MiSocio);
       }
       const resultado = Array.from(mapaResultados.values())
         .sort((a, b) => a.nombre?.localeCompare(b.nombre ?? '') ?? 0);
 
-      // Guardar todos los IDs encontrados (acumulativo, nunca borra)
+      // Si no había teléfono pero encontramos tienda por ID, recuperar teléfono
+      if (resultado.length > 0 && !telefonoRaw) {
+        const telRecuperado = resultado[0].telefono || resultado[0].whatsapp;
+        if (telRecuperado) await AsyncStorage.setItem('socio_telefono', telRecuperado);
+      }
+
+      // Guardar IDs encontrados (acumulativo, nunca borra IDs que ya teníamos)
       const todosIds = Array.from(new Set([...idsGuardados, ...resultado.map(s => s.id)]));
       await AsyncStorage.setItem('mis_socios_ids', JSON.stringify(todosIds));
 
       setMisSocios(resultado);
 
       if (resultado.length === 0) {
-        // ── Verificar estado de solicitud en DB ──────────────────────────
+        // Si las consultas fallaron por red → mantener estado actual, no resetear
+        if (!consultasOk) return;
+
+        // Consultas OK pero sin tiendas → verificar estado de solicitud
+        if (!telefono) return;
+
         let solData: any[] | null = null;
         let errSol: any = null;
 
-        // 1) Buscar por ID directo — sin filtro de estado para que RLS no bloquee rechazados
+        // 1) Buscar por ID directo
         if (solicitudId) {
           const res = await (supabase
             .from('solicitudes')
@@ -308,7 +325,7 @@ export default function SociosScreen() {
           errSol  = res.error;
         }
 
-        // 2) Fallback por teléfono — también si la consulta por ID falló (RLS/red)
+        // 2) Fallback por teléfono
         if ((!solData || solData.length === 0) && telefono) {
           const filtrosTel: string[] = [];
           if (tel) filtrosTel.push(`telefono.ilike.%${tel}%`, `whatsapp.ilike.%${tel}%`);
@@ -319,12 +336,8 @@ export default function SociosScreen() {
             .or(filtrosTel.join(','))
             .order('created_at', { ascending: false })
             .limit(1) as unknown as Promise<any>);
-          if (!res.error) {
-            solData = res.data;
-            errSol  = null;
-          } else if (!solData) {
-            errSol = res.error;
-          }
+          if (!res.error) { solData = res.data; errSol = null; }
+          else if (!solData) { errSol = res.error; }
         }
 
         if (!errSol && solData && solData.length > 0) {
@@ -334,7 +347,6 @@ export default function SociosScreen() {
             const info = { motivo };
             setSolicitudRechazada(info);
             setYaEnvioSolicitud(false);
-            // Persistir rechazo localmente: sobrevive aunque el admin borre el registro de DB
             await AsyncStorage.setItem('solicitud_rechazada', JSON.stringify(info));
             await AsyncStorage.removeItem('solicitud_socio_enviada');
           } else if (sol.estado === 'pendiente') {
@@ -343,26 +355,29 @@ export default function SociosScreen() {
             await AsyncStorage.removeItem('solicitud_rechazada');
             await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
           } else {
-            // estado = 'aprobado' u otro: la tienda ya no existe (admin la eliminó)
-            // → resetear para permitir re-registrar
-            setSolicitudRechazada(null);
-            setYaEnvioSolicitud(false);
-            await AsyncStorage.removeItem('solicitud_rechazada');
-            await AsyncStorage.removeItem('solicitud_socio_enviada');
-            await AsyncStorage.removeItem('solicitud_id');
+            // 'aprobado' pero sin tienda encontrada.
+            // Solo resetear si NO hay IDs guardados (consulta de IDs confirmó que no existe).
+            // Si hay IDs guardados, podría ser un fallo de red — no resetear.
+            if (idsGuardados.length === 0) {
+              setSolicitudRechazada(null);
+              setYaEnvioSolicitud(false);
+              await AsyncStorage.removeItem('solicitud_rechazada');
+              await AsyncStorage.removeItem('solicitud_socio_enviada');
+              await AsyncStorage.removeItem('solicitud_id');
+            }
           }
         } else if (!errSol) {
-          // Query OK pero no hay solicitud en DB
+          // Solicitud no existe en DB
           if (rechazadaRaw) {
-            // Rechazo persistido localmente (admin borró el registro) →
-            // mantener el aviso hasta que el usuario pulse "Intentar de nuevo"
-          } else {
-            // Nunca hubo solicitud → mostrar formulario de registro
+            // Mantener aviso de rechazo local hasta que el usuario pulse "Intentar de nuevo"
+          } else if (idsGuardados.length === 0) {
+            // Sin tienda y sin solicitud → mostrar formulario de registro
             setSolicitudRechazada(null);
             setYaEnvioSolicitud(false);
             await AsyncStorage.removeItem('solicitud_socio_enviada');
             await AsyncStorage.removeItem('solicitud_id');
           }
+          // Si hay IDs guardados pero no se encontró la tienda → fallo de red, mantener estado
         }
         // errSol != null: fallo de red — mantener estado local sin cambios
       } else {
