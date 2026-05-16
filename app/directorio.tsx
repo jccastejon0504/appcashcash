@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl,
-  Image, TextInput, Keyboard, Modal, Dimensions, Alert,
+  Image, TextInput, Keyboard, Modal, Dimensions, Alert, Share,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -15,6 +15,12 @@ import { registrarEvento } from '@/services/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
+
+function urlTienda(s: { id: string; slug?: string | null }): string {
+  return s.slug
+    ? `https://appcashcash.com/t/${s.slug}`
+    : `https://appcashcash.com/admin/tienda.html?id=${s.id}`;
+}
 
 type Nivel = 'subcategorias' | 'comercios';
 
@@ -463,6 +469,12 @@ export default function DirectorioScreen() {
                     <Text style={styles.modalContactBtnGrandeText}>Web</Text>
                   </TouchableOpacity>
                 ) : null}
+                <TouchableOpacity
+                  style={[styles.modalContactBtnGrande, { backgroundColor: Colors.border }]}
+                  onPress={() => Share.share({ message: `Mira la tienda *${c.nombre}* en CashCach:\n${urlTienda(c)}`, url: urlTienda(c) })}>
+                  <Ionicons name="share-outline" size={20} color={Colors.text} />
+                  <Text style={[styles.modalContactBtnGrandeText, { color: Colors.text }]}>Compartir</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Dirección */}

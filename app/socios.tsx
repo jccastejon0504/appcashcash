@@ -16,6 +16,12 @@ import { supabase, SocioComercial } from '@/services/supabase';
 import { registrarEvento } from '@/services/analytics';
 import * as Location from 'expo-location';
 
+function urlTienda(s: { id: string; slug?: string | null }): string {
+  return s.slug
+    ? `https://appcashcash.com/t/${s.slug}`
+    : urlTienda(s);
+}
+
 export default function SociosScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
@@ -26,7 +32,7 @@ export default function SociosScreen() {
   const [refrescando,      setRefrescando]      = useState(false);
   const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
   const [solicitudRechazada, setSolicitudRechazada] = useState<{ motivo: string | null } | null>(null);
-  const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null }[]>([]);
+  const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; slug?: string | null }[]>([]);
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
   const [submenu,           setSubmenu]           = useState(false);
   const [modalMisTiendas,   setModalMisTiendas]   = useState(false);
@@ -121,7 +127,7 @@ export default function SociosScreen() {
     setError(null);
     const { data, error: err } = await supabase
       .from('socios_comerciales')
-      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud')
+      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud,slug')
       .or('activo.is.null,activo.eq.true')
       .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
@@ -245,7 +251,7 @@ export default function SociosScreen() {
       const telefono = telefonoRaw;
       const tel = telefonoRaw.replace(/\D/g, '');
 
-      type MiSocio = { id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; telefono?: string | null; whatsapp?: string | null };
+      type MiSocio = { id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; telefono?: string | null; whatsapp?: string | null; slug?: string | null };
 
       // Cargar IDs guardados previamente y el límite en paralelo
       const idsRaw = await AsyncStorage.getItem('mis_socios_ids');
@@ -255,7 +261,7 @@ export default function SociosScreen() {
       const promesas: Promise<any>[] = [
         supabase
           .from('socios_comerciales')
-          .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
+          .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp, slug')
           .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`) as unknown as Promise<any>,
         supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single() as unknown as Promise<any>,
       ];
@@ -263,7 +269,7 @@ export default function SociosScreen() {
         promesas.push(
           supabase
             .from('socios_comerciales')
-            .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp')
+            .select('id, nombre, imagen, fecha_vencimiento, telefono, whatsapp, slug')
             .in('id', idsGuardados) as unknown as Promise<any>
         );
       }
@@ -514,8 +520,8 @@ export default function SociosScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <TouchableOpacity
                 onPress={() => Share.share({
-                  message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${s.id}`,
-                  url: `https://appcashcash.com/admin/tienda.html?id=${s.id}`,
+                  message: `Mira la tienda *${s.nombre}* en CashCach:\n${urlTienda(s)}`,
+                  url: urlTienda(s),
                 })}
                 style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: Colors.border + '44' }}
               >
@@ -830,8 +836,8 @@ export default function SociosScreen() {
                 <TouchableOpacity
                   style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
                   onPress={() => Share.share({
-                    message: `Mira la tienda *${socioModal?.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${socioModal?.id}`,
-                    url: `https://appcashcash.com/admin/tienda.html?id=${socioModal?.id}`,
+                    message: `Mira la tienda *${socioModal?.nombre}* en CashCach:\n${socioModal ? urlTienda(socioModal) : ''}`,
+                    url: socioModal ? urlTienda(socioModal) : '',
                   })}>
                   <Ionicons name="share-outline" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
@@ -1249,8 +1255,8 @@ export default function SociosScreen() {
                     <View style={{ flexDirection: 'row', gap: 6, marginRight: 12 }}>
                       <TouchableOpacity
                         onPress={() => Share.share({
-                          message: `Mira la tienda *${s.nombre}* en CashCach:\nhttps://appcashcash.com/admin/tienda.html?id=${s.id}`,
-                          url: `https://appcashcash.com/admin/tienda.html?id=${s.id}`,
+                          message: `Mira la tienda *${s.nombre}* en CashCach:\n${urlTienda(s)}`,
+                          url: urlTienda(s),
                         })}
                         style={{ backgroundColor: Colors.accent + '18', paddingHorizontal: 12, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' }}>
                         <Ionicons name="share-outline" size={16} color={Colors.accent} />

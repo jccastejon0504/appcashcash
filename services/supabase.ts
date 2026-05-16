@@ -52,4 +52,5 @@ export type SocioComercial = {
   descripcion: string | null;
   latitud: number | null;
   longitud: number | null;
+  slug: string | null;
 };

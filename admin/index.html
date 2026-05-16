@@ -1412,6 +1412,28 @@
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // ── SLUG ────────────────────────────────────────────────────
+  function slugify(nombre) {
+    return nombre.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+  async function generarSlugUnico(nombre, idExcluir) {
+    const base = slugify(nombre);
+    let candidate = base;
+    let counter = 2;
+    while (true) {
+      let q = db.from('socios_comerciales').select('id').eq('slug', candidate);
+      if (idExcluir) q = q.neq('id', idExcluir);
+      const { data } = await q;
+      if (!data || data.length === 0) return candidate;
+      candidate = base + '-' + counter++;
+    }
+  }
+
   // ── AUTH GUARD ──────────────────────────────────────────
   (async () => {
     const { data } = await db.auth.getSession();
@@ -2294,6 +2316,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       if (msg) { msg.textContent = '✓ Actualizado en Socios Activos.'; msg.style.color = 'var(--green)'; }
     } else {
       // Crear nuevo registro
+      const slugNuevo = await generarSlugUnico(sol.nombre, null);
       const { data: nuevo, error } = await db.from('socios_comerciales').insert({
         nombre: sol.nombre, telefono: sol.telefono, whatsapp: sol.whatsapp,
         web: sol.redes, ciudad: sol.ciudad, direccion: sol.direccion,
@@ -2305,6 +2328,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         fecha_vencimiento: sol.fecha_vencimiento, subcategoria_id: sol.subcategoria_id,
         latitud:  sol.latitud  ?? null,
         longitud: sol.longitud ?? null,
+        slug: slugNuevo,
         activo: true,
       }).select('id').single();
       if (error) { if (msg) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; } return; }

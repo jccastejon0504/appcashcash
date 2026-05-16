@@ -36,7 +36,32 @@ type Socio = {
   plan: Plan | null;
   nombre_bloqueado?: boolean;
   telefono_bloqueado?: boolean;
+  slug?: string | null;
 };
+
+function slugify(nombre: string): string {
+  return nombre.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+async function generarSlugUnico(nombre: string, idExcluir: string): Promise<string> {
+  const base = slugify(nombre);
+  let candidate = base;
+  let counter = 2;
+  while (true) {
+    const { data } = await supabase
+      .from('socios_comerciales')
+      .select('id')
+      .eq('slug', candidate)
+      .neq('id', idExcluir);
+    if (!data || data.length === 0) return candidate;
+    candidate = `${base}-${counter++}`;
+  }
+}
 
 export default function EditarMiNegocioScreen() {
   const { colors: Colors } = useTheme();
@@ -481,6 +506,12 @@ export default function EditarMiNegocioScreen() {
 
     const urlPortada = await subirImagen(portada, 'portada');
 
+    // Generar slug si no tiene o el nombre cambió
+    let slugFinal = socio?.slug ?? null;
+    if (!slugFinal || slugify(nombre.trim()) !== slugify(socio?.nombre ?? '')) {
+      slugFinal = await generarSlugUnico(nombre.trim(), resolvedId ?? '');
+    }
+
     // Guardar datos principales del socio
     const { error } = await supabase.from('socios_comerciales').update({
       nombre:          nombre.trim(),
@@ -492,6 +523,7 @@ export default function EditarMiNegocioScreen() {
       descripcion:     descripcion.trim() || null,
       subcategoria_id: subcatSelId ?? null,
       imagen:          urlPortada,
+      slug:            slugFinal,
     }).eq('id', resolvedId);
 
     if (error) { setGuardando(false); Alert.alert('Error', error.message); return; }
