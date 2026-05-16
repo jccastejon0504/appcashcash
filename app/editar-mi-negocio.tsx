@@ -37,6 +37,7 @@ type Socio = {
   nombre_bloqueado?: boolean;
   telefono_bloqueado?: boolean;
   slug?: string | null;
+  galeria_extra?: number;
 };
 
 function slugify(nombre: string): string {
@@ -125,6 +126,17 @@ export default function EditarMiNegocioScreen() {
   const [guardandoCat,    setGuardandoCat]    = useState(false);
   const [tasaBCV,         setTasaBCV]         = useState<number | null>(null);
   const [galeriaLoadedAt, setGaleriaLoadedAt] = useState(0);
+
+  // Galería extra
+  const [galeriaExtra,        setGaleriaExtra]        = useState(0);
+  const [modalGaleriaExtra,   setModalGaleriaExtra]   = useState(false);
+  const [paquetesGal,         setPaquetesGal]         = useState(1);
+  const [precioGalConfig,     setPrecioGalConfig]     = useState(5);
+  const [slotsGalConfig,      setSlotsGalConfig]      = useState(3);
+  const [metodoGal,           setMetodoGal]           = useState('');
+  const [referenciaGal,       setReferenciaGal]       = useState('');
+  const [comprobanteGal,      setComprobanteGal]      = useState<string|null>(null);
+  const [enviandoGal,         setEnviandoGal]         = useState(false);
 
   // GPS
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
@@ -236,6 +248,7 @@ export default function EditarMiNegocioScreen() {
         setDireccion(data.direccion ?? '');
         setDescripcion(data.descripcion ?? '');
         setPortada(data.imagen ?? '');
+        setGaleriaExtra(data.galeria_extra ?? 0);
         // Preseleccionar ciudad guardada
         if (data.ciudad && ciu) {
           const ciudadMatch = (ciu as Ciudad[]).find(c => c.nombre.toLowerCase() === (data.ciudad ?? '').toLowerCase());
@@ -285,6 +298,16 @@ export default function EditarMiNegocioScreen() {
         if (!isNaN(t) && t > 0) setTasaBCV(t);
       }).catch(() => {});
 
+    supabase.from('config_app').select('clave,valor')
+      .in('clave', ['precio_paquete_galeria', 'slots_paquete_galeria'])
+      .then(({ data }) => {
+        if (!data) return;
+        data.forEach((r: any) => {
+          if (r.clave === 'precio_paquete_galeria') setPrecioGalConfig(parseFloat(r.valor) || 5);
+          if (r.clave === 'slots_paquete_galeria')  setSlotsGalConfig(parseInt(r.valor)    || 3);
+        });
+      });
+
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
       const ORDEN = ['movil','móvil','pago m','transfer','zelle','usdt','crypto'];
@@ -298,7 +321,7 @@ export default function EditarMiNegocioScreen() {
       const mapa: Record<string,string[]> = {};
       data.forEach((m: any) => { mapa[m.id] = m.datos; });
       setInfoPago(mapa);
-      if (ordenados[0]) setMetodoRenov(ordenados[0].id);
+      if (ordenados[0]) { setMetodoRenov(ordenados[0].id); setMetodoGal(ordenados[0].id); }
     });
 
     supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
@@ -400,6 +423,35 @@ export default function EditarMiNegocioScreen() {
     setRenovEnviada(true);
   };
 
+  const enviarSolicitudGaleriaExtra = async () => {
+    if (!referenciaGal.trim()) { mostrarModal('info', 'Campo requerido', 'Ingresa el número de referencia.'); return; }
+    if (!comprobanteGal)       { mostrarModal('info', 'Campo requerido', 'Adjunta la foto del comprobante.'); return; }
+    setEnviandoGal(true);
+    const urlComprobante = await subirImagen(comprobanteGal, 'comprobante_gal');
+    const slotsTotal = paquetesGal * slotsGalConfig;
+    const montoTotal = paquetesGal * precioGalConfig;
+    const { error } = await supabase.from('solicitudes').insert({
+      nombre:      socio?.nombre ?? '',
+      telefono:    telefono.trim(),
+      whatsapp:    whatsapp.trim(),
+      plan:        'galeria_extra',
+      tipo:        'galeria_extra',
+      metodo_pago: metodoGal,
+      referencia:  referenciaGal.trim(),
+      monto:       montoTotal,
+      comprobante: urlComprobante,
+      descripcion: `${paquetesGal} paquete${paquetesGal > 1 ? 's' : ''} · ${slotsTotal} slots extra`,
+      socio_id:    resolvedId,
+    });
+    setEnviandoGal(false);
+    if (error) { mostrarModal('error', 'Error', error.message); return; }
+    setModalGaleriaExtra(false);
+    setReferenciaGal('');
+    setComprobanteGal(null);
+    setPaquetesGal(1);
+    mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${slotsTotal} espacios extra fue enviada. El equipo la revisará en breve.`);
+  };
+
   // Refrescar fecha_vencimiento y plan cada vez que la pantalla recibe el foco
   useFocusEffect(useCallback(() => {
     if (!resolvedId) return;
@@ -487,7 +539,7 @@ export default function EditarMiNegocioScreen() {
   };
 
   const agregarItemGaleria = () => {
-    const galeriaSlots = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
+    const galeriaSlots = (PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6) + galeriaExtra;
     if (galeriaItems.length >= galeriaSlots) return;
     pickImage(uri => {
       setGaleriaItems(prev => [...prev, { imagen: uri, imagen2: '', imagen3: '', titulo: '', precio: '', precio_bs: '', descripcion: '', orden: prev.length }]);
@@ -746,13 +798,15 @@ export default function EditarMiNegocioScreen() {
 
         {/* Catálogo de productos / galería */}
         {(() => {
-          const slots = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
-          if (slots === 0) return null;
+          const slotsBase  = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
+          const slots      = slotsBase + galeriaExtra;
+          if (slotsBase === 0) return null;
           return (
             <View style={{ gap: Spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={[styles.seccion, { color: Colors.textMuted }]}>
-                  Catálogo de productos ({galeriaItems.length}/{slots})
+                  Catálogo de productos ({galeriaItems.length}/{slots}
+                  {galeriaExtra > 0 ? ` · +${galeriaExtra} extra` : ''})
                 </Text>
               </View>
 
@@ -847,6 +901,19 @@ export default function EditarMiNegocioScreen() {
                   activeOpacity={0.85}>
                   <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
                   <Text style={[styles.btnAgregarText, { color: Colors.accent }]}>Agregar al catálogo</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Botón comprar espacios extra */}
+              {galeriaItems.length >= slots && (
+                <TouchableOpacity
+                  style={[styles.btnAgregar, { borderColor: '#f59e0b', borderStyle: 'solid' }]}
+                  onPress={() => setModalGaleriaExtra(true)}
+                  activeOpacity={0.85}>
+                  <Ionicons name="add-circle" size={18} color="#f59e0b" />
+                  <Text style={[styles.btnAgregarText, { color: '#f59e0b' }]}>
+                    Comprar más espacios (+{slotsGalConfig} por ${precioGalConfig})
+                  </Text>
                 </TouchableOpacity>
               )}
 
@@ -1233,6 +1300,130 @@ export default function EditarMiNegocioScreen() {
                 {enviandoRenov
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={styles.btnGuardarText}>Enviar renovación</Text>
+                }
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      {/* Modal galería extra */}
+      <Modal visible={modalGaleriaExtra} animationType="slide" transparent onRequestClose={() => setModalGaleriaExtra(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: Colors.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: Colors.border }]}>
+              <Text style={[styles.modalTitulo, { color: Colors.text }]}>Espacios de galería extra</Text>
+              <TouchableOpacity onPress={() => setModalGaleriaExtra(false)}>
+                <Ionicons name="close" size={22} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} keyboardShouldPersistTaps="handled">
+
+              {/* Info */}
+              <View style={{ backgroundColor: '#fef9c3', borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: '#fde68a' }}>
+                <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: '#92400e' }}>
+                  Cada paquete agrega {slotsGalConfig} espacios a tu catálogo por ${precioGalConfig}
+                </Text>
+              </View>
+
+              {/* Selector de paquetes */}
+              <Text style={[styles.label, { color: Colors.textMuted }]}>Cantidad de paquetes</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[1,2,3,4,5].map(n => (
+                  <TouchableOpacity key={n} onPress={() => setPaquetesGal(n)}
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center',
+                      borderColor: paquetesGal === n ? '#f59e0b' : Colors.border,
+                      backgroundColor: paquetesGal === n ? '#fef9c3' : Colors.card }}>
+                    <Text style={{ fontWeight: '800', fontSize: FontSize.md, color: paquetesGal === n ? '#92400e' : Colors.text }}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Resumen */}
+              <View style={{ backgroundColor: Colors.background, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Espacios a agregar</Text>
+                  <Text style={{ color: Colors.text, fontWeight: '800', fontSize: FontSize.sm }}>+{paquetesGal * slotsGalConfig} slots</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Total a pagar</Text>
+                  <Text style={{ color: '#f59e0b', fontWeight: '900', fontSize: FontSize.lg }}>${paquetesGal * precioGalConfig}</Text>
+                </View>
+                {tasaBCV && (
+                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>
+                    Bs {(paquetesGal * precioGalConfig * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </Text>
+                )}
+              </View>
+
+              {/* Método de pago */}
+              <Text style={[styles.label, { color: Colors.textMuted }]}>Método de pago</Text>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {metodosPago.map(m => (
+                  <TouchableOpacity key={m.id} onPress={() => setMetodoGal(m.id)}
+                    style={[styles.metodoBtn, { borderColor: metodoGal === m.id ? Colors.accent : Colors.border,
+                      backgroundColor: metodoGal === m.id ? Colors.accent + '12' : Colors.card, flex: 1 }]}>
+                    <Text style={[styles.metodoBtnText, { color: metodoGal === m.id ? Colors.accent : Colors.textMuted }]}>{m.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Datos de pago */}
+              <View style={[styles.infoPagoBox, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
+                <Text style={[styles.label, { color: Colors.text, marginBottom: 6 }]}>Datos para el pago:</Text>
+                {(infoPago[metodoGal] ?? []).map((l, i) => {
+                  const valor = l.includes(': ') ? l.split(': ').slice(1).join(': ') : l;
+                  const key = `gal-${metodoGal}-${i}`;
+                  return (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <Text style={[styles.infoPagoLinea, { color: Colors.textMuted, flex: 1 }]}>{l}</Text>
+                      <TouchableOpacity
+                        style={[styles.copiarBtn, { backgroundColor: copiado === key ? Colors.success + '22' : Colors.border }]}
+                        onPress={async () => {
+                          const Clipboard = await import('expo-clipboard');
+                          await Clipboard.setStringAsync(valor);
+                          setCopiado(key);
+                          setTimeout(() => setCopiado(null), 2000);
+                        }}>
+                        <Ionicons name={copiado === key ? 'checkmark' : 'copy-outline'} size={13} color={copiado === key ? Colors.success : Colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Referencia */}
+              <View style={{ gap: 5 }}>
+                <Text style={[styles.label, { color: Colors.textMuted }]}>Número de referencia *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text }]}
+                  value={referenciaGal} onChangeText={setReferenciaGal}
+                  placeholder="Ej: 12345678" placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Comprobante */}
+              <View style={{ gap: 5 }}>
+                <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante *</Text>
+                <TouchableOpacity
+                  style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.background, height: 110 }]}
+                  onPress={() => pickImage(setComprobanteGal)} activeOpacity={0.8}>
+                  {comprobanteGal ? (
+                    <Image source={{ uri: comprobanteGal }} style={styles.portadaImg} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.portadaPlaceholder}>
+                      <Ionicons name="receipt-outline" size={24} color={Colors.textMuted} />
+                      <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs }}>Toca para adjuntar</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btnGuardar, { backgroundColor: enviandoGal ? Colors.border : '#f59e0b' }]}
+                onPress={enviarSolicitudGaleriaExtra} disabled={enviandoGal}>
+                {enviandoGal
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnGuardarText}>Enviar solicitud</Text>
                 }
               </TouchableOpacity>
             </ScrollView>

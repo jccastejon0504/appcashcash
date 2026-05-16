@@ -262,6 +262,22 @@
       .historial-row { grid-template-columns: 1fr 1fr; gap: 4px; }
     }
 
+    .badge-pendiente { font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:#fef9c3;color:#92400e; }
+
+    .gal-sol-row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1fr 1.5fr 1fr 2fr;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .gal-sol-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+    @media (max-width: 900px) { .gal-sol-row { grid-template-columns: 1fr 1fr; } }
+
     .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
     .version-tag { font-size: 11px; color: #bbb; margin-top: 4px; }
 
@@ -311,6 +327,55 @@
 
   <div class="planes-grid">
     <!-- Las 4 tarjetas se generan dinámicamente en JS -->
+  </div>
+
+  <!-- Galería Extra -->
+  <div class="historial-section" style="margin-top:40px">
+    <h3>📦 Paquetes de Galería Extra</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:16px">Permite a los clientes comprar espacios adicionales de catálogo más allá de su plan.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">
+      <!-- Config card -->
+      <div class="plan-card">
+        <div class="plan-header"><h2>Configuración</h2></div>
+        <div class="preview-box" id="gal-preview-box">
+          <p class="preview-sin-oferta" id="gal-preview">+3 espacios por $5 por paquete</p>
+        </div>
+        <form style="padding:18px 22px 22px;display:flex;flex-direction:column;gap:14px" onsubmit="event.preventDefault();guardarConfigGal()">
+          <div class="form-row">
+            <div><label>Precio por paquete ($)</label><input type="number" id="gal-precio" value="5" step="0.01" /></div>
+            <div><label>Slots por paquete</label><input type="number" id="gal-slots" value="3" min="1" /></div>
+          </div>
+          <div class="toggle-row">
+            <span>Compra activa para clientes</span>
+            <label class="toggle"><input type="checkbox" id="gal-activo" checked /><span class="slider"></span></label>
+          </div>
+          <button type="submit" class="btn-guardar" id="gal-btn-cfg">Guardar configuración</button>
+        </form>
+      </div>
+
+      <!-- Stats card -->
+      <div class="plan-card" style="padding:22px">
+        <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;color:#6c3fc5">Cómo funciona</h3>
+        <ul style="font-size:13px;color:#555;line-height:1.9;padding-left:18px">
+          <li>El cliente llega al límite de su catálogo</li>
+          <li>Aparece el botón <b>"Comprar más espacios"</b> en la app</li>
+          <li>El cliente elige paquetes y paga</li>
+          <li>Llega la solicitud aquí como <b>Pendiente</b></li>
+          <li>Al aprobar, los slots se suman automáticamente</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Solicitudes pendientes -->
+    <h3 style="font-size:14px;font-weight:800;color:#555;margin-bottom:12px">Solicitudes de galería extra</h3>
+    <div id="gal-solicitudes-empty" style="color:#aaa;font-size:13px;padding:20px 0">Sin solicitudes aún.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="gal-sol-row" style="background:#f8f5ff;font-weight:700;color:#6c3fc5;font-size:12px">
+        <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Estado</span><span>Acciones</span>
+      </div>
+      <div id="gal-solicitudes-body"></div>
+    </div>
   </div>
 
   <!-- Historial -->
@@ -664,6 +729,140 @@
   }
 
   cargar();
+
+  // ═══════════════════════════════════════════════════════
+  // MÓDULO: GALERÍA EXTRA
+  // ═══════════════════════════════════════════════════════
+
+  let solicitudesGaleriaData = [];
+
+  async function cargarGaleriaExtra() {
+    // Cargar config
+    const { data: cfg } = await db.from('config_app').select('clave,valor')
+      .in('clave', ['precio_paquete_galeria','slots_paquete_galeria','galeria_extra_activo']);
+    const cfgMap = Object.fromEntries((cfg ?? []).map(r => [r.clave, r.valor]));
+    document.getElementById('gal-precio').value  = cfgMap['precio_paquete_galeria'] ?? '5';
+    document.getElementById('gal-slots').value   = cfgMap['slots_paquete_galeria']  ?? '3';
+    document.getElementById('gal-activo').checked = cfgMap['galeria_extra_activo'] === 'true';
+    actualizarPreviewGal();
+
+    // Cargar solicitudes pendientes
+    const { data: sols } = await db.from('solicitudes')
+      .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id')
+      .eq('tipo','galeria_extra')
+      .order('created_at', { ascending: false });
+    solicitudesGaleriaData = sols ?? [];
+    renderSolicitudesGaleria();
+  }
+
+  function actualizarPreviewGal() {
+    const precio = parseFloat(document.getElementById('gal-precio').value) || 5;
+    const slots  = parseInt(document.getElementById('gal-slots').value)    || 3;
+    document.getElementById('gal-preview').textContent = `+${slots} espacios por $${precio} por paquete`;
+  }
+  document.getElementById('gal-precio').addEventListener('input', actualizarPreviewGal);
+  document.getElementById('gal-slots').addEventListener('input',  actualizarPreviewGal);
+
+  async function guardarConfigGal() {
+    const btn = document.getElementById('gal-btn-cfg');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    const precio = document.getElementById('gal-precio').value;
+    const slots  = document.getElementById('gal-slots').value;
+    const activo = document.getElementById('gal-activo').checked;
+
+    const claves = [
+      { clave: 'precio_paquete_galeria',  valor: precio },
+      { clave: 'slots_paquete_galeria',   valor: slots  },
+      { clave: 'galeria_extra_activo',    valor: String(activo) },
+    ];
+    for (const { clave, valor } of claves) {
+      const { data: ex } = await db.from('config_app').select('id').eq('clave', clave).maybeSingle();
+      if (ex) await db.from('config_app').update({ valor }).eq('clave', clave);
+      else    await db.from('config_app').insert({ clave, valor });
+    }
+    btn.disabled = false; btn.textContent = 'Guardar configuración';
+    mostrarToast('Configuración guardada.', 'ok');
+    actualizarPreviewGal();
+  }
+
+  function renderSolicitudesGaleria() {
+    const tbody = document.getElementById('gal-solicitudes-body');
+    const empty = document.getElementById('gal-solicitudes-empty');
+    tbody.innerHTML = '';
+    if (!solicitudesGaleriaData.length) {
+      empty.style.display = 'block'; return;
+    }
+    empty.style.display = 'none';
+    solicitudesGaleriaData.forEach(sol => {
+      const row = document.createElement('div');
+      row.className = 'gal-sol-row';
+      row.innerHTML = `
+        <div>
+          <b>${sol.nombre}</b><br>
+          <span style="font-size:12px;color:#888">${sol.telefono || sol.whatsapp || ''}</span>
+        </div>
+        <div>${sol.descripcion ?? '—'}</div>
+        <div><b>$${Number(sol.monto||0).toFixed(2)}</b></div>
+        <div>${sol.referencia ?? '—'}</div>
+        <div>
+          <span class="${sol.estado === 'pendiente' ? 'badge-pendiente' : sol.estado === 'aprobado' ? 'badge-activo' : 'badge-inactivo'}">
+            ${sol.estado}
+          </span>
+        </div>
+        <div class="gal-sol-acciones" id="gal-acc-${sol.id}"></div>
+      `;
+      tbody.appendChild(row);
+
+      const acc = document.getElementById(`gal-acc-${sol.id}`);
+      if (sol.comprobante) {
+        const btnVer = document.createElement('button');
+        btnVer.className = 'btn-accion'; btnVer.textContent = 'Ver comprobante';
+        btnVer.style.cssText = 'background:#f0f4ff;color:#3b82f6;border:1.5px solid #bfdbfe';
+        btnVer.addEventListener('click', () => window.open(sol.comprobante, '_blank'));
+        acc.appendChild(btnVer);
+      }
+      if (sol.estado === 'pendiente') {
+        const btnApr = document.createElement('button');
+        btnApr.className = 'btn-accion btn-toggle-activo es-activo'; btnApr.textContent = 'Aprobar';
+        btnApr.addEventListener('click', () => aprobarGaleriaExtra(sol, btnApr));
+        const btnRej = document.createElement('button');
+        btnRej.className = 'btn-accion btn-eliminar-hist'; btnRej.textContent = 'Rechazar';
+        btnRej.addEventListener('click', () => rechazarGaleriaExtra(sol.id, btnRej));
+        acc.appendChild(btnApr); acc.appendChild(btnRej);
+      }
+    });
+  }
+
+  async function aprobarGaleriaExtra(sol, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    // Parsear slots del campo descripcion: "2 paquetes · 6 slots extra"
+    const match = (sol.descripcion ?? '').match(/(\d+)\s*slots\s*extra/i);
+    const slotsConfig = parseInt(document.getElementById('gal-slots').value) || 3;
+    const slots = match ? parseInt(match[1]) : slotsConfig;
+
+    // Sumar los slots al socio
+    const { data: socio } = await db.from('socios_comerciales').select('galeria_extra').eq('id', sol.socio_id).maybeSingle();
+    const actual = socio?.galeria_extra ?? 0;
+    const { error: errUpd } = await db.from('socios_comerciales')
+      .update({ galeria_extra: actual + slots })
+      .eq('id', sol.socio_id);
+    if (errUpd) { mostrarToast('Error actualizando tienda: ' + errUpd.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
+
+    // Marcar solicitud como aprobada
+    await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
+    mostrarToast(`✓ ${slots} espacios asignados a "${sol.nombre}".`, 'ok');
+    await cargarGaleriaExtra();
+  }
+
+  async function rechazarGaleriaExtra(id, btn) {
+    if (!confirm('¿Rechazar esta solicitud de galería extra?')) return;
+    btn.disabled = true; btn.textContent = '…';
+    await db.from('solicitudes').update({ estado: 'rechazado' }).eq('id', id);
+    mostrarToast('Solicitud rechazada.', 'ok');
+    await cargarGaleriaExtra();
+  }
+
+  cargarGaleriaExtra();
 </script>
 </body>
 </html>
