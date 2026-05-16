@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
     }
 
     const { id, nombre, descripcion, imagen } = data[0];
-    const titulo      = `${nombre} — CashCach`;
+    const titulo      = `${nombre} — appcashcash`;
     const descripOG   = descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en CashCach';
     const imagenOG    = imagen || 'https://appcashcash.com/og-default.png';
     const urlTienda   = `https://appcashcash.com/admin/tienda.html?id=${id}`;
@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
   <meta property="og:image"       content="${escHtml(imagenOG)}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:site_name"   content="CashCach">
+  <meta property="og:site_name"   content="appcashcash">
 
   <!-- Twitter Card -->
   <meta name="twitter:card"        content="summary_large_image">
