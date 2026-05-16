@@ -38,7 +38,8 @@ export default function DirectorioScreen() {
 
   const [nivel,           setNivel]           = useState<Nivel>('subcategorias');
   const [subcategorias,   setSubcategorias]   = useState<Subcategoria[]>([]);
-  const [comercios,       setComercios]       = useState<SocioComercial[]>([]);
+  const [comercios,           setComercios]           = useState<SocioComercial[]>([]);
+  const [comerciosSinCoords,  setComerciossInCoords]  = useState<SocioComercial[]>([]);
   const [todosComercios,  setTodosComercios]  = useState<SocioComercial[]>([]);
   const [subcatActiva,    setSubcatActiva]    = useState<Subcategoria | null>(null);
   const [cargando,        setCargando]        = useState(true);
@@ -169,15 +170,14 @@ export default function DirectorioScreen() {
     let results = data ?? [];
     if (coordsGlobal) {
       const radio = parseFloat(radioGlobal);
-      results = results.filter(c => {
-        if (!c.latitud || !c.longitud) return true; // sin coords: incluir
-        return haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud, c.longitud) <= radio;
-      });
-      results.sort((a, b) => {
-        const dA = a.latitud && a.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud, a.longitud) : 9999;
-        const dB = b.latitud && b.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud, b.longitud) : 9999;
-        return dA - dB;
-      });
+      const conCoords    = results.filter(c => c.latitud && c.longitud);
+      const sinCoords    = results.filter(c => !c.latitud || !c.longitud);
+      const enRango      = conCoords.filter(c => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud!, c.longitud!) <= radio);
+      enRango.sort((a, b) => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud!, a.longitud!) - haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud!, b.longitud!));
+      setComerciossInCoords(sinCoords);
+      results = enRango;
+    } else {
+      setComerciossInCoords([]);
     }
     setComercios(results);
     setCargando(false);
@@ -231,25 +231,20 @@ export default function DirectorioScreen() {
     return Array.from(set).sort();
   }, [comerciosBuscadosBase]);
 
-  // Comercios filtrados por coordenadas/radio o ciudad global y/o chip de ciudad
-  const comerciosBuscados = useMemo(() => {
+  // Comercios filtrados — verificados (con coords en rango) y sin coords
+  const { comerciosBuscados, comerciosBuscadosSinCoords } = useMemo(() => {
     let base = comerciosBuscadosBase;
+    if (ciudadFiltro) base = base.filter(c => c.ciudad === ciudadFiltro);
     if (coordsGlobal) {
-      const radio = parseFloat(radioGlobal);
-      base = base.filter(c => {
-        if (!c.latitud || !c.longitud) return true;
-        return haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud, c.longitud) <= radio;
-      });
-      base = [...base].sort((a, b) => {
-        const dA = a.latitud && a.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud, a.longitud) : 9999;
-        const dB = b.latitud && b.longitud ? haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud, b.longitud) : 9999;
-        return dA - dB;
-      });
-    } else {
-      if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
+      const radio      = parseFloat(radioGlobal);
+      const conCoords  = base.filter(c => c.latitud && c.longitud);
+      const sinCoords  = base.filter(c => !c.latitud || !c.longitud);
+      const enRango    = conCoords.filter(c => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud!, c.longitud!) <= radio);
+      enRango.sort((a, b) => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud!, a.longitud!) - haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud!, b.longitud!));
+      return { comerciosBuscados: enRango, comerciosBuscadosSinCoords: sinCoords };
     }
-    if (!ciudadFiltro) return base;
-    return base.filter(c => c.ciudad === ciudadFiltro);
+    if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
+    return { comerciosBuscados: base, comerciosBuscadosSinCoords: [] };
   }, [comerciosBuscadosBase, ciudadFiltro, ciudadGlobal, coordsGlobal, radioGlobal]);
 
   const enBusqueda = busqueda.trim().length > 0;
@@ -868,15 +863,30 @@ export default function DirectorioScreen() {
               ))}
             </ScrollView>
           )}
-          {comerciosBuscados.length === 0 ? (
+          {comerciosBuscados.length === 0 && comerciosBuscadosSinCoords.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="search-outline" size={48} color={Colors.textMuted} />
               <Text style={styles.centeredText}>Sin resultados{ciudadFiltro ? ` en ${ciudadFiltro}` : ''}</Text>
             </View>
           ) : (
-            <View style={styles.grilla}>
-              {comerciosBuscados.map(c => renderMiniCard(c))}
-            </View>
+            <>
+              {comerciosBuscados.length > 0 && (
+                <View style={styles.grilla}>
+                  {comerciosBuscados.map(c => renderMiniCard(c))}
+                </View>
+              )}
+              {comerciosBuscadosSinCoords.length > 0 && (
+                <>
+                  <View style={[styles.separadorSinCoords, { borderColor: Colors.border }]}>
+                    <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
+                    <Text style={[styles.separadorSinCoordsText, { color: Colors.textMuted }]}>Sin ubicación verificada</Text>
+                  </View>
+                  <View style={styles.grilla}>
+                    {comerciosBuscadosSinCoords.map(c => renderMiniCard(c))}
+                  </View>
+                </>
+              )}
+            </>
           )}
         </ScrollView>
       ) : nivel === 'subcategorias' ? (
@@ -907,15 +917,30 @@ export default function DirectorioScreen() {
       ) : (
         // Lista de comercios
         <ScrollView contentContainerStyle={styles.body}>
-          {comercios.length === 0 ? (
+          {comercios.length === 0 && comerciosSinCoords.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="storefront-outline" size={48} color={Colors.textMuted} />
               <Text style={styles.centeredText}>Sin comercios en esta categoría</Text>
             </View>
           ) : (
-            <View style={styles.grilla}>
-              {comercios.map(c => renderMiniCard(c))}
-            </View>
+            <>
+              {comercios.length > 0 && (
+                <View style={styles.grilla}>
+                  {comercios.map(c => renderMiniCard(c))}
+                </View>
+              )}
+              {comerciosSinCoords.length > 0 && (
+                <>
+                  <View style={[styles.separadorSinCoords, { borderColor: Colors.border }]}>
+                    <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
+                    <Text style={[styles.separadorSinCoordsText, { color: Colors.textMuted }]}>Sin ubicación verificada</Text>
+                  </View>
+                  <View style={styles.grilla}>
+                    {comerciosSinCoords.map(c => renderMiniCard(c))}
+                  </View>
+                </>
+              )}
+            </>
           )}
         </ScrollView>
       )}
@@ -1256,6 +1281,8 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   configApplyText:    { color: '#fff', fontSize: FontSize.md, fontWeight: '700' },
   ciudadBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, borderWidth: 1 },
   ciudadBtnText: { fontSize: FontSize.sm, fontWeight: '700' },
+  separadorSinCoords:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 4, borderTopWidth: 1, marginTop: 4, width: '100%' },
+  separadorSinCoordsText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   gpsBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
   gpsBtnText: { fontSize: FontSize.sm, fontWeight: '700' },
   configSugBox:       { borderRadius: Radius.md, borderWidth: 1, marginTop: -8, marginBottom: 10, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6 },
