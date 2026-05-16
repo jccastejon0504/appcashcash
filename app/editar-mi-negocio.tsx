@@ -132,7 +132,7 @@ export default function EditarMiNegocioScreen() {
   const [modalGaleriaExtra,   setModalGaleriaExtra]   = useState(false);
   const [paquetesGal,         setPaquetesGal]         = useState(1);
   const [precioGalConfig,     setPrecioGalConfig]     = useState(5);
-  const [slotsGalConfig,      setSlotsGalConfig]      = useState(3);
+  const [slotsGalConfig,      setSlotsGalConfig]      = useState(4);
   const [metodoGal,           setMetodoGal]           = useState('');
   const [referenciaGal,       setReferenciaGal]       = useState('');
   const [comprobanteGal,      setComprobanteGal]      = useState<string|null>(null);
@@ -304,7 +304,7 @@ export default function EditarMiNegocioScreen() {
         if (!data) return;
         data.forEach((r: any) => {
           if (r.clave === 'precio_paquete_galeria') setPrecioGalConfig(parseFloat(r.valor) || 5);
-          if (r.clave === 'slots_paquete_galeria')  setSlotsGalConfig(parseInt(r.valor)    || 3);
+          if (r.clave === 'slots_paquete_galeria')  setSlotsGalConfig(parseInt(r.valor)    || 4);
         });
       });
 
