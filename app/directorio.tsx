@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl,
   Image, TextInput, Keyboard, Modal, Dimensions, Alert, Share,
+  useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -39,6 +40,7 @@ function formatDist(km: number): string {
 export default function DirectorioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
+  const { height: altPantalla } = useWindowDimensions();
   const router = useRouter();
   const { openConfig } = useLocalSearchParams<{ openConfig?: string }>();
 
@@ -398,7 +400,7 @@ export default function DirectorioScreen() {
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
             {/* Imagen portada */}
-            <View style={styles.modalHero}>
+            <View style={[styles.modalHero, { height: Math.round(altPantalla * 0.5) }]}>
               {c.imagen ? (
                 <Image source={{ uri: c.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
               ) : (

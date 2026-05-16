@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, ActivityIndicator, RefreshControl, Image,
-  TextInput, Keyboard, Modal, Dimensions, Alert, Share,
+  TextInput, Keyboard, Modal, Dimensions, Alert, Share, useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
@@ -19,12 +19,13 @@ import * as Location from 'expo-location';
 function urlTienda(s: { id: string; slug?: string | null }): string {
   return s.slug
     ? `https://appcashcash.com/t/${s.slug}`
-    : urlTienda(s);
+    : `https://appcashcash.com/admin/tienda.html?id=${s.id}`;
 }
 
 export default function SociosScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
+  const { height: altPantalla } = useWindowDimensions();
   const router = useRouter();
 
   const [socios,           setSocios]           = useState<SocioComercial[]>([]);
@@ -541,9 +542,11 @@ export default function SociosScreen() {
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
             {/* Hero imagen */}
-            <View style={styles.modalHero}>
+            <View style={[styles.modalHero, { height: Math.round(altPantalla * 0.5) }]}>
               {s.imagen ? (
-                <Image source={{ uri: s.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
+                <TouchableOpacity activeOpacity={0.92} style={{ flex: 1 }} onPress={() => setImagenAmpliada(s.imagen)}>
+                  <Image source={{ uri: s.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
+                </TouchableOpacity>
               ) : (
                 <View style={[styles.modalHeroImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
                   <Ionicons name="storefront-outline" size={64} color={Colors.accent + '55'} />
@@ -792,21 +795,29 @@ export default function SociosScreen() {
           <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
 
             {/* Imagen con zoom/pan */}
-            <GestureHandlerRootView style={{ width: ANCHO, height: 380, overflow: 'hidden' }}>
-              <GestureDetector gesture={gestosP}>
-                <Animated.View style={[{ width: ANCHO, height: 380 }, estiloAnimadoP]}>
-                  <ScrollView
-                    horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-                    scrollEnabled={!prodZoomed}
-                    scrollEventThrottle={16}
-                    onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
-                    {imagenes.map((img, i) => (
-                      <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
-                    ))}
-                  </ScrollView>
-                </Animated.View>
-              </GestureDetector>
-            </GestureHandlerRootView>
+            <View style={{ width: ANCHO, height: 380 }}>
+              <GestureHandlerRootView style={{ width: ANCHO, height: 380, overflow: 'hidden' }}>
+                <GestureDetector gesture={gestosP}>
+                  <Animated.View style={[{ width: ANCHO, height: 380 }, estiloAnimadoP]}>
+                    <ScrollView
+                      horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+                      scrollEnabled={!prodZoomed}
+                      scrollEventThrottle={16}
+                      onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
+                      {imagenes.map((img, i) => (
+                        <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
+                      ))}
+                    </ScrollView>
+                  </Animated.View>
+                </GestureDetector>
+              </GestureHandlerRootView>
+              {/* Botón abrir pantalla completa */}
+              <TouchableOpacity
+                onPress={() => setImagenAmpliada(imagenes[paginaProducto] ?? imagenes[0])}
+                style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: '#00000077', borderRadius: 20, padding: 7 }}>
+                <Ionicons name="expand-outline" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
             {/* Dots */}
             {imagenes.length > 1 && (

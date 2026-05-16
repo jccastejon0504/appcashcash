@@ -698,21 +698,51 @@ export default function EditarMiNegocioScreen() {
 
         {/* Portada */}
         <Text style={[styles.seccion, { color: Colors.textMuted }]}>Foto de portada</Text>
-        <TouchableOpacity
-          style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.card }]}
-          onPress={() => pickImage(setPortada)} activeOpacity={0.8}>
-          {portada ? (
-            <Image source={{ uri: portada }} style={styles.portadaImg} resizeMode="cover" />
-          ) : (
-            <View style={styles.portadaPlaceholder}>
-              <Ionicons name="camera-outline" size={28} color={Colors.textMuted} />
-              <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Toca para cambiar portada</Text>
-            </View>
-          )}
-          <View style={[styles.editBadge, { backgroundColor: Colors.accent }]}>
-            <Ionicons name="camera" size={13} color="#fff" />
+        <View style={{ gap: 8 }}>
+          <View style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.card }]}>
+            {portada ? (
+              <>
+                <Image source={{ uri: portada }} style={styles.portadaImg} resizeMode="cover" />
+                <TouchableOpacity
+                  onPress={() => setPortada('')}
+                  style={{ position: 'absolute', top: 8, right: 8, backgroundColor: '#00000077', borderRadius: 99, padding: 5 }}>
+                  <Ionicons name="close" size={14} color="#fff" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.portadaPlaceholder}>
+                <Ionicons name="image-outline" size={32} color={Colors.textMuted} />
+                <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Sin foto de portada</Text>
+              </View>
+            )}
           </View>
-        </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.btnFoto, { backgroundColor: Colors.card, borderColor: Colors.border }]}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') { mostrarModal('info', 'Permiso requerido', 'Necesitamos acceso a tu cámara.'); return; }
+                const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, exif: false });
+                if (!r.canceled && r.assets[0]) setPortada(r.assets[0].uri);
+              }}
+              activeOpacity={0.8}>
+              <Ionicons name="camera-outline" size={18} color={Colors.accent} />
+              <Text style={[styles.btnFotoText, { color: Colors.accent }]}>Cámara</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btnFoto, { backgroundColor: Colors.card, borderColor: Colors.border }]}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') { mostrarModal('info', 'Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
+                const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, exif: false });
+                if (!r.canceled && r.assets[0]) setPortada(r.assets[0].uri);
+              }}
+              activeOpacity={0.8}>
+              <Ionicons name="images-outline" size={18} color={Colors.accent} />
+              <Text style={[styles.btnFotoText, { color: Colors.accent }]}>Galería</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Catálogo de productos / galería */}
         {(() => {
@@ -1280,6 +1310,11 @@ function makeStyles(Colors: any) { return StyleSheet.create({
     borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 11,
   },
   btnAgregarText: { fontSize: FontSize.sm, fontWeight: '700' },
+  btnFoto: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: Radius.md, borderWidth: 1.5, paddingVertical: 11,
+  },
+  btnFotoText: { fontSize: FontSize.sm, fontWeight: '700' },
 
   // Modal personalizado
   appModalOverlay: {
