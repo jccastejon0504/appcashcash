@@ -226,30 +226,44 @@
     /* Historial */
     .historial-section { margin-top: 36px; }
     .historial-section h3 { font-size: 15px; font-weight: 800; color: #555; margin-bottom: 12px; }
-    .historial-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+
+    .historial-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .historial-table th {
-      background: #f8f5ff;
-      padding: 11px 14px;
+    .historial-header, .historial-row {
+      display: grid;
+      grid-template-columns: 100px 80px 90px 90px 80px 80px 100px 100px 80px auto;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
       font-size: 12px;
+      border-radius: 10px;
+    }
+    .historial-header {
+      background: #f8f5ff;
       font-weight: 700;
       color: #6c3fc5;
-      text-align: left;
     }
-    .historial-table td {
-      padding: 10px 14px;
+    .historial-row {
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
       font-size: 13px;
-      border-top: 1px solid #f0f0f0;
     }
-    .historial-table tr:hover td { background: #faf8ff; }
+    .historial-row:hover { background: #faf8ff; }
+    .hist-acciones {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .historial-header { display: none; }
+      .historial-row { grid-template-columns: 1fr 1fr; gap: 4px; }
+    }
 
     .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+    .version-tag { font-size: 11px; color: #bbb; margin-top: 4px; }
 
     .btn-accion {
       font-size: 11px;
@@ -301,25 +315,16 @@
 
   <!-- Historial -->
   <div class="historial-section">
-    <h3>Historial de ofertas</h3>
+    <h3>Historial de ofertas <span class="version-tag">v4</span></h3>
     <div id="historial-loading" class="loading">Cargando…</div>
-    <table class="historial-table" id="historial-table" style="display:none">
-      <thead>
-        <tr>
-          <th>Plan</th>
-          <th>Descripción</th>
-          <th>Precio orig.</th>
-          <th>Precio oferta</th>
-          <th>Descuento</th>
-          <th>Meses gratis</th>
-          <th>Inicio</th>
-          <th>Fin</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="historial-body"></tbody>
-    </table>
+    <div class="historial-list" id="historial-list" style="display:none">
+      <div class="historial-header">
+        <span>Plan</span><span>Precio orig.</span><span>Precio oferta</span>
+        <span>Descuento</span><span>Meses</span><span>Inicio</span>
+        <span>Fin</span><span>Estado</span><span></span><span>Acciones</span>
+      </div>
+      <div id="historial-body"></div>
+    </div>
   </div>
 
 </div>

@@ -80,7 +80,9 @@
       "Bash(vercel project *)",
       "Bash(vercel alias *)",
       "Read(//c/Users/yohanna/**)",
-      "Read(//c/Users/yohanna/.vercel/**)"
+      "Read(//c/Users/yohanna/.vercel/**)",
+      "Bash(java --version)",
+      "Bash(npx expo-doctor *)"
     ]
   }
 }
