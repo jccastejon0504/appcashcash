@@ -359,8 +359,8 @@ export default function DirectorioScreen() {
           <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
         </View>
       )}
-      {c.destacado && (
-        <View style={[styles.badge, { backgroundColor: Colors.accent }]}>
+      {(c.destacado || (c.destacado_hasta && new Date(c.destacado_hasta) > new Date())) && (
+        <View style={[styles.badge, { backgroundColor: '#f59e0b' }]}>
           <Ionicons name="star" size={10} color="#fff" />
         </View>
       )}
@@ -1109,7 +1109,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   miniCardDistRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   miniCardDist:    { fontSize: 10, fontWeight: '700' },
   badge: {
-    position: 'absolute', top: 6, right: 6,
+    position: 'absolute', top: 6, left: 6,
     borderRadius: 20, padding: 3,
   },
 
