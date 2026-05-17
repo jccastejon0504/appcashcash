@@ -137,6 +137,7 @@ export default function EditarMiNegocioScreen() {
   const [referenciaGal,       setReferenciaGal]       = useState('');
   const [comprobanteGal,      setComprobanteGal]      = useState<string|null>(null);
   const [enviandoGal,         setEnviandoGal]         = useState(false);
+  const [solGalPendiente,     setSolGalPendiente]     = useState(false);
 
   // GPS
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
@@ -308,6 +309,19 @@ export default function EditarMiNegocioScreen() {
         });
       });
 
+    // Verificar si ya hay una solicitud de galería extra pendiente
+    if (socioId) {
+      supabase.from('solicitudes')
+        .select('id')
+        .eq('socio_id', socioId)
+        .eq('tipo', 'galeria_extra')
+        .eq('estado', 'pendiente')
+        .limit(1)
+        .then(({ data }) => {
+          if (data && data.length > 0) setSolGalPendiente(true);
+        });
+    }
+
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
       const ORDEN = ['movil','móvil','pago m','transfer','zelle','usdt','crypto'];
@@ -430,25 +444,28 @@ export default function EditarMiNegocioScreen() {
     const urlComprobante = await subirImagen(comprobanteGal, 'comprobante_gal');
     const slotsTotal = paquetesGal * slotsGalConfig;
     const montoTotal = paquetesGal * precioGalConfig;
-    const { error } = await supabase.from('solicitudes').insert({
+    const payload: any = {
       nombre:      socio?.nombre ?? '',
       telefono:    telefono.trim(),
       whatsapp:    whatsapp.trim(),
       plan:        'galeria_extra',
       tipo:        'galeria_extra',
+      estado:      'pendiente',
       metodo_pago: metodoGal,
       referencia:  referenciaGal.trim(),
       monto:       montoTotal,
       comprobante: urlComprobante,
       descripcion: `${paquetesGal} paquete${paquetesGal > 1 ? 's' : ''} · ${slotsTotal} slots extra`,
       socio_id:    resolvedId,
-    });
+    };
+    const { error } = await supabase.from('solicitudes').insert(payload);
     setEnviandoGal(false);
-    if (error) { mostrarModal('error', 'Error', error.message); return; }
+    if (error) { mostrarModal('error', 'Error al enviar', error.message); return; }
     setModalGaleriaExtra(false);
     setReferenciaGal('');
     setComprobanteGal(null);
     setPaquetesGal(1);
+    setSolGalPendiente(true);
     mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${slotsTotal} espacios extra fue enviada. El equipo la revisará en breve.`);
   };
 
@@ -458,7 +475,8 @@ export default function EditarMiNegocioScreen() {
     Promise.all([
       supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
       supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`]),
-    ]).then(([{ data }, { data: cfg }]) => {
+      supabase.from('solicitudes').select('id').eq('socio_id', resolvedId).eq('tipo', 'galeria_extra').eq('estado', 'pendiente').limit(1),
+    ]).then(([{ data }, { data: cfg }, { data: solPend }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
       if (data) {
         setSocio(prev => prev ? {
@@ -470,6 +488,7 @@ export default function EditarMiNegocioScreen() {
         } : prev);
         setGaleriaExtra(data.galeria_extra ?? 0);
       }
+      setSolGalPendiente((solPend ?? []).length > 0);
     });
   }, [resolvedId]));
 
@@ -909,15 +928,24 @@ export default function EditarMiNegocioScreen() {
 
               {/* Botón comprar espacios extra */}
               {galeriaItems.length >= slots && (
-                <TouchableOpacity
-                  style={[styles.btnAgregar, { borderColor: '#f59e0b', borderStyle: 'solid' }]}
-                  onPress={() => setModalGaleriaExtra(true)}
-                  activeOpacity={0.85}>
-                  <Ionicons name="add-circle" size={18} color="#f59e0b" />
-                  <Text style={[styles.btnAgregarText, { color: '#f59e0b' }]}>
-                    Comprar más espacios (+{slotsGalConfig} por ${precioGalConfig})
-                  </Text>
-                </TouchableOpacity>
+                solGalPendiente ? (
+                  <View style={[styles.btnAgregar, { borderColor: '#16a34a', borderStyle: 'solid', backgroundColor: '#dcfce7' }]}>
+                    <Ionicons name="time-outline" size={18} color="#16a34a" />
+                    <Text style={[styles.btnAgregarText, { color: '#16a34a' }]}>
+                      Solicitud enviada · En revisión
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.btnAgregar, { borderColor: '#f59e0b', borderStyle: 'solid' }]}
+                    onPress={() => setModalGaleriaExtra(true)}
+                    activeOpacity={0.85}>
+                    <Ionicons name="add-circle" size={18} color="#f59e0b" />
+                    <Text style={[styles.btnAgregarText, { color: '#f59e0b' }]}>
+                      Comprar más espacios (+{slotsGalConfig} por ${precioGalConfig})
+                    </Text>
+                  </TouchableOpacity>
+                )
               )}
 
               {/* Botón guardar catálogo */}
