@@ -17,6 +17,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 
+const HOY = () => new Date();
+function esDestacadoVigente(c: SocioComercial): boolean {
+  return c.destacado === true || (!!c.destacado_hasta && new Date(c.destacado_hasta) > HOY());
+}
+function sortDestacadosPrimero(arr: SocioComercial[]): SocioComercial[] {
+  const dest    = arr.filter(esDestacadoVigente).sort(() => Math.random() - 0.5);
+  const normales = arr.filter(c => !esDestacadoVigente(c));
+  return [...dest, ...normales];
+}
+
 function urlTienda(s: { id: string; slug?: string | null }): string {
   return s.slug
     ? `https://appcashcash.com/t/${s.slug}`
@@ -182,12 +192,12 @@ export default function DirectorioScreen() {
       const sinCoords    = results.filter(c => !c.latitud || !c.longitud);
       const enRango      = conCoords.filter(c => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud!, c.longitud!) <= radio);
       enRango.sort((a, b) => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud!, a.longitud!) - haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud!, b.longitud!));
-      setComerciossInCoords(sinCoords);
-      results = enRango;
+      setComerciossInCoords(sortDestacadosPrimero(sinCoords));
+      results = sortDestacadosPrimero(enRango);
     } else {
       setComerciossInCoords([]);
     }
-    setComercios(results);
+    setComercios(sortDestacadosPrimero(results));
     setCargando(false);
     setNivel('comercios');
   };
@@ -249,10 +259,10 @@ export default function DirectorioScreen() {
       const sinCoords  = base.filter(c => !c.latitud || !c.longitud);
       const enRango    = conCoords.filter(c => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, c.latitud!, c.longitud!) <= radio);
       enRango.sort((a, b) => haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, a.latitud!, a.longitud!) - haversineKm(coordsGlobal.latitude, coordsGlobal.longitude, b.latitud!, b.longitud!));
-      return { comerciosBuscados: enRango, comerciosBuscadosSinCoords: sinCoords };
+      return { comerciosBuscados: sortDestacadosPrimero(enRango), comerciosBuscadosSinCoords: sortDestacadosPrimero(sinCoords) };
     }
     if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
-    return { comerciosBuscados: base, comerciosBuscadosSinCoords: [] };
+    return { comerciosBuscados: sortDestacadosPrimero(base), comerciosBuscadosSinCoords: [] };
   }, [comerciosBuscadosBase, ciudadFiltro, ciudadGlobal, coordsGlobal, radioGlobal]);
 
   const enBusqueda = busqueda.trim().length > 0;
