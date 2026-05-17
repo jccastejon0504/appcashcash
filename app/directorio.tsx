@@ -405,12 +405,19 @@ export default function DirectorioScreen() {
               <Ionicons name="arrow-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <Text style={[styles.modalHeaderTitle, { color: Colors.text }]} numberOfLines={1}>{c.nombre}</Text>
-            {c.destacado ? (
-              <View style={[styles.modalDestacadoBadge, { backgroundColor: Colors.accent }]}>
-                <Ionicons name="star" size={11} color="#fff" />
-                <Text style={styles.modalDestacadoText}>Destacado</Text>
-              </View>
-            ) : <View style={{ width: 80 }} />}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {c.destacado ? (
+                <View style={[styles.modalDestacadoBadge, { backgroundColor: Colors.accent }]}>
+                  <Ionicons name="star" size={11} color="#fff" />
+                  <Text style={styles.modalDestacadoText}>Destacado</Text>
+                </View>
+              ) : null}
+              <TouchableOpacity
+                onPress={() => Share.share({ message: `Mira la tienda *${c.nombre}* en CashCach:\n${urlTienda(c)}`, url: urlTienda(c) })}
+                style={{ padding: 6 }}>
+                <Ionicons name="share-outline" size={22} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -486,12 +493,6 @@ export default function DirectorioScreen() {
                     <Text style={styles.modalContactBtnGrandeText}>Web</Text>
                   </TouchableOpacity>
                 ) : null}
-                <TouchableOpacity
-                  style={[styles.modalContactBtnGrande, { backgroundColor: Colors.border }]}
-                  onPress={() => Share.share({ message: `Mira la tienda *${c.nombre}* en CashCach:\n${urlTienda(c)}`, url: urlTienda(c) })}>
-                  <Ionicons name="share-outline" size={20} color={Colors.text} />
-                  <Text style={[styles.modalContactBtnGrandeText, { color: Colors.text }]}>Compartir</Text>
-                </TouchableOpacity>
               </View>
 
               {/* Dirección */}
