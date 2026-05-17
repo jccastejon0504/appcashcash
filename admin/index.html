@@ -1282,6 +1282,61 @@
         </div>
       </div>
 
+      <!-- ── Reportes de Ingresos ─────────────────────────── -->
+      <div style="margin-top:32px">
+        <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">📊 Reporte de Ingresos</h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Ingresos aprobados por concepto según el período seleccionado.</p>
+
+        <!-- Selector de período -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="semanal"  onclick="selPeriodo('semanal')"  style="font-weight:700">Semanal</button>
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="mensual"  onclick="selPeriodo('mensual')"  style="font-weight:700">Mensual</button>
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="anual"    onclick="selPeriodo('anual')"    style="font-weight:700">Anual</button>
+          <button class="btn btn-primary  btn-sm" onclick="cargarReporte()" style="margin-left:auto">↻ Actualizar</button>
+        </div>
+
+        <!-- Tarjetas resumen -->
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+          <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">TOTAL INGRESOS</div>
+            <div id="rep-total" style="font-size:26px;font-weight:900;color:var(--accent)">$0.00</div>
+            <div id="rep-total-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
+          </div>
+          <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLANES</div>
+            <div id="rep-planes" style="font-size:22px;font-weight:900;color:#3b82f6">$0.00</div>
+            <div id="rep-planes-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
+          </div>
+          <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">GALERÍA EXTRA</div>
+            <div id="rep-galeria" style="font-size:22px;font-weight:900;color:#f59e0b">$0.00</div>
+            <div id="rep-galeria-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
+          </div>
+          <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">DESTACADOS</div>
+            <div id="rep-destacados" style="font-size:22px;font-weight:900;color:#a855f7">$0.00</div>
+            <div id="rep-destacados-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
+          </div>
+        </div>
+
+        <!-- Tabla detalle -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Detalle de pagos aprobados</h2>
+            <span id="rep-periodo-label" style="font-size:12px;color:var(--muted)">Semanal</span>
+          </div>
+          <div style="padding:16px">
+            <div id="rep-loading" style="color:var(--muted);font-size:13px;padding:12px 0">Cargando…</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="gal-sol-row" id="rep-header-row" style="background:#f0f4ff;font-weight:700;color:#3b82f6;font-size:12px;display:none">
+                <span>Tienda</span><span>Concepto</span><span>Monto</span><span>Método</span><span>Fecha</span><span>Referencia</span>
+              </div>
+              <div id="rep-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ SOLICITUDES ═════════════════════════════════════ -->
@@ -1910,6 +1965,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     cargarReglas();
     await cargarGaleriaExtra();
     await cargarDestacados();
+    selPeriodo(repPeriodo);
     // Cargar config_app (visibilidad + precios base + texto promo + días de gracia)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
@@ -4706,6 +4762,100 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
     mostrarToast('Solicitud rechazada.', 'ok');
     await cargarDestacados();
+  }
+
+  // ── Reporte de Ingresos ───────────────────────────────────────────────────
+
+  var repPeriodo = 'mensual';
+
+  function selPeriodo(p) {
+    repPeriodo = p;
+    document.querySelectorAll('.rep-periodo-btn').forEach(btn => {
+      const activo = btn.dataset.periodo === p;
+      btn.style.background    = activo ? 'var(--accent)' : '';
+      btn.style.color         = activo ? '#fff'          : '';
+      btn.style.borderColor   = activo ? 'var(--accent)' : '';
+    });
+    document.getElementById('rep-periodo-label').textContent =
+      p === 'semanal' ? 'Últimos 7 días' : p === 'mensual' ? 'Últimos 30 días' : 'Últimos 365 días';
+    cargarReporte();
+  }
+
+  async function cargarReporte() {
+    const dias   = repPeriodo === 'semanal' ? 7 : repPeriodo === 'mensual' ? 30 : 365;
+    const desde  = new Date(Date.now() - dias * 86400000).toISOString();
+    const loading = document.getElementById('rep-loading');
+    const body    = document.getElementById('rep-body');
+    const hdr     = document.getElementById('rep-header-row');
+    loading.style.display = 'block';
+    body.innerHTML = '';
+    hdr.style.display = 'none';
+
+    const { data, error } = await db.from('solicitudes')
+      .select('id,nombre,plan,monto,metodo_pago,referencia,created_at')
+      .eq('estado', 'aprobado')
+      .gte('created_at', desde)
+      .order('created_at', { ascending: false });
+
+    loading.style.display = 'none';
+    if (error) { body.innerHTML = `<div style="color:red;padding:10px">Error: ${error.message}</div>`; return; }
+
+    const filas = data ?? [];
+
+    // Clasificar
+    const PLANES_KEYS = ['gratis','basico_mensual','basico_anual','pro_mensual','pro_anual'];
+    const conceptoLabel = p => {
+      if (p === 'galeria_extra') return 'Galería Extra';
+      if (p === 'destacado')    return 'Destacado';
+      const m = { gratis:'Gratis', basico_mensual:'Básico / Mes', basico_anual:'Básico / Año', pro_mensual:'Pro / Mes', pro_anual:'Pro / Año' };
+      return m[p] ?? p ?? '—';
+    };
+    const conceptoColor = p => p === 'galeria_extra' ? '#f59e0b' : p === 'destacado' ? '#a855f7' : '#3b82f6';
+
+    let totPlanes = 0, cntPlanes = 0;
+    let totGal    = 0, cntGal    = 0;
+    let totDest   = 0, cntDest   = 0;
+
+    filas.forEach(s => {
+      const m = parseFloat(s.monto) || 0;
+      if (s.plan === 'galeria_extra')     { totGal  += m; cntGal++;   }
+      else if (s.plan === 'destacado')    { totDest += m; cntDest++;  }
+      else                               { totPlanes += m; cntPlanes++; }
+    });
+
+    const total = totPlanes + totGal + totDest;
+    const fmt   = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    document.getElementById('rep-total').textContent          = fmt(total);
+    document.getElementById('rep-total-count').textContent    = (cntPlanes + cntGal + cntDest) + ' pagos';
+    document.getElementById('rep-planes').textContent         = fmt(totPlanes);
+    document.getElementById('rep-planes-count').textContent   = cntPlanes + ' pagos';
+    document.getElementById('rep-galeria').textContent        = fmt(totGal);
+    document.getElementById('rep-galeria-count').textContent  = cntGal + ' pagos';
+    document.getElementById('rep-destacados').textContent     = fmt(totDest);
+    document.getElementById('rep-destacados-count').textContent = cntDest + ' pagos';
+
+    if (!filas.length) {
+      body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Sin ingresos en este período.</div>';
+      return;
+    }
+
+    hdr.style.display = '';
+    filas.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'gal-sol-row';
+      const fecha = new Date(s.created_at).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
+      const color = conceptoColor(s.plan);
+      row.innerHTML = `
+        <div><b>${s.nombre ?? '—'}</b></div>
+        <div><span style="background:${color}18;color:${color};font-weight:700;font-size:11px;padding:2px 8px;border-radius:99px">${conceptoLabel(s.plan)}</span></div>
+        <div><b style="color:${color}">$${parseFloat(s.monto||0).toFixed(2)}</b></div>
+        <div style="font-size:12px;color:var(--muted)">${s.metodo_pago ?? '—'}</div>
+        <div style="font-size:12px;color:var(--muted)">${fecha}</div>
+        <div style="font-size:12px;color:var(--muted)">${s.referencia ?? '—'}</div>
+      `;
+      body.appendChild(row);
+    });
   }
 
   // ── Toast ─────────────────────────────────────────────────────────────────
