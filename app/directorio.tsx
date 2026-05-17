@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
@@ -88,6 +88,7 @@ export default function DirectorioScreen() {
   const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
   const [productoModal,   setProductoModal]   = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
   const [paginaProducto,  setPaginaProducto]  = useState(0);
+  const [prodZoomed,      setProdZoomed]      = useState(false);
   const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
 
@@ -331,7 +332,64 @@ export default function DirectorioScreen() {
     transYBase.value = 0;
   };
 
+  // Gestos para el modal de producto
+  const escalaP     = useSharedValue(1);
+  const escalaBaseP = useSharedValue(1);
+  const transXP     = useSharedValue(0);
+  const transYP     = useSharedValue(0);
+  const transXBaseP = useSharedValue(0);
+  const transYBaseP = useSharedValue(0);
+
+  const resetVisorP = () => {
+    escalaP.value     = withTiming(1);
+    escalaBaseP.value = 1;
+    transXP.value     = withTiming(0);
+    transYP.value     = withTiming(0);
+    transXBaseP.value = 0;
+    transYBaseP.value = 0;
+    setProdZoomed(false);
+  };
+
   useEffect(() => { if (!imagenAmpliada) resetVisor(); }, [imagenAmpliada]);
+  useEffect(() => { if (!productoModal) resetVisorP(); }, [productoModal]);
+
+  const pinchP = Gesture.Pinch()
+    .onUpdate(e => { escalaP.value = Math.max(1, escalaBaseP.value * e.scale); })
+    .onEnd(() => {
+      escalaBaseP.value = escalaP.value;
+      if (escalaP.value > 1) runOnJS(setProdZoomed)(true);
+      else runOnJS(setProdZoomed)(false);
+    });
+
+  const panP = Gesture.Pan()
+    .onUpdate(e => {
+      transXP.value = transXBaseP.value + e.translationX;
+      transYP.value = transYBaseP.value + e.translationY;
+    })
+    .onEnd(() => {
+      transXBaseP.value = transXP.value;
+      transYBaseP.value = transYP.value;
+    });
+
+  const doubleTapP = Gesture.Tap().numberOfTaps(2).onEnd(() => {
+    escalaP.value     = withTiming(1);
+    escalaBaseP.value = 1;
+    transXP.value     = withTiming(0);
+    transYP.value     = withTiming(0);
+    transXBaseP.value = 0;
+    transYBaseP.value = 0;
+    runOnJS(setProdZoomed)(false);
+  });
+
+  const gestosP = Gesture.Simultaneous(Gesture.Exclusive(doubleTapP, panP), pinchP);
+
+  const estiloAnimadoP = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: transXP.value },
+      { translateY: transYP.value },
+      { scale: escalaP.value },
+    ],
+  }));
 
   const pinch = Gesture.Pinch()
     .onUpdate(e => { escala.value = Math.max(1, escalaBase.value * e.scale); })
@@ -424,7 +482,9 @@ export default function DirectorioScreen() {
             {/* Imagen portada */}
             <View style={[styles.modalHero, { height: Math.round(altPantalla * 0.5) }]}>
               {c.imagen ? (
-                <Image source={{ uri: c.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
+                <TouchableOpacity activeOpacity={0.92} style={{ flex: 1 }} onPress={() => setImagenAmpliada(c.imagen)}>
+                  <Image source={{ uri: c.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
+                </TouchableOpacity>
               ) : (
                 <View style={[styles.modalHeroImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
                   <Ionicons name="storefront-outline" size={64} color={Colors.accent + '66'} />
@@ -554,15 +614,29 @@ export default function DirectorioScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
 
-            {/* Carousel */}
-            <ScrollView
-              horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-              scrollEventThrottle={16}
-              onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
-              {imagenes.map((img, i) => (
-                <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
-              ))}
-            </ScrollView>
+            {/* Carousel con zoom/pinch */}
+            <View style={{ width: ANCHO, height: 380 }}>
+              <GestureHandlerRootView style={{ width: ANCHO, height: 380, overflow: 'hidden' }}>
+                <GestureDetector gesture={gestosP}>
+                  <Animated.View style={[{ width: ANCHO, height: 380 }, estiloAnimadoP]}>
+                    <ScrollView
+                      horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+                      scrollEnabled={!prodZoomed}
+                      scrollEventThrottle={16}
+                      onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
+                      {imagenes.map((img, i) => (
+                        <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
+                      ))}
+                    </ScrollView>
+                  </Animated.View>
+                </GestureDetector>
+              </GestureHandlerRootView>
+              <TouchableOpacity
+                onPress={() => setImagenAmpliada(imagenes[paginaProducto] ?? imagenes[0])}
+                style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: '#00000077', borderRadius: 20, padding: 7 }}>
+                <Ionicons name="expand-outline" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
             {/* Dots */}
             {imagenes.length > 1 && (
