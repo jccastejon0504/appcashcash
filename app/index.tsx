@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView,
@@ -64,8 +64,6 @@ export default function CalculadoraBCVScreen() {
   const [fuente,   setFuente]   = useState<Fuente>('bcv');
   const [valor,    setValor]    = useState('');
   const [bs,       setBs]       = useState('');
-  const editando     = useRef<'divisa' | 'bs' | null>(null);
-  const configScroll = useRef<ScrollView>(null);
 
   const [tasaUSD,     setTasaUSD]     = useState<number | null>(null);
   const [tasaEUR,     setTasaEUR]     = useState<number | null>(null);
@@ -275,7 +273,6 @@ export default function CalculadoraBCVScreen() {
   const recargarTodo = (forzar = true) => { fetchTasa(forzar); fetchUSDT(forzar); };
 
   const onChangeDivisa = (val: string) => {
-    editando.current = 'divisa';
     setValor(val);
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
@@ -284,7 +281,6 @@ export default function CalculadoraBCVScreen() {
   };
 
   const onChangeBs = (val: string) => {
-    editando.current = 'bs';
     setBs(val);
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
@@ -416,7 +412,7 @@ export default function CalculadoraBCVScreen() {
                 <Ionicons name="close" size={18} color={T.textMuted} />
               </Pressable>
             </View>
-            <ScrollView ref={configScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md }}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md }}>
 
             {/* Toggle claro / oscuro */}
             <Text style={[s.configSectionLabel, { color: T.textMuted }]}>TEMA</Text>
