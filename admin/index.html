@@ -2070,7 +2070,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarSolicitudes() {
     const filtro = document.getElementById('filtro-solicitudes').value;
-    let q = db.from('solicitudes').select('*').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*').neq('tipo', 'galeria_extra').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
 
     const [{ data, error }, { data: cats }, { data: ciu }] = await Promise.all([
@@ -2615,6 +2615,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     if (estado === 'aprobado') {
       const { data: sol } = await db.from('solicitudes').select('*').eq('id', id).single();
+      if (sol && sol.tipo === 'galeria_extra') {
+        alert('Esta solicitud es de galería extra. Apruébala desde la sección "Paquetes de Galería Extra" en Ofertas de Planes.');
+        return;
+      }
       if (sol) {
         // Calcular fecha de vencimiento
         const hoy = new Date();
