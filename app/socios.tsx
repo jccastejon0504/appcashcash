@@ -107,9 +107,12 @@ export default function SociosScreen() {
     return true;
   }, [mapCoords, ubicacionRadio, ubicacionCiudad]);
 
+  const esDestVigente = (s: SocioComercial) =>
+    s.destacado === true || (!!s.destacado_hasta && new Date(s.destacado_hasta) > new Date());
+
   // Función reutilizable para mezclar y guardar
   const mezclarSociosCiudad = useCallback((listaSocios: SocioComercial[], ciudad: string) => {
-    const destacadosIds = new Set(listaSocios.filter(s => s.destacado).map(s => s.id));
+    const destacadosIds = new Set(listaSocios.filter(esDestVigente).map(s => s.id));
     const lista = listaSocios.filter(s => {
       if (destacadosIds.has(s.id)) return false;
       if (ciudad) return s.ciudad?.toLowerCase().includes(ciudad.toLowerCase());
@@ -128,7 +131,7 @@ export default function SociosScreen() {
     setError(null);
     const { data, error: err } = await supabase
       .from('socios_comerciales')
-      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud,slug')
+      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,destacado_hasta,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud,slug')
       .or('activo.is.null,activo.eq.true')
       .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
@@ -389,9 +392,14 @@ export default function SociosScreen() {
   }, []));
 
   const destacados = useMemo(() => {
-    let lista = socios.filter(s => s.destacado);
+    let lista = socios.filter(esDestVigente);
     if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
     lista = lista.filter(cumpleFiltroUbicacion);
+    // Aleatorizar destacados entre sí
+    for (let i = lista.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [lista[i], lista[j]] = [lista[j], lista[i]];
+    }
     return lista;
   }, [socios, subcatFiltro, cumpleFiltroUbicacion]);
 
