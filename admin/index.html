@@ -4685,7 +4685,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     base.setDate(base.getDate() + dias);
     const nuevaFecha = base.toISOString().split('T')[0];
 
-    const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha }).eq('id', sol.socio_id);
+    const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha, destacado: true }).eq('id', sol.socio_id);
     if (error) { mostrarToast('Error: ' + error.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
     await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
     mostrarToast(`✓ Destacado hasta ${nuevaFecha} asignado a "${sol.nombre}".`, 'ok');
