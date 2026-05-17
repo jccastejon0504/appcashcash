@@ -140,6 +140,7 @@ export default function EditarMiNegocioScreen() {
   const [enviandoGal,         setEnviandoGal]         = useState(false);
   const [solGalPendiente,     setSolGalPendiente]     = useState(false);
   const [galeriaExtraActivo,  setGaleriaExtraActivo]  = useState(true);
+  const [modalAyuda,          setModalAyuda]          = useState(false);
 
   // Destacados
   const [destacadoActivo,       setDestacadoActivo]       = useState(true);
@@ -778,6 +779,9 @@ export default function EditarMiNegocioScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: Colors.text }]}>Editar mi tienda</Text>
+        <TouchableOpacity onPress={() => setModalAyuda(true)} style={{ padding: 6 }}>
+          <Ionicons name="information-circle-outline" size={24} color={Colors.accent} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -1548,6 +1552,97 @@ export default function EditarMiNegocioScreen() {
           </View>
         </View>
       </Modal>
+      {/* ── Modal Ayuda / Info ── */}
+      <Modal visible={modalAyuda} animationType="slide" transparent onRequestClose={() => setModalAyuda(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: Colors.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: Colors.border }]}>
+              <Text style={[styles.modalTitulo, { color: Colors.text }]}>¿Cómo usar esta pantalla?</Text>
+              <TouchableOpacity onPress={() => setModalAyuda(false)}>
+                <Ionicons name="close" size={22} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.lg }}>
+
+              {/* Editar datos */}
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.accent + '18', borderRadius: 99, padding: 6 }}>
+                    <Ionicons name="storefront-outline" size={18} color={Colors.accent} />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Editar datos de tu tienda</Text>
+                </View>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20 }}>
+                  Actualiza el nombre, teléfono, WhatsApp, ciudad, categoría, descripción y foto de portada. Toca <Text style={{ fontWeight: '700', color: Colors.text }}>Guardar cambios</Text> al terminar.
+                </Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: Colors.border }} />
+
+              {/* Destacar tienda */}
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ backgroundColor: '#a855f718', borderRadius: 99, padding: 6 }}>
+                    <Ionicons name="star-outline" size={18} color="#a855f7" />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Destacar mi tienda</Text>
+                </View>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20 }}>
+                  Tu tienda aparecerá <Text style={{ fontWeight: '700', color: Colors.text }}>en los primeros lugares</Text> del directorio con una ⭐ dorada. Elige los días que quieres estar destacado, realiza el pago y envía el comprobante. El equipo lo aprueba en breve.
+                </Text>
+                <View style={{ backgroundColor: '#f3e8ff', borderRadius: Radius.md, padding: Spacing.sm, borderWidth: 1, borderColor: '#d8b4fe' }}>
+                  <Text style={{ fontSize: FontSize.xs, color: '#6b21a8', fontWeight: '600' }}>
+                    💡 El botón aparece arriba del botón "Renovar membresía". Si no lo ves, la función puede estar temporalmente desactivada.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: Colors.border }} />
+
+              {/* Galería extra */}
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ backgroundColor: '#f59e0b18', borderRadius: 99, padding: 6 }}>
+                    <Ionicons name="images-outline" size={18} color="#f59e0b" />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Comprar más espacios de galería</Text>
+                </View>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20 }}>
+                  Cada plan tiene un límite de fotos en el catálogo. Cuando llegas al límite aparece el botón <Text style={{ fontWeight: '700', color: Colors.text }}>"Comprar más espacios"</Text>. Compra paquetes adicionales para seguir agregando productos.
+                </Text>
+                <View style={{ backgroundColor: '#fef9c3', borderRadius: Radius.md, padding: Spacing.sm, borderWidth: 1, borderColor: '#fde68a' }}>
+                  <Text style={{ fontSize: FontSize.xs, color: '#92400e', fontWeight: '600' }}>
+                    💡 El botón aparece al final de tu catálogo cuando alcanzas el límite de tu plan.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: Colors.border }} />
+
+              {/* Catálogo */}
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.accent + '18', borderRadius: 99, padding: 6 }}>
+                    <Ionicons name="grid-outline" size={18} color={Colors.accent} />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Catálogo de productos</Text>
+                </View>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20 }}>
+                  Agrega fotos de tus productos con título, precio en $ y descripción. Los clientes los verán en tu ficha. Toca <Text style={{ fontWeight: '700', color: Colors.text }}>Guardar catálogo</Text> después de agregar o editar productos.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btnGuardar, { backgroundColor: Colors.accent }]}
+                onPress={() => setModalAyuda(false)}>
+                <Text style={styles.btnGuardarText}>Entendido</Text>
+              </TouchableOpacity>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Modal Destacar mi tienda ── */}
       <Modal visible={modalDestacado} animationType="slide" transparent onRequestClose={() => setModalDestacado(false)}>
         <View style={styles.modalOverlay}>
