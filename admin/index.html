@@ -1288,11 +1288,24 @@
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Ingresos aprobados por concepto según el período seleccionado.</p>
 
         <!-- Selector de período -->
-        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="semanal"  onclick="selPeriodo('semanal')"  style="font-weight:700">Semanal</button>
-          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="mensual"  onclick="selPeriodo('mensual')"  style="font-weight:700">Mensual</button>
-          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="anual"    onclick="selPeriodo('anual')"    style="font-weight:700">Anual</button>
-          <button class="btn btn-primary  btn-sm" onclick="cargarReporte()" style="margin-left:auto">↻ Actualizar</button>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="semanal" onclick="selPeriodo('semanal')" style="font-weight:700">Semanal</button>
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="mensual" onclick="selPeriodo('mensual')" style="font-weight:700">Mensual</button>
+          <button class="btn btn-outline btn-sm rep-periodo-btn" data-periodo="anual"   onclick="selPeriodo('anual')"   style="font-weight:700">Anual</button>
+        </div>
+        <!-- Selector de rango personalizado -->
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted)">DESDE</label>
+            <input type="date" id="rep-fecha-desde" oninput="limpiarPeriodo()"
+              style="border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--bg);color:var(--text)" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted)">HASTA</label>
+            <input type="date" id="rep-fecha-hasta" oninput="limpiarPeriodo()"
+              style="border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--bg);color:var(--text)" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="cargarReporte()" style="height:34px">↻ Aplicar</button>
         </div>
 
         <!-- Tarjetas resumen -->
@@ -4770,20 +4783,46 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   function selPeriodo(p) {
     repPeriodo = p;
+    // Limpiar fechas manuales
+    document.getElementById('rep-fecha-desde').value = '';
+    document.getElementById('rep-fecha-hasta').value = '';
     document.querySelectorAll('.rep-periodo-btn').forEach(btn => {
       const activo = btn.dataset.periodo === p;
-      btn.style.background    = activo ? 'var(--accent)' : '';
-      btn.style.color         = activo ? '#fff'          : '';
-      btn.style.borderColor   = activo ? 'var(--accent)' : '';
+      btn.style.background  = activo ? 'var(--accent)' : '';
+      btn.style.color       = activo ? '#fff'          : '';
+      btn.style.borderColor = activo ? 'var(--accent)' : '';
     });
     document.getElementById('rep-periodo-label').textContent =
       p === 'semanal' ? 'Últimos 7 días' : p === 'mensual' ? 'Últimos 30 días' : 'Últimos 365 días';
     cargarReporte();
   }
 
+  function limpiarPeriodo() {
+    // Al escribir fechas manuales, deseleccionar botones rápidos
+    repPeriodo = null;
+    document.querySelectorAll('.rep-periodo-btn').forEach(btn => {
+      btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+    });
+    const desde = document.getElementById('rep-fecha-desde').value;
+    const hasta = document.getElementById('rep-fecha-hasta').value;
+    if (desde && hasta) {
+      document.getElementById('rep-periodo-label').textContent =
+        `${desde} → ${hasta}`;
+    }
+  }
+
   async function cargarReporte() {
-    const dias   = repPeriodo === 'semanal' ? 7 : repPeriodo === 'mensual' ? 30 : 365;
-    const desde  = new Date(Date.now() - dias * 86400000).toISOString();
+    const fechaDesde = document.getElementById('rep-fecha-desde').value;
+    const fechaHasta = document.getElementById('rep-fecha-hasta').value;
+    let desde, hasta;
+    if (fechaDesde && fechaHasta) {
+      desde = new Date(fechaDesde).toISOString();
+      hasta = new Date(fechaHasta + 'T23:59:59').toISOString();
+    } else {
+      const dias = repPeriodo === 'semanal' ? 7 : repPeriodo === 'anual' ? 365 : 30;
+      desde = new Date(Date.now() - dias * 86400000).toISOString();
+      hasta = new Date().toISOString();
+    }
     const loading = document.getElementById('rep-loading');
     const body    = document.getElementById('rep-body');
     const hdr     = document.getElementById('rep-header-row');
@@ -4795,6 +4834,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       .select('id,nombre,plan,monto,metodo_pago,referencia,created_at')
       .eq('estado', 'aprobado')
       .gte('created_at', desde)
+      .lte('created_at', hasta)
       .order('created_at', { ascending: false });
 
     loading.style.display = 'none';
