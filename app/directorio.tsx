@@ -89,6 +89,7 @@ export default function DirectorioScreen() {
   const [productoModal,   setProductoModal]   = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
   const [paginaProducto,  setPaginaProducto]  = useState(0);
   const [prodZoomed,      setProdZoomed]      = useState(false);
+  const [favoritas,       setFavoritas]       = useState<string[]>([]);
   const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
 
@@ -113,13 +114,17 @@ export default function DirectorioScreen() {
   // Inicialización
   useEffect(() => {
     const init = async () => {
-      const raw = await AsyncStorage.getItem('ubicacion_config');
-      if (raw) {
-        const cfg = JSON.parse(raw);
+      const [rawUbic, rawFav] = await Promise.all([
+        AsyncStorage.getItem('ubicacion_config'),
+        AsyncStorage.getItem('favoritas'),
+      ]);
+      if (rawUbic) {
+        const cfg = JSON.parse(rawUbic);
         setCiudadGlobal(cfg.ciudad ?? '');
         setRadioGlobal(cfg.radio ?? '3');
         if (cfg.latitud && cfg.longitud) setCoordsGlobal({ latitude: cfg.latitud, longitude: cfg.longitud });
       }
+      if (rawFav) setFavoritas(JSON.parse(rawFav));
       cargarSubcategorias();
     };
     init();
@@ -315,6 +320,16 @@ export default function DirectorioScreen() {
     Linking.openURL(`tel:${n}`).catch(() => {});
   };
 
+  const esFavorita = (id: string) => favoritas.includes(id);
+
+  const toggleFavorita = async (id: string) => {
+    const nuevas = favoritas.includes(id)
+      ? favoritas.filter(f => f !== id)
+      : [...favoritas, id];
+    setFavoritas(nuevas);
+    await AsyncStorage.setItem('favoritas', JSON.stringify(nuevas));
+  };
+
   // Gestos para el visor de imagen
   const escala      = useSharedValue(1);
   const escalaBase  = useSharedValue(1);
@@ -472,8 +487,16 @@ export default function DirectorioScreen() {
               ) : null}
               <TouchableOpacity
                 onPress={() => Share.share({ message: `Mira la tienda *${c.nombre}* en CashCach:\n${urlTienda(c)}`, url: urlTienda(c) })}
-                style={{ padding: 6 }}>
-                <Ionicons name="share-outline" size={22} color={Colors.text} />
+                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: Colors.border + '44' }}>
+                <Ionicons name="share-outline" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => toggleFavorita(c.id)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: esFavorita(c.id) ? '#ef444418' : Colors.border + '44' }}>
+                <Ionicons name={esFavorita(c.id) ? 'heart' : 'heart-outline'} size={16} color={esFavorita(c.id) ? '#ef4444' : Colors.textMuted} />
+                <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: esFavorita(c.id) ? '#ef4444' : Colors.textMuted }}>
+                  {esFavorita(c.id) ? 'Guardada' : 'Guardar'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
