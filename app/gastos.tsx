@@ -93,7 +93,7 @@ export default function GastosScreen() {
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
-  const [periodo,     setPeriodo]     = useState<Periodo>('mes');
+  const [periodo]                      = useState<Periodo>('mes');
   const [modalTipo,   setModalTipo]   = useState<TipoMovimiento | null>(null);
   const [descripcion, setDescripcion] = useState('');
   const [monto,       setMonto]       = useState('');

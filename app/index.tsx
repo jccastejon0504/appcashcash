@@ -85,6 +85,7 @@ export default function CalculadoraBCVScreen() {
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
   const tasa    = fuente === 'bcv' ? tasaBCV : (moneda === 'usd' ? tasaBinance : null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchTasa(); fetchUSDT(); }, []);
 
   // Auto-refresh: cada 5 minutos revisa; si es un día nuevo fuerza el fetch
@@ -96,6 +97,7 @@ export default function CalculadoraBCVScreen() {
       fetchUSDT(forzar);
     }, 300000);
     return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []));
 
   useFocusEffect(React.useCallback(() => {
@@ -107,7 +109,6 @@ export default function CalculadoraBCVScreen() {
       if (ultimo?.fechaProximo) {
         const hd = new Date(); hd.setHours(0,0,0,0);
         const fd = new Date(ultimo.fechaProximo); fd.setHours(0,0,0,0);
-        const dias = Math.round((fd.getTime() - hd.getTime()) / 86400000);
         setAlertaCar({ id: ultimo.id, kmProximo: ultimo.kmProximo, fechaProximo: ultimo.fechaProximo, producto: ultimo.producto });
       } else {
         setAlertaCar(null);
@@ -119,7 +120,7 @@ export default function CalculadoraBCVScreen() {
     if (!valor || !tasa) { setBs(''); return; }
     const n = parseFloat(valor.replace(',', '.'));
     if (!isNaN(n)) setBs((n * tasa).toFixed(2));
-  }, [moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
+  }, [valor, tasa, moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
 
   const fetchConTimeout = async (url: string, ms = 15000) => {
     const ctrl = new AbortController();

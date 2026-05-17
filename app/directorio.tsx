@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, Linking, ActivityIndicator, RefreshControl,
-  Image, TextInput, Keyboard, Modal, Dimensions, Alert, Share,
-  useWindowDimensions,
+  ScrollView, ActivityIndicator, RefreshControl,
+  Image, TextInput, Keyboard, Modal,
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
@@ -16,6 +13,7 @@ import { registrarEvento } from '@/services/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
+import FichaTiendaModal from '@/components/FichaTiendaModal';
 
 const HOY = () => new Date();
 function esDestacadoVigente(c: SocioComercial): boolean {
@@ -27,11 +25,6 @@ function sortDestacadosPrimero(arr: SocioComercial[]): SocioComercial[] {
   return [...dest, ...normales];
 }
 
-function urlTienda(s: { id: string; slug?: string | null }): string {
-  return s.slug
-    ? `https://appcashcash.com/t/${s.slug}`
-    : `https://appcashcash.com/admin/tienda.html?id=${s.id}`;
-}
 
 type Nivel = 'subcategorias' | 'comercios';
 
@@ -50,7 +43,6 @@ function formatDist(km: number): string {
 export default function DirectorioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
-  const { height: altPantalla } = useWindowDimensions();
   const router = useRouter();
   const { openConfig } = useLocalSearchParams<{ openConfig?: string }>();
 
@@ -83,14 +75,7 @@ export default function DirectorioScreen() {
   const [coordsGlobal,        setCoordsGlobal]        = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapaExpandido,       setMapaExpandido]       = useState(false);
   const [comercioModal,   setComercioModal]   = useState<SocioComercial | null>(null);
-  const [imagenAmpliada,  setImagenAmpliada]  = useState<string | null>(null);
-  type ItemGaleria = { id: string; imagen: string; imagen2: string | null; imagen3: string | null; titulo: string | null; precio: string | null; precio_bs: string | null };
-  const [galeriaItems,    setGaleriaItems]    = useState<ItemGaleria[]>([]);
-  const [productoModal,   setProductoModal]   = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
-  const [paginaProducto,  setPaginaProducto]  = useState(0);
-  const [prodZoomed,      setProdZoomed]      = useState(false);
   const [favoritas,       setFavoritas]       = useState<string[]>([]);
-  const ANCHO = Dimensions.get('window').width;
   const inputRef = useRef<TextInput>(null);
 
   // Refresco manual (pull-to-refresh): sólo recarga sin cambiar nivel
@@ -128,6 +113,7 @@ export default function DirectorioScreen() {
       cargarSubcategorias();
     };
     init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -136,6 +122,7 @@ export default function DirectorioScreen() {
       setRadioInputTemp(radioGlobal);
       setModalConfigVisible(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openConfig]);
 
   // Cargar ciudades para autocomplete
@@ -171,13 +158,9 @@ export default function DirectorioScreen() {
       }
       setBuscandoUbicacion(false);
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalConfigVisible]);
 
-  useEffect(() => {
-    if (!comercioModal) { setGaleriaItems([]); return; }
-    supabase.from('galeria_items').select('*').eq('socio_id', comercioModal.id).order('orden')
-      .then(({ data }) => setGaleriaItems((data ?? []) as ItemGaleria[]));
-  }, [comercioModal]);
 
   const seleccionarSubcategoria = async (sub: Subcategoria) => {
     setSubcatActiva(sub);
@@ -301,27 +284,6 @@ export default function DirectorioScreen() {
     return 'Directorio';
   };
 
-  const abrirMapa = (direccion: string) => {
-    if (!direccion) return;
-    const query = encodeURIComponent(direccion);
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`).catch(() => {});
-  };
-
-  const abrirEnlace = (url: string) => {
-    if (!url) return;
-    Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {});
-  };
-  const abrirWhatsApp = (n: string) => {
-    if (!n) return;
-    Linking.openURL(`https://wa.me/${n.replace(/\D/g, '')}`).catch(() => {});
-  };
-  const abrirTelefono = (n: string) => {
-    if (!n) return;
-    Linking.openURL(`tel:${n}`).catch(() => {});
-  };
-
-  const esFavorita = (id: string) => favoritas.includes(id);
-
   const toggleFavorita = async (id: string) => {
     const nuevas = favoritas.includes(id)
       ? favoritas.filter(f => f !== id)
@@ -329,112 +291,6 @@ export default function DirectorioScreen() {
     setFavoritas(nuevas);
     await AsyncStorage.setItem('favoritas', JSON.stringify(nuevas));
   };
-
-  // Gestos para el visor de imagen
-  const escala      = useSharedValue(1);
-  const escalaBase  = useSharedValue(1);
-  const transX      = useSharedValue(0);
-  const transY      = useSharedValue(0);
-  const transXBase  = useSharedValue(0);
-  const transYBase  = useSharedValue(0);
-
-  const resetVisor = () => {
-    escala.value     = withTiming(1);
-    escalaBase.value = 1;
-    transX.value     = withTiming(0);
-    transY.value     = withTiming(0);
-    transXBase.value = 0;
-    transYBase.value = 0;
-  };
-
-  // Gestos para el modal de producto
-  const escalaP     = useSharedValue(1);
-  const escalaBaseP = useSharedValue(1);
-  const transXP     = useSharedValue(0);
-  const transYP     = useSharedValue(0);
-  const transXBaseP = useSharedValue(0);
-  const transYBaseP = useSharedValue(0);
-
-  const resetVisorP = () => {
-    escalaP.value     = withTiming(1);
-    escalaBaseP.value = 1;
-    transXP.value     = withTiming(0);
-    transYP.value     = withTiming(0);
-    transXBaseP.value = 0;
-    transYBaseP.value = 0;
-    setProdZoomed(false);
-  };
-
-  useEffect(() => { if (!imagenAmpliada) resetVisor(); }, [imagenAmpliada]);
-  useEffect(() => { if (!productoModal) resetVisorP(); }, [productoModal]);
-
-  const pinchP = Gesture.Pinch()
-    .onUpdate(e => { escalaP.value = Math.max(1, escalaBaseP.value * e.scale); })
-    .onEnd(() => {
-      escalaBaseP.value = escalaP.value;
-      if (escalaP.value > 1) runOnJS(setProdZoomed)(true);
-      else runOnJS(setProdZoomed)(false);
-    });
-
-  const panP = Gesture.Pan()
-    .onUpdate(e => {
-      transXP.value = transXBaseP.value + e.translationX;
-      transYP.value = transYBaseP.value + e.translationY;
-    })
-    .onEnd(() => {
-      transXBaseP.value = transXP.value;
-      transYBaseP.value = transYP.value;
-    });
-
-  const doubleTapP = Gesture.Tap().numberOfTaps(2).onEnd(() => {
-    escalaP.value     = withTiming(1);
-    escalaBaseP.value = 1;
-    transXP.value     = withTiming(0);
-    transYP.value     = withTiming(0);
-    transXBaseP.value = 0;
-    transYBaseP.value = 0;
-    runOnJS(setProdZoomed)(false);
-  });
-
-  const gestosP = Gesture.Simultaneous(Gesture.Exclusive(doubleTapP, panP), pinchP);
-
-  const estiloAnimadoP = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: transXP.value },
-      { translateY: transYP.value },
-      { scale: escalaP.value },
-    ],
-  }));
-
-  const pinch = Gesture.Pinch()
-    .onUpdate(e => { escala.value = Math.max(1, escalaBase.value * e.scale); })
-    .onEnd(() => { escalaBase.value = escala.value; });
-
-  const pan = Gesture.Pan()
-    .onUpdate(e => {
-      transX.value = transXBase.value + e.translationX;
-      transY.value = transYBase.value + e.translationY;
-    })
-    .onEnd(() => {
-      transXBase.value = transX.value;
-      transYBase.value = transY.value;
-    });
-
-  const doubleTap = Gesture.Tap().numberOfTaps(2).onEnd(() => {
-    escala.value = withTiming(1); escalaBase.value = 1;
-    transX.value = withTiming(0); transY.value = withTiming(0);
-    transXBase.value = 0; transYBase.value = 0;
-  });
-
-  const gestos = Gesture.Simultaneous(Gesture.Exclusive(doubleTap, pan), pinch);
-
-  const estiloAnimado = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: transX.value },
-      { translateY: transY.value },
-      { scale: escala.value },
-    ],
-  }));
 
   const renderMiniCard = (c: SocioComercial) => (
     <TouchableOpacity key={c.id}
@@ -464,253 +320,6 @@ export default function DirectorioScreen() {
       </View>
     </TouchableOpacity>
   );
-
-  const renderModal = () => {
-    if (!comercioModal) return null;
-    const c = comercioModal;
-    const subcatNombre = subcatsGlobal.find(s => s.id === c.subcategoria_id)?.nombre;
-    return (
-      <Modal visible animationType="slide" transparent={false} onRequestClose={() => setComercioModal(null)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          {/* Header */}
-          <View style={[styles.modalHeader, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
-            <TouchableOpacity onPress={() => setComercioModal(null)} style={styles.modalHeaderBack}>
-              <Ionicons name="arrow-back" size={22} color={Colors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.modalHeaderTitle, { color: Colors.text }]} numberOfLines={1}>{c.nombre}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {c.destacado ? (
-                <View style={[styles.modalDestacadoBadge, { backgroundColor: Colors.accent }]}>
-                  <Ionicons name="star" size={11} color="#fff" />
-                  <Text style={styles.modalDestacadoText}>Destacado</Text>
-                </View>
-              ) : null}
-              <TouchableOpacity
-                onPress={() => Share.share({ message: `Mira la tienda *${c.nombre}* en CashCach:\n${urlTienda(c)}`, url: urlTienda(c) })}
-                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: Colors.border + '44' }}>
-                <Ionicons name="share-outline" size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => toggleFavorita(c.id)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: esFavorita(c.id) ? '#ef444418' : Colors.border + '44' }}>
-                <Ionicons name={esFavorita(c.id) ? 'heart' : 'heart-outline'} size={16} color={esFavorita(c.id) ? '#ef4444' : Colors.textMuted} />
-                <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: esFavorita(c.id) ? '#ef4444' : Colors.textMuted }}>
-                  {esFavorita(c.id) ? 'Guardada' : 'Guardar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-            {/* Imagen portada */}
-            <View style={[styles.modalHero, { height: Math.round(altPantalla * 0.5) }]}>
-              {c.imagen ? (
-                <TouchableOpacity activeOpacity={0.92} style={{ flex: 1 }} onPress={() => setImagenAmpliada(c.imagen)}>
-                  <Image source={{ uri: c.imagen }} style={styles.modalHeroImg} resizeMode="cover" />
-                </TouchableOpacity>
-              ) : (
-                <View style={[styles.modalHeroImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
-                  <Ionicons name="storefront-outline" size={64} color={Colors.accent + '66'} />
-                </View>
-              )}
-              {/* Info ℹ️ arriba izquierda */}
-              {c.descripcion ? (
-                <TouchableOpacity
-                  onPress={() => Alert.alert(c.nombre, c.descripcion ?? '')}
-                  style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5, zIndex: 10 }}>
-                  <Ionicons name="information-circle-outline" size={18} color="#fff" />
-                </TouchableOpacity>
-              ) : null}
-              {/* Overlay gradiente */}
-              <View style={styles.modalHeroGrad} />
-              {/* Nombre sobre la imagen */}
-              <View style={styles.modalHeroBottom}>
-                <Text style={styles.modalHeroNombre}>{c.nombre}</Text>
-                {(c.ciudad || subcatNombre) ? (
-                  <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                    {c.ciudad ? (
-                      <View style={styles.modalHeroTag}>
-                        <Ionicons name="location-outline" size={11} color="#ffffffCC" />
-                        <Text style={styles.modalHeroTagText}>{c.ciudad}</Text>
-                      </View>
-                    ) : null}
-                    {subcatNombre ? (
-                      <View style={styles.modalHeroTag}>
-                        <Ionicons name="grid-outline" size={11} color="#ffffffCC" />
-                        <Text style={styles.modalHeroTagText}>{subcatNombre}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Cuerpo */}
-            <View style={[styles.modalCuerpo, { backgroundColor: Colors.background }]}>
-
-              {/* Descripción */}
-              {c.descripcion ? (
-                <View style={[styles.modalSeccion, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-                  <Text style={[styles.modalSeccionLabel, { color: Colors.textMuted }]}>Sobre el negocio</Text>
-                  <Text style={[styles.modalDescripcion, { color: Colors.text }]}>{c.descripcion}</Text>
-                </View>
-              ) : null}
-
-              {/* Botones de contacto */}
-              <View style={styles.modalContactRow}>
-                {c.whatsapp ? (
-                  <TouchableOpacity style={[styles.modalContactBtnGrande, { backgroundColor: '#25D366' }]} onPress={() => abrirWhatsApp(c.whatsapp)}>
-                    <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                    <Text style={styles.modalContactBtnGrandeText}>WhatsApp</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {c.telefono ? (
-                  <TouchableOpacity style={[styles.modalContactBtnGrande, { backgroundColor: Colors.success }]} onPress={() => abrirTelefono(c.telefono)}>
-                    <Ionicons name="call" size={20} color="#fff" />
-                    <Text style={styles.modalContactBtnGrandeText}>Llamar</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {c.web ? (
-                  <TouchableOpacity style={[styles.modalContactBtnGrande, { backgroundColor: Colors.accent }]} onPress={() => abrirEnlace(c.web)}>
-                    <Ionicons name="globe-outline" size={20} color="#fff" />
-                    <Text style={styles.modalContactBtnGrandeText}>Web</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              {/* Dirección */}
-              {c.direccion ? (
-                <TouchableOpacity
-                  style={[styles.modalSeccion, styles.modalDireccionRow, { backgroundColor: Colors.card, borderColor: Colors.border }]}
-                  onPress={() => abrirMapa(c.direccion)} activeOpacity={0.7}>
-                  <View style={[styles.modalDireccionIcon, { backgroundColor: Colors.accent + '18' }]}>
-                    <Ionicons name="location" size={20} color={Colors.accent} />
-                  </View>
-                  <Text style={[styles.modalDireccionText, { color: Colors.text, flex: 1 }]}>{c.direccion}</Text>
-                  <Ionicons name="navigate-outline" size={18} color={Colors.accent} />
-                </TouchableOpacity>
-              ) : null}
-
-              {/* Galería / catálogo */}
-              {galeriaItems.length > 0 && (
-                <View style={[styles.modalSeccion, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-                  <Text style={[styles.modalSeccionLabel, { color: Colors.textMuted }]}>Catálogo</Text>
-                  <View style={styles.galeriaGrid}>
-                    {galeriaItems.map((item, i) => (
-                      <TouchableOpacity key={item.id ?? i} activeOpacity={0.85}
-                        style={[styles.galeriaImgGrande, { borderColor: Colors.border }]}
-                        onPress={() => { setProductoModal({ item, whatsapp: c.whatsapp ?? null }); registrarEvento('galeria_producto', item.titulo ?? undefined, c.id, c.nombre); }}>
-                        <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                        {(item.precio || item.precio_bs || item.titulo) && (
-                          <View style={styles.galeriaOverlay}>
-                            {(item.precio || item.precio_bs) && (
-                              <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                                {item.precio ? <Text style={styles.galeriaOverlayPrecio} numberOfLines={1}>${item.precio}</Text> : null}
-                                {item.precio_bs ? <Text style={styles.galeriaOverlayBs} numberOfLines={1}>Bs.{item.precio_bs}</Text> : null}
-                              </View>
-                            )}
-                            {item.titulo ? <Text style={styles.galeriaOverlayTitulo} numberOfLines={1}>{item.titulo}</Text> : null}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              <View style={{ height: 32 }} />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    );
-  };
-
-  const renderProductoModal = () => {
-    if (!productoModal) return null;
-    const { item, whatsapp } = productoModal;
-    const imagenes = [item.imagen, item.imagen2, item.imagen3].filter(Boolean) as string[];
-    const waMsg = encodeURIComponent(`Hola, vi "${item.titulo ?? 'un producto'}" en CashCach. ¿Sigue disponible?`);
-    const waUrl = whatsapp ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${waMsg}` : null;
-    return (
-      <Modal visible animationType="slide" transparent onRequestClose={() => { setProductoModal(null); setPaginaProducto(0); }}>
-        <View style={{ flex: 1, backgroundColor: '#000000BB', justifyContent: 'flex-end' }}>
-          <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
-
-            {/* Carousel con zoom/pinch */}
-            <View style={{ width: ANCHO, height: 380 }}>
-              <GestureHandlerRootView style={{ width: ANCHO, height: 380, overflow: 'hidden' }}>
-                <GestureDetector gesture={gestosP}>
-                  <Animated.View style={[{ width: ANCHO, height: 380 }, estiloAnimadoP]}>
-                    <ScrollView
-                      horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-                      scrollEnabled={!prodZoomed}
-                      scrollEventThrottle={16}
-                      onScroll={e => setPaginaProducto(Math.round(e.nativeEvent.contentOffset.x / ANCHO))}>
-                      {imagenes.map((img, i) => (
-                        <Image key={i} source={{ uri: img }} style={[styles.productoImg, { width: ANCHO }]} resizeMode="cover" />
-                      ))}
-                    </ScrollView>
-                  </Animated.View>
-                </GestureDetector>
-              </GestureHandlerRootView>
-              <TouchableOpacity
-                onPress={() => setImagenAmpliada(imagenes[paginaProducto] ?? imagenes[0])}
-                style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: '#00000077', borderRadius: 20, padding: 7 }}>
-                <Ionicons name="expand-outline" size={18} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Dots */}
-            {imagenes.length > 1 && (
-              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
-                {imagenes.map((_, i) => (
-                  <View key={i} style={{
-                    width: i === paginaProducto ? 8 : 6,
-                    height: i === paginaProducto ? 8 : 6,
-                    borderRadius: 4,
-                    backgroundColor: i === paginaProducto ? Colors.accent : Colors.border,
-                  }} />
-                ))}
-              </View>
-            )}
-
-            <View style={{ padding: Spacing.lg, paddingTop: imagenes.length > 1 ? 4 : Spacing.lg, gap: 10 }}>
-              {/* Nombre + compartir + X */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <Text style={[styles.productoTitulo, { color: Colors.text, flex: 1 }]}>{item.titulo ?? ''}</Text>
-                <TouchableOpacity
-                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
-                  onPress={() => Share.share({ message: `Mira "${item.titulo ?? 'este producto'}" en CashCach`, url: urlTienda(comercioModal!) })}>
-                  <Ionicons name="share-outline" size={16} color={Colors.text} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
-                  onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
-                  <Ionicons name="close" size={18} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Precios */}
-              {(item.precio || item.precio_bs) ? (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                  {item.precio ? <Text style={[styles.productoPrecio, { color: Colors.accent }]}>${item.precio}</Text> : null}
-                  {item.precio_bs ? <Text style={[styles.productoPrecioBs, { color: Colors.textMuted }]}>Bs. {item.precio_bs}</Text> : null}
-                </View>
-              ) : null}
-
-              {waUrl ? (
-                <TouchableOpacity style={styles.productoWaBtn} onPress={() => Linking.openURL(waUrl).catch(() => {})}>
-                  <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-                  <Text style={styles.productoWaBtnText}>Consultar al vendedor</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
 
   const renderModalConfig = () => {
     const radios = ['1', '3', '5', '7', '10', '15'];
@@ -1077,7 +686,15 @@ export default function DirectorioScreen() {
         </ScrollView>
       )}
 
-      {renderModal()}
+      {comercioModal && (
+        <FichaTiendaModal
+          socio={comercioModal}
+          subcatNombre={subcatsGlobal.find(s => s.id === comercioModal.subcategoria_id)?.nombre}
+          onClose={() => setComercioModal(null)}
+          favoritas={favoritas}
+          onToggleFavorita={toggleFavorita}
+        />
+      )}
       {/* Modal selector de ciudad */}
       <Modal visible={modalCiudades} transparent animationType="slide" onRequestClose={() => setModalCiudades(false)}>
         <View style={styles.configOverlay}>
@@ -1120,31 +737,6 @@ export default function DirectorioScreen() {
       </Modal>
 
       {renderModalConfig()}
-      {renderProductoModal()}
-
-      {/* Imagen ampliada */}
-      <Modal visible={!!imagenAmpliada} transparent animationType="fade"
-        onRequestClose={() => { resetVisor(); setImagenAmpliada(null); }}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: '#000000EE', justifyContent: 'center', alignItems: 'center' }}>
-            <TouchableOpacity
-              style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8 }}
-              onPress={() => { resetVisor(); setImagenAmpliada(null); }}>
-              <Ionicons name="close-circle" size={36} color="#fff" />
-            </TouchableOpacity>
-            <GestureDetector gesture={gestos}>
-              <Animated.View style={[{ width: '100%', height: '80%' }, estiloAnimado]}>
-                {imagenAmpliada && (
-                  <Image source={{ uri: imagenAmpliada }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-                )}
-              </Animated.View>
-            </GestureDetector>
-            <Text style={{ color: '#ffffff55', fontSize: 11, position: 'absolute', bottom: 30 }}>
-              Pellizca para zoom · Doble toque para restablecer
-            </Text>
-          </View>
-        </GestureHandlerRootView>
-      </Modal>
     </SafeAreaView>
   );
 }

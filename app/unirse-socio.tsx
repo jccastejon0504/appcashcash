@@ -35,15 +35,6 @@ const METODOS: { key: MetodoPago; label: string; icon: string }[] = [
 ];
 
 
-const toDMS = (deg: number, esLat: boolean) => {
-  const dir = esLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'O');
-  const abs = Math.abs(deg);
-  const d   = Math.floor(abs);
-  const mAll= (abs - d) * 60;
-  const m   = Math.floor(mAll);
-  const s   = ((mAll - m) * 60).toFixed(2);
-  return `${d}° ${m}' ${s}" ${dir}`;
-};
 
 export default function UnirseSocioScreen() {
   const { colors: Colors } = useTheme();
@@ -310,7 +301,6 @@ export default function UnirseSocioScreen() {
 
       // Verificar límite de tiendas por teléfono
       const limite = cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100;
-      const totalTiendas = (solExist?.length ?? 0) + (socioExist?.length ?? 0);
       // Contar únicas (pueden solaparse entre tablas por el mismo registro)
       const idsUnicos = new Set([
         ...(solExist ?? []).map(s => s.nombre?.trim().toLowerCase()),

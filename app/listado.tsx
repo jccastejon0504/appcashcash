@@ -213,15 +213,6 @@ export default function ListadoMercadoScreen() {
     return resultados.reduce((min, r) => r.precio < min.precio ? r : min);
   };
 
-  const getImagenProducto = (nombre: string) => {
-    const term = nombre.toLowerCase().trim();
-    for (const c of comercios) {
-      const prod = c.productos.find(p => p.nombre.toLowerCase().includes(term) && p.imagen);
-      if (prod?.imagen) return prod.imagen;
-    }
-    return null;
-  };
-
   const pendientes = items.filter(i => !i.checked).length;
 
   const sugerencias = nuevo.trim().length > 0
@@ -497,8 +488,6 @@ export default function ListadoMercadoScreen() {
             return acc + (mejor ? mejor.precio * (item.cantidad ?? 1) : 0);
           }, 0);
           const totalBs = usdABs(totalUSD);
-          const porComercio = resumenPorComercio();
-          const minTotal = porComercio.length > 0 ? Math.min(...porComercio.map(r => r.totalUSD)) : null;
           return (
             <>
               {/* Bloque mejor precio posible */}

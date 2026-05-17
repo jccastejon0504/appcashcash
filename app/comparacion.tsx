@@ -339,7 +339,7 @@ export default function ComparacionScreen() {
                 <Text style={styles.guiaTituloMain}>Compara precios entre comercios</Text>
                 <Text style={styles.guiaDescMain}>
                   Agrega los locales donde compras habitualmente, registra los productos con su precio en $ o Bs y la app te muestra al instante dónde sale más barato cada uno.{'\n\n'}
-                  Con 2 o más comercios activa "Comparar" para ver de un vistazo cuál local te conviene más para toda tu lista.
+                  {'Con 2 o más comercios activa "Comparar" para ver de un vistazo cuál local te conviene más para toda tu lista.'}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm, opacity: 0.5 }}>
                   <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
@@ -832,7 +832,7 @@ export default function ComparacionScreen() {
             {/* Handle */}
             <View style={styles.modalHandle} />
 
-            <Text style={styles.modalTitulo}>"{productoModal}"</Text>
+            <Text style={styles.modalTitulo}>{'"'}{productoModal}{'"'}</Text>
             <Text style={styles.modalSubtitulo}>Precios encontrados en los locales</Text>
 
             {resultados.length === 0 ? (
@@ -858,7 +858,7 @@ export default function ComparacionScreen() {
                         <View>
                           <Text style={[styles.resultComercio, { color: txtColor }]}>{r.nombre}</Text>
                           {r.nombreProducto && r.nombreProducto.toLowerCase() !== productoModal.toLowerCase() && (
-                            <Text style={styles.resultNombreReal}>"{r.nombreProducto}"</Text>
+                            <Text style={styles.resultNombreReal}>{'"'}{r.nombreProducto}{'"'}</Text>
                           )}
                         </View>
                       </View>

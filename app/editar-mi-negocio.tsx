@@ -75,8 +75,6 @@ export default function EditarMiNegocioScreen() {
   const [cargando,      setCargando]      = useState(true);
   const [guardando,     setGuardando]     = useState(false);
   const [socio,         setSocio]         = useState<Socio | null>(null);
-  const [limiteTiendas, setLimiteTiendas] = useState(100);
-  const [totalTiendas,  setTotalTiendas]  = useState(0);
 
   // Campos editables
   const [nombre,    setNombre]    = useState('');
@@ -203,7 +201,7 @@ export default function EditarMiNegocioScreen() {
       const lng = loc.coords.longitude;
       setCoordenadas({ lat, lng });
       mostrarModal('exito', 'Ubicación capturada', `${toDMS(lat, true)}\n${toDMS(lng, false)}\n\nPresiona Guardar para actualizar.`);
-    } catch (e) {
+    } catch {
       mostrarModal('error', 'Error GPS', 'No se pudo obtener la ubicación.');
     } finally {
       setObtenGPS(false);
@@ -238,15 +236,12 @@ export default function EditarMiNegocioScreen() {
         setResolvedId(socioId);
       }
 
-      const [{ data }, { data: ciu }, { data: subcats }, { data: cfgLimite }, { data: cfgLock }] = await Promise.all([
+      const [{ data }, { data: ciu }, { data: subcats }, { data: cfgLock }] = await Promise.all([
         supabase.from('socios_comerciales').select('*').eq('id', socioId).single(),
         supabase.from('categorias').select('id,nombre').order('orden'),
         supabase.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre'),
-        supabase.from('config_app').select('valor').eq('clave', 'limite_tiendas_por_cliente').single(),
         supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${socioId}`, `lock_tel_${socioId}`]),
       ]);
-      const limite = cfgLimite?.valor ? parseInt(cfgLimite.valor) : 100;
-      setLimiteTiendas(limite);
       if (ciu)     setCiudades(ciu as Ciudad[]);
       if (subcats) setSubcategorias(subcats as Subcategoria[]);
       if (data) {
@@ -272,17 +267,6 @@ export default function EditarMiNegocioScreen() {
         }
         // Preseleccionar categoría guardada (global, sin depender de ciudad)
         if (data.subcategoria_id) setSubcatSelId(data.subcategoria_id);
-      }
-      // Contar tiendas del usuario por teléfono
-      if (data?.telefono || data?.whatsapp) {
-        const tel = (data.telefono || data.whatsapp || '').replace(/\D/g, '');
-        if (tel) {
-          const { data: misTiendas } = await supabase
-            .from('socios_comerciales')
-            .select('id')
-            .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
-          setTotalTiendas(misTiendas?.length ?? 0);
-        }
       }
       setCargando(false);
 
@@ -367,6 +351,7 @@ export default function EditarMiNegocioScreen() {
           pro_anual:      map.precio_base_pro_anual      != null ? parseFloat(map.precio_base_pro_anual)      : 300,
         });
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const pickImage = (onSelect: (uri: string) => void) => {
@@ -1592,7 +1577,7 @@ export default function EditarMiNegocioScreen() {
                 </Text>
                 <View style={{ backgroundColor: '#f3e8ff', borderRadius: Radius.md, padding: Spacing.sm, borderWidth: 1, borderColor: '#d8b4fe' }}>
                   <Text style={{ fontSize: FontSize.xs, color: '#6b21a8', fontWeight: '600' }}>
-                    💡 El botón aparece arriba del botón "Renovar membresía". Si no lo ves, la función puede estar temporalmente desactivada.
+                    {'💡 El botón aparece arriba del botón "Renovar membresía". Si no lo ves, la función puede estar temporalmente desactivada.'}
                   </Text>
                 </View>
               </View>
@@ -1608,7 +1593,7 @@ export default function EditarMiNegocioScreen() {
                   <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: Colors.text }}>Comprar más espacios de galería</Text>
                 </View>
                 <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20 }}>
-                  Cada plan tiene un límite de fotos en el catálogo. Cuando llegas al límite aparece el botón <Text style={{ fontWeight: '700', color: Colors.text }}>"Comprar más espacios"</Text>. Compra paquetes adicionales para seguir agregando productos.
+                  {'Cada plan tiene un límite de fotos en el catálogo. Cuando llegas al límite aparece el botón '}<Text style={{ fontWeight: '700', color: Colors.text }}>{'"Comprar más espacios"'}</Text>{'. Compra paquetes adicionales para seguir agregando productos.'}
                 </Text>
                 <View style={{ backgroundColor: '#fef9c3', borderRadius: Radius.md, padding: Spacing.sm, borderWidth: 1, borderColor: '#fde68a' }}>
                   <Text style={{ fontSize: FontSize.xs, color: '#92400e', fontWeight: '600' }}>
