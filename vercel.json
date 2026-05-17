@@ -4,9 +4,10 @@
   ],
   "headers": [
     {
-      "source": "/admin/(.*)",
+      "source": "/admin/(.*\\.html)",
       "headers": [
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
       ]
     }
   ]
