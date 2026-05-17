@@ -309,17 +309,10 @@ export default function EditarMiNegocioScreen() {
         });
       });
 
-    // Verificar si ya hay una solicitud de galería extra pendiente
+    // Verificar pendiente galería extra desde AsyncStorage
     if (socioId) {
-      supabase.from('solicitudes')
-        .select('id')
-        .eq('socio_id', socioId)
-        .eq('tipo', 'galeria_extra')
-        .eq('estado', 'pendiente')
-        .limit(1)
-        .then(({ data }) => {
-          if (data && data.length > 0) setSolGalPendiente(true);
-        });
+      AsyncStorage.getItem(`sol_gal_pendiente_${socioId}`)
+        .then(v => { if (v === 'true') setSolGalPendiente(true); });
     }
 
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
@@ -466,6 +459,7 @@ export default function EditarMiNegocioScreen() {
     setComprobanteGal(null);
     setPaquetesGal(1);
     setSolGalPendiente(true);
+    if (resolvedId) await AsyncStorage.setItem(`sol_gal_pendiente_${resolvedId}`, 'true');
     mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${slotsTotal} espacios extra fue enviada. El equipo la revisará en breve.`);
   };
 
@@ -475,8 +469,7 @@ export default function EditarMiNegocioScreen() {
     Promise.all([
       supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
       supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`]),
-      supabase.from('solicitudes').select('id').eq('socio_id', resolvedId).eq('tipo', 'galeria_extra').eq('estado', 'pendiente').limit(1),
-    ]).then(([{ data }, { data: cfg }, { data: solPend }]) => {
+    ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
       if (data) {
         setSocio(prev => prev ? {
@@ -486,9 +479,14 @@ export default function EditarMiNegocioScreen() {
           nombre_bloqueado:   cfgMap[`lock_nombre_${resolvedId}`] === 'true',
           telefono_bloqueado: cfgMap[`lock_tel_${resolvedId}`]    === 'true',
         } : prev);
-        setGaleriaExtra(data.galeria_extra ?? 0);
+        const nuevosExtra = data.galeria_extra ?? 0;
+        setGaleriaExtra(nuevosExtra);
+        // Si galería extra aumentó → el admin aprobó → limpiar pendiente
+        if (nuevosExtra > 0) {
+          AsyncStorage.removeItem(`sol_gal_pendiente_${resolvedId}`);
+          setSolGalPendiente(false);
+        }
       }
-      setSolGalPendiente((solPend ?? []).length > 0);
     });
   }, [resolvedId]));
 
