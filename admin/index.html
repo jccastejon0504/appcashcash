@@ -4407,22 +4407,33 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function guardarConfigGal() {
     const btn = document.getElementById('gal-btn-cfg');
     btn.disabled = true; btn.textContent = 'Guardando…';
-    const precio = document.getElementById('gal-precio').value;
-    const slots  = document.getElementById('gal-slots').value;
-    const activo = document.getElementById('gal-activo').checked;
-    const claves = [
-      { clave: 'precio_paquete_galeria', valor: precio },
-      { clave: 'slots_paquete_galeria',  valor: slots  },
-      { clave: 'galeria_extra_activo',   valor: String(activo) },
-    ];
-    for (const { clave, valor } of claves) {
-      const { data: ex } = await db.from('config_app').select('id').eq('clave', clave).maybeSingle();
-      if (ex) await db.from('config_app').update({ valor }).eq('clave', clave);
-      else    await db.from('config_app').insert({ clave, valor });
+    try {
+      const precio = document.getElementById('gal-precio').value;
+      const slots  = document.getElementById('gal-slots').value;
+      const activo = document.getElementById('gal-activo').checked;
+      const claves = [
+        { clave: 'precio_paquete_galeria', valor: precio },
+        { clave: 'slots_paquete_galeria',  valor: slots  },
+        { clave: 'galeria_extra_activo',   valor: String(activo) },
+      ];
+      for (const { clave, valor } of claves) {
+        const { data: ex } = await db.from('config_app').select('id').eq('clave', clave).maybeSingle();
+        if (ex) {
+          const { error } = await db.from('config_app').update({ valor }).eq('clave', clave);
+          if (error) throw new Error(`update ${clave}: ${error.message}`);
+        } else {
+          const { error } = await db.from('config_app').insert({ clave, valor });
+          if (error) throw new Error(`insert ${clave}: ${error.message}`);
+        }
+      }
+      btn.disabled = false; btn.textContent = 'Guardar configuración';
+      alert('✅ Configuración guardada.');
+      actualizarPreviewGal();
+    } catch(e) {
+      btn.disabled = false; btn.textContent = 'Guardar configuración';
+      alert('❌ Error al guardar: ' + e.message);
+      console.error('[guardarConfigGal]', e);
     }
-    btn.disabled = false; btn.textContent = 'Guardar configuración';
-    alert('Configuración guardada.');
-    actualizarPreviewGal();
   }
 
   function renderSolicitudesGaleria() {
