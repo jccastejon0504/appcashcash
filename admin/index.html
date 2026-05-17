@@ -1844,7 +1844,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarOfertas() {
     cargarReglas();
-    cargarGaleriaExtra();
+    await cargarGaleriaExtra();
     // Cargar config_app (visibilidad + precios base + texto promo + días de gracia)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
