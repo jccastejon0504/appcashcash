@@ -1225,6 +1225,63 @@
         </div>
       </div>
 
+      <!-- ── Destacados ──────────────────────────────────── -->
+      <div style="margin-top:32px">
+        <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">⭐ Destacados</h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Permite a los clientes pagar para aparecer en la parte superior de los resultados por días.</p>
+
+        <div class="grid-2" style="margin-bottom:24px">
+          <!-- Config card -->
+          <div class="card">
+            <div class="card-header"><h2>Configuración</h2></div>
+            <div class="card-body">
+              <div style="border:2px solid var(--border);border-radius:12px;padding:16px;background:#fdf4ff;margin-bottom:16px">
+                <p id="dest-preview" style="font-size:20px;font-weight:800;color:var(--text)">$1 por día destacado</p>
+              </div>
+              <form onsubmit="event.preventDefault();guardarConfigDestacado()" style="display:flex;flex-direction:column;gap:14px">
+                <div class="form-group">
+                  <label>Precio por día ($)</label>
+                  <input type="number" id="dest-precio" value="1" step="0.01" min="0.1" />
+                </div>
+                <div class="toggle-row">
+                  <span>Destacados activos para clientes</span>
+                  <label class="toggle"><input type="checkbox" id="dest-activo" checked /><span class="slider"></span></label>
+                </div>
+                <button type="submit" class="btn btn-primary" id="dest-btn-cfg">Guardar configuración</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Info card -->
+          <div class="card">
+            <div class="card-header"><h2>Cómo funciona</h2></div>
+            <div class="card-body">
+              <ul style="font-size:13px;color:var(--muted);line-height:1.9;padding-left:18px">
+                <li>El cliente va a <b>"Editar mi tienda"</b> en la app</li>
+                <li>Toca el botón <b>"Destacar mi tienda"</b> y elige los días</li>
+                <li>Paga y adjunta el comprobante</li>
+                <li>Llega la solicitud aquí como <b>Pendiente</b></li>
+                <li>Al aprobar, se asigna <b>destacado_hasta</b> automáticamente</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solicitudes destacados -->
+        <div class="card">
+          <div class="card-header"><h2>Solicitudes de destacado</h2></div>
+          <div style="padding:16px">
+            <div id="dest-solicitudes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Sin solicitudes aún.</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="gal-sol-row" style="background:#fdf4ff;font-weight:700;color:#a855f7;font-size:12px">
+                <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Estado</span><span>Acciones</span>
+              </div>
+              <div id="dest-solicitudes-body"><p class="loading">Cargando…</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ SOLICITUDES ═════════════════════════════════════ -->
@@ -1852,6 +1909,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function cargarOfertas() {
     cargarReglas();
     await cargarGaleriaExtra();
+    await cargarDestacados();
     // Cargar config_app (visibilidad + precios base + texto promo + días de gracia)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
@@ -2077,7 +2135,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarSolicitudes() {
     const filtro = document.getElementById('filtro-solicitudes').value;
-    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
 
     const [{ data, error }, { data: cats }, { data: ciu }] = await Promise.all([
@@ -4506,6 +4564,140 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     await db.from('solicitudes').update({ estado: 'rechazado' }).eq('id', id);
     alert('Solicitud rechazada.');
     await cargarGaleriaExtra();
+  }
+
+  // ── Destacados ────────────────────────────────────────────────────────────
+
+  var solicitudesDestacadosData = [];
+
+  async function cargarDestacados() {
+    try {
+      const { data: cfg } = await db.from('config_app').select('clave,valor')
+        .in('clave', ['destacado_precio_dia', 'destacado_activo']);
+      const cfgMap = Object.fromEntries((cfg ?? []).map(r => [r.clave, r.valor]));
+      document.getElementById('dest-precio').value   = cfgMap['destacado_precio_dia'] ?? '1';
+      document.getElementById('dest-activo').checked = cfgMap['destacado_activo'] !== 'false';
+      actualizarPreviewDest();
+    } catch(e) { console.error('[destacados] error cfg:', e); }
+
+    try {
+      const { data: sols, error } = await db.from('solicitudes')
+        .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id')
+        .eq('plan', 'destacado')
+        .order('created_at', { ascending: false });
+      if (error) {
+        const el = document.getElementById('dest-solicitudes-body');
+        if (el) el.innerHTML = `<div style="color:red;padding:12px">Error: ${error.message}</div>`;
+        return;
+      }
+      solicitudesDestacadosData = sols ?? [];
+      renderSolicitudesDestacados();
+    } catch(e) {
+      console.error('[destacados] error query:', e);
+      const el = document.getElementById('dest-solicitudes-body');
+      if (el) el.innerHTML = `<div style="color:red;padding:12px">Error: ${e.message}</div>`;
+    }
+  }
+
+  function actualizarPreviewDest() {
+    const precio = parseFloat(document.getElementById('dest-precio').value) || 1;
+    document.getElementById('dest-preview').textContent = `$${precio} por día destacado`;
+  }
+  document.getElementById('dest-precio').addEventListener('input', actualizarPreviewDest);
+
+  async function guardarConfigDestacado() {
+    const btn = document.getElementById('dest-btn-cfg');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const precio = document.getElementById('dest-precio').value;
+      const activo = document.getElementById('dest-activo').checked;
+      const { error } = await db.from('config_app').upsert([
+        { clave: 'destacado_precio_dia', valor: precio },
+        { clave: 'destacado_activo',     valor: String(activo) },
+      ], { onConflict: 'clave' });
+      if (error) throw new Error(error.message);
+      btn.disabled = false; btn.textContent = 'Guardar configuración';
+      mostrarToast('✅ Configuración guardada.', 'ok');
+      actualizarPreviewDest();
+    } catch(e) {
+      btn.disabled = false; btn.textContent = 'Guardar configuración';
+      mostrarToast('❌ Error: ' + e.message, 'err');
+    }
+  }
+
+  function renderSolicitudesDestacados() {
+    const tbody = document.getElementById('dest-solicitudes-body');
+    const empty = document.getElementById('dest-solicitudes-empty');
+    tbody.innerHTML = '';
+    if (!solicitudesDestacadosData.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    solicitudesDestacadosData.forEach(sol => {
+      const row = document.createElement('div');
+      row.className = 'gal-sol-row';
+      row.innerHTML = `
+        <div>
+          <b>${sol.nombre}</b><br>
+          <span style="font-size:12px;color:var(--muted)">${sol.telefono || sol.whatsapp || ''}</span>
+        </div>
+        <div>${sol.descripcion ?? '—'}</div>
+        <div><b>$${Number(sol.monto||0).toFixed(2)}</b></div>
+        <div>${sol.referencia ?? '—'}</div>
+        <div>
+          <span class="${sol.estado === 'pendiente' ? 'badge-pendiente' : sol.estado === 'aprobado' ? 'badge badge-green' : 'badge badge-gray'}">
+            ${sol.estado}
+          </span>
+        </div>
+        <div class="gal-sol-acciones" id="dest-acc-${sol.id}"></div>
+      `;
+      tbody.appendChild(row);
+
+      const acc = document.getElementById(`dest-acc-${sol.id}`);
+      if (sol.comprobante) {
+        const btnVer = document.createElement('button');
+        btnVer.className = 'btn-accion'; btnVer.textContent = 'Ver comprobante';
+        btnVer.style.cssText = 'background:#f0f4ff;color:#3b82f6;border:1.5px solid #bfdbfe';
+        btnVer.addEventListener('click', () => window.open(sol.comprobante, '_blank'));
+        acc.appendChild(btnVer);
+      }
+      if (sol.estado === 'pendiente') {
+        const btnApr = document.createElement('button');
+        btnApr.className = 'btn-accion btn-toggle-activo'; btnApr.textContent = 'Aprobar';
+        btnApr.addEventListener('click', () => aprobarDestacado(sol, btnApr));
+        const btnRej = document.createElement('button');
+        btnRej.className = 'btn-accion btn-eliminar-hist'; btnRej.textContent = 'Rechazar';
+        btnRej.addEventListener('click', () => rechazarDestacado(sol.id, btnRej));
+        acc.appendChild(btnApr); acc.appendChild(btnRej);
+      }
+    });
+  }
+
+  async function aprobarDestacado(sol, btn) {
+    if (!sol.socio_id) { mostrarToast('Error: sin ID de tienda', 'err'); return; }
+    btn.disabled = true; btn.textContent = '…';
+    const match = (sol.descripcion ?? '').match(/(\d+)\s*día/i);
+    const dias = match ? parseInt(match[1]) : 1;
+
+    // Calcular destacado_hasta sumando dias desde hoy
+    const { data: socio } = await db.from('socios_comerciales').select('destacado_hasta').eq('id', sol.socio_id).maybeSingle();
+    const base = socio?.destacado_hasta && new Date(socio.destacado_hasta) > new Date()
+      ? new Date(socio.destacado_hasta)  // extender desde la fecha actual si ya está vigente
+      : new Date();
+    base.setDate(base.getDate() + dias);
+    const nuevaFecha = base.toISOString().split('T')[0];
+
+    const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha }).eq('id', sol.socio_id);
+    if (error) { mostrarToast('Error: ' + error.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
+    await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
+    mostrarToast(`✓ Destacado hasta ${nuevaFecha} asignado a "${sol.nombre}".`, 'ok');
+    await cargarDestacados();
+  }
+
+  async function rechazarDestacado(id, btn) {
+    if (!confirm('¿Rechazar esta solicitud de destacado?')) return;
+    btn.disabled = true; btn.textContent = '…';
+    await db.from('solicitudes').update({ estado: 'rechazado' }).eq('id', id);
+    mostrarToast('Solicitud rechazada.', 'ok');
+    await cargarDestacados();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

@@ -82,7 +82,10 @@
       "Read(//c/Users/yohanna/**)",
       "Read(//c/Users/yohanna/.vercel/**)",
       "Bash(java --version)",
-      "Bash(npx expo-doctor *)"
+      "Bash(npx expo-doctor *)",
+      "Bash(eas build:cancel a913c701-fe4d-4140-87bc-d1a8938f0f6a)",
+      "Bash(ping *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); e=d['expo']; print\\('version:', e.get\\('version'\\)\\); print\\('versionCode:', e.get\\('android',{}\\).get\\('versionCode'\\)\\)\")"
     ]
   }
 }

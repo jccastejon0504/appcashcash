@@ -38,6 +38,7 @@ type Socio = {
   telefono_bloqueado?: boolean;
   slug?: string | null;
   galeria_extra?: number;
+  destacado_hasta?: string | null;
 };
 
 function slugify(nombre: string): string {
@@ -139,6 +140,18 @@ export default function EditarMiNegocioScreen() {
   const [enviandoGal,         setEnviandoGal]         = useState(false);
   const [solGalPendiente,     setSolGalPendiente]     = useState(false);
   const [galeriaExtraActivo,  setGaleriaExtraActivo]  = useState(true);
+
+  // Destacados
+  const [destacadoActivo,       setDestacadoActivo]       = useState(true);
+  const [precioDestacadoDia,    setPrecioDestacadoDia]    = useState(1);
+  const [modalDestacado,        setModalDestacado]        = useState(false);
+  const [diasDestacado,         setDiasDestacado]         = useState(5);
+  const [metodoDestacado,       setMetodoDestacado]       = useState('');
+  const [referenciaDestacado,   setReferenciaDestacado]   = useState('');
+  const [comprobanteDestacado,  setComprobanteDestacado]  = useState<string|null>(null);
+  const [enviandoDestacado,     setEnviandoDestacado]     = useState(false);
+  const [solDestacadoPendiente, setSolDestacadoPendiente] = useState(false);
+  const [destacadoHasta,        setDestacadoHasta]        = useState<string|null>(null);
 
   // GPS
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
@@ -327,7 +340,7 @@ export default function EditarMiNegocioScreen() {
       const mapa: Record<string,string[]> = {};
       data.forEach((m: any) => { mapa[m.id] = m.datos; });
       setInfoPago(mapa);
-      if (ordenados[0]) { setMetodoRenov(ordenados[0].id); setMetodoGal(ordenados[0].id); }
+      if (ordenados[0]) { setMetodoRenov(ordenados[0].id); setMetodoGal(ordenados[0].id); setMetodoDestacado(ordenados[0].id); }
     });
 
     supabase.from('planes_ofertas').select('*').eq('activo', true).then(({ data }) => {
@@ -462,14 +475,46 @@ export default function EditarMiNegocioScreen() {
     mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${slotsTotal} espacios extra fue enviada. El equipo la revisará en breve.`);
   };
 
+  const enviarSolicitudDestacado = async () => {
+    if (!referenciaDestacado.trim()) { mostrarModal('info', 'Campo requerido', 'Ingresa el número de referencia.'); return; }
+    if (!comprobanteDestacado)       { mostrarModal('info', 'Campo requerido', 'Adjunta la foto del comprobante.'); return; }
+    setEnviandoDestacado(true);
+    const urlComprobante = await subirImagen(comprobanteDestacado, 'comprobante_dest');
+    const montoTotal = diasDestacado * precioDestacadoDia;
+    const payload: any = {
+      nombre:      socio?.nombre ?? '',
+      telefono:    telefono.trim(),
+      whatsapp:    whatsapp.trim(),
+      plan:        'destacado',
+      estado:      'pendiente',
+      metodo_pago: metodoDestacado,
+      referencia:  referenciaDestacado.trim(),
+      monto:       montoTotal,
+      comprobante: urlComprobante,
+      descripcion: `${diasDestacado} día${diasDestacado > 1 ? 's' : ''} destacado`,
+      socio_id:    resolvedId,
+    };
+    const { error } = await supabase.from('solicitudes').insert(payload);
+    setEnviandoDestacado(false);
+    if (error) { mostrarModal('error', 'Error al enviar', error.message); return; }
+    setModalDestacado(false);
+    setReferenciaDestacado('');
+    setComprobanteDestacado(null);
+    setDiasDestacado(5);
+    setSolDestacadoPendiente(true);
+    if (resolvedId) await AsyncStorage.setItem(`sol_dest_pendiente_${resolvedId}`, 'true');
+    mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${diasDestacado} días destacado fue enviada. El equipo la revisará en breve.`);
+  };
+
   // Refrescar fecha_vencimiento, plan y galeria_extra cada vez que la pantalla recibe el foco
   useFocusEffect(useCallback(() => {
     if (!resolvedId) return;
     Promise.all([
-      supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
+      supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra, destacado_hasta').eq('id', resolvedId).single(),
       supabase.from('config_app').select('clave,valor').in('clave', [
         `lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`,
         'precio_paquete_galeria', 'slots_paquete_galeria', 'galeria_extra_activo',
+        'destacado_precio_dia', 'destacado_activo',
       ]),
     ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
@@ -487,10 +532,22 @@ export default function EditarMiNegocioScreen() {
           AsyncStorage.removeItem(`sol_gal_pendiente_${resolvedId}`);
           setSolGalPendiente(false);
         }
+        // Destacado
+        const dHasta = data.destacado_hasta ?? null;
+        setDestacadoHasta(dHasta);
+        if (dHasta && new Date(dHasta) > new Date()) {
+          AsyncStorage.removeItem(`sol_dest_pendiente_${resolvedId}`);
+          setSolDestacadoPendiente(false);
+        } else {
+          AsyncStorage.getItem(`sol_dest_pendiente_${resolvedId}`)
+            .then(v => { if (v === 'true') setSolDestacadoPendiente(true); });
+        }
       }
       if (cfgMap['precio_paquete_galeria']) setPrecioGalConfig(parseFloat(cfgMap['precio_paquete_galeria']) || 5);
       if (cfgMap['slots_paquete_galeria'])  setSlotsGalConfig(parseInt(cfgMap['slots_paquete_galeria'])    || 4);
       setGaleriaExtraActivo(cfgMap['galeria_extra_activo'] !== 'false');
+      if (cfgMap['destacado_precio_dia']) setPrecioDestacadoDia(parseFloat(cfgMap['destacado_precio_dia']) || 1);
+      setDestacadoActivo(cfgMap['destacado_activo'] !== 'false');
     });
   }, [resolvedId]));
 
@@ -761,6 +818,35 @@ export default function EditarMiNegocioScreen() {
                 <Text style={[styles.contadorValor, { color: Colors.textMuted }]}>— —</Text>
               </View>
             </View>
+          );
+        })()}
+
+        {/* Destacar mi tienda */}
+        {(() => {
+          const activo = destacadoHasta && new Date(destacadoHasta) > new Date();
+          if (activo) return (
+            <View style={[styles.btnRenovar, { borderColor: '#16a34a', borderStyle: 'solid', backgroundColor: '#dcfce7' }]}>
+              <Ionicons name="star" size={18} color="#16a34a" />
+              <Text style={[styles.btnRenovarText, { color: '#16a34a' }]}>
+                Destacado hasta {new Date(destacadoHasta!).toLocaleDateString('es-VE', { day:'2-digit', month:'short' })}
+              </Text>
+            </View>
+          );
+          if (solDestacadoPendiente) return (
+            <View style={[styles.btnRenovar, { borderColor: '#f59e0b', borderStyle: 'solid', backgroundColor: '#fef9c3' }]}>
+              <Ionicons name="time-outline" size={18} color="#f59e0b" />
+              <Text style={[styles.btnRenovarText, { color: '#f59e0b' }]}>Solicitud destacado · En revisión</Text>
+            </View>
+          );
+          if (!destacadoActivo) return null;
+          return (
+            <TouchableOpacity
+              style={[styles.btnRenovar, { borderColor: '#a855f7', borderStyle: 'solid' }]}
+              onPress={() => setModalDestacado(true)}
+              activeOpacity={0.85}>
+              <Ionicons name="star-outline" size={18} color="#a855f7" />
+              <Text style={[styles.btnRenovarText, { color: '#a855f7' }]}>Destacar mi tienda (${precioDestacadoDia}/día)</Text>
+            </TouchableOpacity>
           );
         })()}
 
@@ -1462,6 +1548,130 @@ export default function EditarMiNegocioScreen() {
           </View>
         </View>
       </Modal>
+      {/* ── Modal Destacar mi tienda ── */}
+      <Modal visible={modalDestacado} animationType="slide" transparent onRequestClose={() => setModalDestacado(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: Colors.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: Colors.border }]}>
+              <Text style={[styles.modalTitulo, { color: Colors.text }]}>Destacar mi tienda</Text>
+              <TouchableOpacity onPress={() => setModalDestacado(false)}>
+                <Ionicons name="close" size={22} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} keyboardShouldPersistTaps="handled">
+
+              {/* Info */}
+              <View style={{ backgroundColor: '#f3e8ff', borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: '#d8b4fe' }}>
+                <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: '#6b21a8' }}>
+                  Tu tienda aparecerá en la parte superior de los resultados durante los días que elijas.
+                </Text>
+              </View>
+
+              {/* Selector de días */}
+              <Text style={[styles.label, { color: Colors.textMuted }]}>Días de destacado</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {[1, 3, 5, 7, 14, 30].map(n => (
+                  <TouchableOpacity key={n} onPress={() => setDiasDestacado(n)}
+                    style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center',
+                      borderColor: diasDestacado === n ? '#a855f7' : Colors.border,
+                      backgroundColor: diasDestacado === n ? '#f3e8ff' : Colors.card }}>
+                    <Text style={{ fontWeight: '800', fontSize: FontSize.md, color: diasDestacado === n ? '#6b21a8' : Colors.text }}>{n}d</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Resumen */}
+              <View style={{ backgroundColor: Colors.background, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Días destacados</Text>
+                  <Text style={{ color: Colors.text, fontWeight: '800', fontSize: FontSize.sm }}>{diasDestacado} día{diasDestacado > 1 ? 's' : ''}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>Total a pagar</Text>
+                  <Text style={{ color: '#a855f7', fontWeight: '900', fontSize: FontSize.lg }}>${diasDestacado * precioDestacadoDia}</Text>
+                </View>
+                {tasaBCV && (
+                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>
+                    Bs {(diasDestacado * precioDestacadoDia * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </Text>
+                )}
+              </View>
+
+              {/* Método de pago */}
+              <Text style={[styles.label, { color: Colors.textMuted }]}>Método de pago</Text>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {metodosPago.map(m => (
+                  <TouchableOpacity key={m.id} onPress={() => setMetodoDestacado(m.id)}
+                    style={[styles.metodoBtn, { borderColor: metodoDestacado === m.id ? '#a855f7' : Colors.border,
+                      backgroundColor: metodoDestacado === m.id ? '#a855f712' : Colors.card, flex: 1 }]}>
+                    <Text style={[styles.metodoBtnText, { color: metodoDestacado === m.id ? '#a855f7' : Colors.textMuted }]}>{m.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Datos de pago */}
+              <View style={[styles.infoPagoBox, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
+                <Text style={[styles.label, { color: Colors.text, marginBottom: 6 }]}>Datos para el pago:</Text>
+                {(infoPago[metodoDestacado] ?? []).map((l, i) => {
+                  const valor = l.includes(': ') ? l.split(': ').slice(1).join(': ') : l;
+                  const key = `dest-${metodoDestacado}-${i}`;
+                  return (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <Text style={[styles.infoPagoLinea, { color: Colors.textMuted, flex: 1 }]}>{l}</Text>
+                      <TouchableOpacity
+                        style={[styles.copiarBtn, { backgroundColor: copiado === key ? Colors.success + '22' : Colors.border }]}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(valor);
+                          setCopiado(key);
+                          setTimeout(() => setCopiado(null), 2000);
+                        }}>
+                        <Ionicons name={copiado === key ? 'checkmark' : 'copy-outline'} size={13} color={copiado === key ? Colors.success : Colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Referencia */}
+              <View style={{ gap: 5 }}>
+                <Text style={[styles.label, { color: Colors.textMuted }]}>Número de referencia *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: Colors.background, borderColor: Colors.border, color: Colors.text }]}
+                  value={referenciaDestacado} onChangeText={setReferenciaDestacado}
+                  placeholder="Ej: 12345678" placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Comprobante */}
+              <View style={{ gap: 5 }}>
+                <Text style={[styles.label, { color: Colors.textMuted }]}>Foto del comprobante *</Text>
+                <TouchableOpacity
+                  style={[styles.portadaSlot, { borderColor: Colors.border, backgroundColor: Colors.background, height: 110 }]}
+                  onPress={() => pickImage(setComprobanteDestacado)} activeOpacity={0.8}>
+                  {comprobanteDestacado ? (
+                    <Image source={{ uri: comprobanteDestacado }} style={styles.portadaImg} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.portadaPlaceholder}>
+                      <Ionicons name="receipt-outline" size={24} color={Colors.textMuted} />
+                      <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs }}>Toca para adjuntar</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btnGuardar, { backgroundColor: enviandoDestacado ? Colors.border : '#a855f7' }]}
+                onPress={enviarSolicitudDestacado} disabled={enviandoDestacado}>
+                {enviandoDestacado
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnGuardarText}>Enviar solicitud</Text>
+                }
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
