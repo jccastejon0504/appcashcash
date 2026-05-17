@@ -452,21 +452,24 @@ export default function EditarMiNegocioScreen() {
     mostrarModal('exito', '¡Solicitud enviada!', `Tu solicitud de ${slotsTotal} espacios extra fue enviada. El equipo la revisará en breve.`);
   };
 
-  // Refrescar fecha_vencimiento y plan cada vez que la pantalla recibe el foco
+  // Refrescar fecha_vencimiento, plan y galeria_extra cada vez que la pantalla recibe el foco
   useFocusEffect(useCallback(() => {
     if (!resolvedId) return;
     Promise.all([
-      supabase.from('socios_comerciales').select('fecha_vencimiento, plan').eq('id', resolvedId).single(),
+      supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
       supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`]),
     ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
-      if (data) setSocio(prev => prev ? {
-        ...prev,
-        fecha_vencimiento:  data.fecha_vencimiento,
-        plan:               data.plan,
-        nombre_bloqueado:   cfgMap[`lock_nombre_${resolvedId}`] === 'true',
-        telefono_bloqueado: cfgMap[`lock_tel_${resolvedId}`]    === 'true',
-      } : prev);
+      if (data) {
+        setSocio(prev => prev ? {
+          ...prev,
+          fecha_vencimiento:  data.fecha_vencimiento,
+          plan:               data.plan,
+          nombre_bloqueado:   cfgMap[`lock_nombre_${resolvedId}`] === 'true',
+          telefono_bloqueado: cfgMap[`lock_tel_${resolvedId}`]    === 'true',
+        } : prev);
+        setGaleriaExtra(data.galeria_extra ?? 0);
+      }
     });
   }, [resolvedId]));
 
