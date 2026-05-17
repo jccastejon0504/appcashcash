@@ -480,6 +480,33 @@
     /* scrollbar mínima */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── HERO LIGHTBOX ──────────────────────────── */
+    .hero-lb {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.95);
+      z-index: 600;
+      align-items: center; justify-content: center;
+      touch-action: none;
+    }
+    .hero-lb.open { display: flex; }
+    .hero-lb-img {
+      max-width: 100%; max-height: 100vh;
+      object-fit: contain;
+      transform-origin: center center;
+      user-select: none; -webkit-user-select: none;
+      will-change: transform;
+    }
+    .hero-lb-close {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,.15); border: none;
+      width: 38px; height: 38px; border-radius: 50%;
+      color: #fff; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-img-btn {
+      cursor: zoom-in; display: block; width: 100%; height: 100%;
+    }
   </style>
 </head>
 <body>
@@ -581,6 +608,12 @@
   </div>
 </div>
 
+<!-- Hero Lightbox -->
+<div class="hero-lb" id="hero-lb" onclick="cerrarHeroLb(event)">
+  <img class="hero-lb-img" id="hero-lb-img" src="" alt="" />
+  <button class="hero-lb-close" onclick="cerrarHeroLb()">✕</button>
+</div>
+
 <!-- Banner Descarga -->
 <div class="banner">
   <div class="banner-logo">💰</div>
@@ -664,7 +697,7 @@
     const hero = document.getElementById('hero');
     hero.innerHTML = `
       ${s.imagen
-        ? `<img class="hero-img" src="${s.imagen}" alt="${s.nombre}" />`
+        ? `<img class="hero-img hero-img-btn" src="${s.imagen}" alt="${s.nombre}" onclick="abrirHeroImg()" />`
         : `<div class="hero-placeholder">🏪</div>`}
       <div class="hero-grad"></div>
       <div class="hero-content">
@@ -672,8 +705,6 @@
         <div class="hero-tags">
           ${s.destacado ? `<span class="hero-tag hero-tag-dest">⭐ Destacada</span>` : ''}
           ${s.ciudad    ? `<span class="hero-tag">📍 ${s.ciudad}</span>` : ''}
-          ${s.plan && s.plan !== 'gratis'
-            ? `<span class="hero-tag">✦ Plan ${s.plan.charAt(0).toUpperCase()+s.plan.slice(1)}</span>` : ''}
         </div>
       </div>`;
 
@@ -849,6 +880,66 @@
 
   function cerrarInfoOverlay(e) {
     if (e.target === document.getElementById('info-overlay')) cerrarInfo();
+  }
+
+  /* ── HERO LIGHTBOX + PINCH ZOOM ─────────────── */
+  function abrirHeroImg() {
+    if (!_socioData?.imagen) return;
+    const lb  = document.getElementById('hero-lb');
+    const img = document.getElementById('hero-lb-img');
+    img.src = _socioData.imagen;
+    img.style.transform = '';
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    initHeroPinch(img);
+  }
+
+  function cerrarHeroLb(e) {
+    if (e && e.target !== document.getElementById('hero-lb') &&
+        !e.target.classList.contains('hero-lb-close')) return;
+    document.getElementById('hero-lb').classList.remove('open');
+    document.getElementById('hero-lb-img').style.transform = '';
+    document.body.style.overflow = '';
+  }
+
+  function initHeroPinch(img) {
+    let scale = 1, baseScale = 1;
+    let tx = 0, ty = 0;
+    let startDist = 0, startScale = 1;
+    let startTx = 0, startTy = 0, startMidX = 0, startMidY = 0;
+
+    function getTouches(e) { return Array.from(e.touches); }
+    function dist(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+
+    img.ontouchstart = (e) => {
+      e.preventDefault();
+      const t = getTouches(e);
+      if (t.length === 2) {
+        startDist  = dist(t[0], t[1]);
+        startScale = scale;
+        startMidX  = (t[0].clientX + t[1].clientX) / 2;
+        startMidY  = (t[0].clientY + t[1].clientY) / 2;
+        startTx = tx; startTy = ty;
+      }
+    };
+    img.ontouchmove = (e) => {
+      e.preventDefault();
+      const t = getTouches(e);
+      if (t.length === 2) {
+        const d = dist(t[0], t[1]);
+        scale = Math.max(1, Math.min(6, startScale * (d / startDist)));
+        img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+      }
+    };
+    img.ontouchend = (e) => {
+      e.preventDefault();
+      if (scale <= 1) {
+        scale = 1; baseScale = 1; tx = 0; ty = 0;
+        img.style.transform = '';
+      } else {
+        baseScale = scale;
+      }
+    };
   }
 
   function mostrarError(titulo, sub) {
