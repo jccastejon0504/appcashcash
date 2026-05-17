@@ -847,12 +847,20 @@
                 <input type="number" id="precio-base-basico-mensual" step="0.01" placeholder="15" />
               </div>
               <div class="form-group">
+                <label>Básico 6 meses ($)</label>
+                <input type="number" id="precio-base-basico-semestral" step="0.01" placeholder="75" />
+              </div>
+              <div class="form-group">
                 <label>Básico anual ($)</label>
                 <input type="number" id="precio-base-basico-anual" step="0.01" placeholder="150" />
               </div>
               <div class="form-group">
                 <label>Pro mensual ($)</label>
                 <input type="number" id="precio-base-pro-mensual" step="0.01" placeholder="30" />
+              </div>
+              <div class="form-group">
+                <label>Pro 6 meses ($)</label>
+                <input type="number" id="precio-base-pro-semestral" step="0.01" placeholder="150" />
               </div>
               <div class="form-group">
                 <label>Pro anual ($)</label>
@@ -901,6 +909,14 @@
               <div class="form-group">
                 <label>Pro anual (días)</label>
                 <input type="number" id="cfg-dias-pro-anual" min="1" max="9999" value="365" />
+              </div>
+              <div class="form-group">
+                <label>Básico 6 meses (días)</label>
+                <input type="number" id="cfg-dias-basico-semestral" min="1" max="9999" value="183" />
+              </div>
+              <div class="form-group">
+                <label>Pro 6 meses (días)</label>
+                <input type="number" id="cfg-dias-pro-semestral" min="1" max="9999" value="183" />
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
@@ -1142,6 +1158,122 @@
               <div class="btn-row">
                 <button type="submit" class="btn btn-primary">Guardar</button>
                 <button type="button" class="btn btn-danger" id="btn-borrar-pro-anual" style="display:none" onclick="borrarOferta('pro_anual')">Eliminar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Básico · 6 meses -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Plan Básico · 6 meses</h2>
+            <span class="badge badge-gray" id="badge-basico-semestral">Sin oferta</span>
+          </div>
+          <div class="card-body">
+            <div class="preview-oferta" id="preview-basico-semestral">
+              <p class="preview-default">$75 / 6 meses</p>
+            </div>
+            <form id="form-basico-semestral">
+              <input type="hidden" id="id-basico-semestral" />
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Tagline</label>
+                <textarea id="descripcion-basico-semestral" placeholder="Medio año al precio justo"></textarea>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Precio original ($)</label>
+                  <input type="number" id="precio-basico-semestral" step="0.01" placeholder="75" />
+                </div>
+                <div class="form-group">
+                  <label>Descuento (%)</label>
+                  <input type="number" id="descuento-basico-semestral" min="0" max="99" placeholder="10" />
+                </div>
+                <div class="form-group">
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-basico-semestral" step="0.01" placeholder="67.5" />
+                </div>
+                <div class="form-group">
+                  <label>Meses gratis</label>
+                  <input type="number" id="meses-basico-semestral" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha inicio</label>
+                  <input type="date" id="inicio-basico-semestral" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha fin</label>
+                  <input type="date" id="fin-basico-semestral" />
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-top:12px">
+                <span>Oferta activa</span>
+                <label class="toggle">
+                  <input type="checkbox" id="activo-basico-semestral" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="msg" id="msg-basico-semestral"></div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-basico-semestral" style="display:none" onclick="borrarOferta('basico_semestral')">Eliminar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Pro · 6 meses -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Plan Pro · 6 meses</h2>
+            <span class="badge badge-gray" id="badge-pro-semestral">Sin oferta</span>
+          </div>
+          <div class="card-body">
+            <div class="preview-oferta" id="preview-pro-semestral">
+              <p class="preview-default">$150 / 6 meses</p>
+            </div>
+            <form id="form-pro-semestral">
+              <input type="hidden" id="id-pro-semestral" />
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Tagline</label>
+                <textarea id="descripcion-pro-semestral" placeholder="Todo el Pro por 6 meses"></textarea>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Precio original ($)</label>
+                  <input type="number" id="precio-pro-semestral" step="0.01" placeholder="150" />
+                </div>
+                <div class="form-group">
+                  <label>Descuento (%)</label>
+                  <input type="number" id="descuento-pro-semestral" min="0" max="99" placeholder="10" />
+                </div>
+                <div class="form-group">
+                  <label>Precio oferta — auto</label>
+                  <input type="number" id="precio-oferta-pro-semestral" step="0.01" placeholder="135" />
+                </div>
+                <div class="form-group">
+                  <label>Meses gratis</label>
+                  <input type="number" id="meses-pro-semestral" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha inicio</label>
+                  <input type="date" id="inicio-pro-semestral" />
+                </div>
+                <div class="form-group">
+                  <label>Fecha fin</label>
+                  <input type="date" id="fin-pro-semestral" />
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-top:12px">
+                <span>Oferta activa</span>
+                <label class="toggle">
+                  <input type="checkbox" id="activo-pro-semestral" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="msg" id="msg-pro-semestral"></div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btn-borrar-pro-semestral" style="display:none" onclick="borrarOferta('pro_semestral')">Eliminar</button>
               </div>
             </form>
           </div>
@@ -1899,24 +2031,30 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   // ── Ofertas ───────────────────────────────────────────────────────────────
 
-  const PLANES = ['basico-mensual', 'basico-anual', 'pro-mensual', 'pro-anual'];
+  const PLANES = ['basico-mensual', 'basico-anual', 'pro-mensual', 'pro-anual', 'basico-semestral', 'pro-semestral'];
   const PLAN_LABELS = {
-    'basico-mensual': 'Plan Básico · Mensual',
-    'basico-anual':   'Plan Básico · Anual',
-    'pro-mensual':    'Plan Pro · Mensual',
-    'pro-anual':      'Plan Pro · Anual',
+    'basico-mensual':    'Plan Básico · Mensual',
+    'basico-anual':      'Plan Básico · Anual',
+    'pro-mensual':       'Plan Pro · Mensual',
+    'pro-anual':         'Plan Pro · Anual',
+    'basico-semestral':  'Plan Básico · 6 meses',
+    'pro-semestral':     'Plan Pro · 6 meses',
   };
   const PLAN_DEFAULT = {
-    'basico-mensual': '$15 / mes',
-    'basico-anual':   '$150 / año',
-    'pro-mensual':    '$30 / mes',
-    'pro-anual':      '$300 / año',
+    'basico-mensual':   '$15 / mes',
+    'basico-anual':     '$150 / año',
+    'pro-mensual':      '$30 / mes',
+    'pro-anual':        '$300 / año',
+    'basico-semestral': '$75 / 6 meses',
+    'pro-semestral':    '$150 / 6 meses',
   };
   const PLAN_SUFFIX = {
-    'basico-mensual': '/mes',
-    'basico-anual':   '/año',
-    'pro-mensual':    '/mes',
-    'pro-anual':      '/año',
+    'basico-mensual':   '/mes',
+    'basico-anual':     '/año',
+    'pro-mensual':      '/mes',
+    'pro-anual':        '/año',
+    'basico-semestral': '/6 meses',
+    'pro-semestral':    '/6 meses',
   };
 
   function planDbKey(p) { return p.replace(/-/g, '_'); }
@@ -1983,8 +2121,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
                     'gratis_fecha_inicio','gratis_fecha_fin',
                     'precio_base_basico_mensual','precio_base_basico_anual',
-                    'precio_base_pro_mensual','precio_base_pro_anual','texto_planes',
+                    'precio_base_pro_mensual','precio_base_pro_anual',
+                    'precio_base_basico_semestral','precio_base_pro_semestral',
+                    'texto_planes',
                     'dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual',
+                    'dias_basico_semestral','dias_pro_semestral',
                     'dias_gracia_vencimiento']);
     let preciosBase = {};
     if (configs) {
@@ -1994,21 +2135,27 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       document.getElementById('vis-pro').checked         = cfg.plan_pro_visible    !== 'false';
       document.getElementById('gratis-fecha-inicio').value = cfg.gratis_fecha_inicio ?? '';
       document.getElementById('gratis-fecha-fin').value    = cfg.gratis_fecha_fin   ?? '';
-      document.getElementById('precio-base-basico-mensual').value = cfg.precio_base_basico_mensual ?? '';
-      document.getElementById('precio-base-basico-anual').value   = cfg.precio_base_basico_anual   ?? '';
-      document.getElementById('precio-base-pro-mensual').value    = cfg.precio_base_pro_mensual    ?? '';
-      document.getElementById('precio-base-pro-anual').value      = cfg.precio_base_pro_anual      ?? '';
-      document.getElementById('texto-promo').value                = cfg.texto_planes               ?? '';
-      document.getElementById('cfg-dias-basico-mensual').value = parseInt(cfg.dias_basico_mensual) || 31;
-      document.getElementById('cfg-dias-basico-anual').value   = parseInt(cfg.dias_basico_anual)   || 365;
-      document.getElementById('cfg-dias-pro-mensual').value    = parseInt(cfg.dias_pro_mensual)    || 31;
-      document.getElementById('cfg-dias-pro-anual').value      = parseInt(cfg.dias_pro_anual)      || 365;
-      document.getElementById('cfg-dias-gracia').value         = parseInt(cfg.dias_gracia_vencimiento) || 0;
+      document.getElementById('precio-base-basico-mensual').value    = cfg.precio_base_basico_mensual    ?? '';
+      document.getElementById('precio-base-basico-anual').value      = cfg.precio_base_basico_anual      ?? '';
+      document.getElementById('precio-base-pro-mensual').value       = cfg.precio_base_pro_mensual       ?? '';
+      document.getElementById('precio-base-pro-anual').value         = cfg.precio_base_pro_anual         ?? '';
+      document.getElementById('precio-base-basico-semestral').value  = cfg.precio_base_basico_semestral  ?? '';
+      document.getElementById('precio-base-pro-semestral').value     = cfg.precio_base_pro_semestral     ?? '';
+      document.getElementById('texto-promo').value                   = cfg.texto_planes                  ?? '';
+      document.getElementById('cfg-dias-basico-mensual').value    = parseInt(cfg.dias_basico_mensual)    || 31;
+      document.getElementById('cfg-dias-basico-anual').value      = parseInt(cfg.dias_basico_anual)      || 365;
+      document.getElementById('cfg-dias-pro-mensual').value       = parseInt(cfg.dias_pro_mensual)       || 31;
+      document.getElementById('cfg-dias-pro-anual').value         = parseInt(cfg.dias_pro_anual)         || 365;
+      document.getElementById('cfg-dias-basico-semestral').value  = parseInt(cfg.dias_basico_semestral)  || 183;
+      document.getElementById('cfg-dias-pro-semestral').value     = parseInt(cfg.dias_pro_semestral)     || 183;
+      document.getElementById('cfg-dias-gracia').value            = parseInt(cfg.dias_gracia_vencimiento) || 0;
       preciosBase = {
-        'basico-mensual': cfg.precio_base_basico_mensual ?? '',
-        'basico-anual':   cfg.precio_base_basico_anual   ?? '',
-        'pro-mensual':    cfg.precio_base_pro_mensual    ?? '',
-        'pro-anual':      cfg.precio_base_pro_anual      ?? '',
+        'basico-mensual':   cfg.precio_base_basico_mensual   ?? '',
+        'basico-anual':     cfg.precio_base_basico_anual     ?? '',
+        'pro-mensual':      cfg.precio_base_pro_mensual      ?? '',
+        'pro-anual':        cfg.precio_base_pro_anual        ?? '',
+        'basico-semestral': cfg.precio_base_basico_semestral ?? '',
+        'pro-semestral':    cfg.precio_base_pro_semestral    ?? '',
       };
     }
 
@@ -2116,10 +2263,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function guardarPreciosBase() {
     const claves = [
-      ['precio_base_basico_mensual', 'precio-base-basico-mensual'],
-      ['precio_base_basico_anual',   'precio-base-basico-anual'],
-      ['precio_base_pro_mensual',    'precio-base-pro-mensual'],
-      ['precio_base_pro_anual',      'precio-base-pro-anual'],
+      ['precio_base_basico_mensual',    'precio-base-basico-mensual'],
+      ['precio_base_basico_anual',      'precio-base-basico-anual'],
+      ['precio_base_pro_mensual',       'precio-base-pro-mensual'],
+      ['precio_base_pro_anual',         'precio-base-pro-anual'],
+      ['precio_base_basico_semestral',  'precio-base-basico-semestral'],
+      ['precio_base_pro_semestral',     'precio-base-pro-semestral'],
     ];
     const msg = document.getElementById('msg-precios');
     try {
@@ -2133,10 +2282,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
       // Propagar precios base a los campos precio-original y al preview de cada plan
       const mapa = {
-        'precio-base-basico-mensual': 'basico-mensual',
-        'precio-base-basico-anual':   'basico-anual',
-        'precio-base-pro-mensual':    'pro-mensual',
-        'precio-base-pro-anual':      'pro-anual',
+        'precio-base-basico-mensual':   'basico-mensual',
+        'precio-base-basico-anual':     'basico-anual',
+        'precio-base-pro-mensual':      'pro-mensual',
+        'precio-base-pro-anual':        'pro-anual',
+        'precio-base-basico-semestral': 'basico-semestral',
+        'precio-base-pro-semestral':    'pro-semestral',
       };
       for (const [baseId, plan] of Object.entries(mapa)) {
         const val = document.getElementById(baseId).value.trim();
@@ -3698,10 +3849,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function guardarDiasPlan() {
     const msg = document.getElementById('msg-dias-plan');
     const filas = [
-      { clave: 'dias_basico_mensual', id: 'cfg-dias-basico-mensual', def: 31  },
-      { clave: 'dias_basico_anual',   id: 'cfg-dias-basico-anual',   def: 365 },
-      { clave: 'dias_pro_mensual',    id: 'cfg-dias-pro-mensual',    def: 31  },
-      { clave: 'dias_pro_anual',      id: 'cfg-dias-pro-anual',      def: 365 },
+      { clave: 'dias_basico_mensual',   id: 'cfg-dias-basico-mensual',   def: 31  },
+      { clave: 'dias_basico_anual',     id: 'cfg-dias-basico-anual',     def: 365 },
+      { clave: 'dias_pro_mensual',      id: 'cfg-dias-pro-mensual',      def: 31  },
+      { clave: 'dias_pro_anual',        id: 'cfg-dias-pro-anual',        def: 365 },
+      { clave: 'dias_basico_semestral', id: 'cfg-dias-basico-semestral', def: 183 },
+      { clave: 'dias_pro_semestral',    id: 'cfg-dias-pro-semestral',    def: 183 },
     ];
     const rows = filas.map(f => ({ clave: f.clave, valor: String(Math.max(1, parseInt(document.getElementById(f.id).value) || f.def)) }));
     const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
@@ -4842,11 +4995,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const filas = data ?? [];
 
     // Clasificar
-    const PLANES_KEYS = ['gratis','basico_mensual','basico_anual','pro_mensual','pro_anual'];
+    const PLANES_KEYS = ['gratis','basico_mensual','basico_anual','pro_mensual','pro_anual','basico_semestral','pro_semestral'];
     const conceptoLabel = p => {
       if (p === 'galeria_extra') return 'Galería Extra';
       if (p === 'destacado')    return 'Destacado';
-      const m = { gratis:'Gratis', basico_mensual:'Básico / Mes', basico_anual:'Básico / Año', pro_mensual:'Pro / Mes', pro_anual:'Pro / Año' };
+      const m = { gratis:'Gratis', basico_mensual:'Básico / Mes', basico_anual:'Básico / Año', pro_mensual:'Pro / Mes', pro_anual:'Pro / Año', basico_semestral:'Básico / 6 meses', pro_semestral:'Pro / 6 meses' };
       return m[p] ?? p ?? '—';
     };
     const conceptoColor = p => p === 'galeria_extra' ? '#f59e0b' : p === 'destacado' ? '#a855f7' : '#3b82f6';
