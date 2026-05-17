@@ -287,7 +287,7 @@ export default function DirectorioScreen() {
 
   const tituloHeader = () => {
     if (nivel === 'comercios' && subcatActiva) return subcatActiva.nombre;
-    return ciudadGlobal ? `Directorio · ${ciudadGlobal}` : 'Directorio';
+    return 'Directorio';
   };
 
   const abrirMapa = (direccion: string) => {
