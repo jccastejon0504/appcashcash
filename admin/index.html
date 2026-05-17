@@ -4483,11 +4483,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         .upsert(claves, { onConflict: 'clave' });
       if (error) throw new Error(error.message);
       btn.disabled = false; btn.textContent = 'Guardar configuración';
-      alert('✅ Configuración guardada.');
+      mostrarToast('✅ Configuración guardada.', 'ok');
       actualizarPreviewGal();
     } catch(e) {
       btn.disabled = false; btn.textContent = 'Guardar configuración';
-      alert('❌ Error al guardar: ' + e.message);
+      mostrarToast('❌ Error al guardar: ' + e.message, 'err');
       console.error('[guardarConfigGal]', e);
     }
   }
@@ -4551,10 +4551,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { error: errUpd } = await db.from('socios_comerciales')
       .update({ galeria_extra: actual + slots })
       .eq('id', sol.socio_id);
-    if (errUpd) { alert('Error: ' + errUpd.message); btn.disabled=false; btn.textContent='Aprobar'; return; }
+    if (errUpd) { mostrarToast('Error: ' + errUpd.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
 
     await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
-    alert(`✓ ${slots} espacios asignados a "${sol.nombre}".`);
+    mostrarToast(`✓ ${slots} espacios asignados a "${sol.nombre}".`, 'ok');
     await cargarGaleriaExtra();
   }
 
@@ -4562,7 +4562,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (!confirm('¿Rechazar esta solicitud de galería extra?')) return;
     btn.disabled = true; btn.textContent = '…';
     await db.from('solicitudes').update({ estado: 'rechazado' }).eq('id', id);
-    alert('Solicitud rechazada.');
+    mostrarToast('Solicitud rechazada.', 'ok');
     await cargarGaleriaExtra();
   }
 
@@ -4706,6 +4706,27 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
     mostrarToast('Solicitud rechazada.', 'ok');
     await cargarDestacados();
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+
+  function mostrarToast(msg, tipo = 'ok') {
+    let el = document.getElementById('admin-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'admin-toast';
+      el.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 20px #0004;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:90vw;text-align:center;white-space:pre-line';
+      document.body.appendChild(el);
+    }
+    clearTimeout(el._t);
+    el.textContent = msg;
+    el.style.background = tipo === 'err' ? '#dc2626' : tipo === 'warn' ? '#d97706' : '#16a34a';
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    el._t = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 3500);
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
