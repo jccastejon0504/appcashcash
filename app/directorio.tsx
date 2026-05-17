@@ -253,6 +253,11 @@ export default function DirectorioScreen() {
   const { comerciosBuscados, comerciosBuscadosSinCoords } = useMemo(() => {
     let base = comerciosBuscadosBase;
     if (ciudadFiltro) base = base.filter(c => c.ciudad === ciudadFiltro);
+    // Ciudad seleccionada en directorio tiene prioridad absoluta sobre la configuración global
+    if (ciudadActiva) {
+      base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadActiva.toLowerCase()));
+      return { comerciosBuscados: sortDestacadosPrimero(base), comerciosBuscadosSinCoords: [] };
+    }
     if (coordsGlobal) {
       const radio      = parseFloat(radioGlobal);
       const conCoords  = base.filter(c => c.latitud && c.longitud);
@@ -263,7 +268,7 @@ export default function DirectorioScreen() {
     }
     if (ciudadGlobal) base = base.filter(c => c.ciudad?.toLowerCase().includes(ciudadGlobal.toLowerCase()));
     return { comerciosBuscados: sortDestacadosPrimero(base), comerciosBuscadosSinCoords: [] };
-  }, [comerciosBuscadosBase, ciudadFiltro, ciudadGlobal, coordsGlobal, radioGlobal]);
+  }, [comerciosBuscadosBase, ciudadFiltro, ciudadActiva, ciudadGlobal, coordsGlobal, radioGlobal]);
 
   const enBusqueda = busqueda.trim().length > 0;
 
@@ -790,8 +795,8 @@ export default function DirectorioScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Banner de ubicación activa */}
-      {ciudadGlobal ? (
+      {/* Banner de ubicación activa — se oculta cuando el usuario seleccionó una ciudad en directorio */}
+      {ciudadGlobal && !ciudadActiva ? (
         <View style={[styles.locationBanner, { backgroundColor: Colors.accent + '18', borderColor: Colors.accent + '44' }]}>
           <Ionicons name="location" size={14} color={Colors.accent} />
           <Text style={[styles.locationBannerText, { color: Colors.accent }]}>{ciudadGlobal} · {radioGlobal} km</Text>
