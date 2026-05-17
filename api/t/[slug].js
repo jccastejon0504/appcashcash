@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     // Los crawlers (WhatsApp, Facebook, etc.) no ejecutan JS → leen los meta tags.
     // Los usuarios reales son redirigidos vía JavaScript instantáneamente.
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
     return res.status(200).send(`<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,13 +46,13 @@ module.exports = async function handler(req, res) {
   <meta name="twitter:title"       content="${e(titulo)}">
   <meta name="twitter:description" content="${e(desc)}">
   <meta name="twitter:image"       content="${e(img)}">
-  <script>window.location.replace(${JSON.stringify(urlDest)});</script>
 </head>
 <body>
   <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#1a8a7a">
     Redirigiendo a <strong>${e(nombre)}</strong>…<br>
     <a href="${e(urlDest)}" style="color:#1a8a7a">Haz clic aquí si no redirige</a>
   </p>
+  <script>window.location.replace(${JSON.stringify(urlDest)});</script>
 </body>
 </html>`);
 
