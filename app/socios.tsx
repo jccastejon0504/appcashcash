@@ -1783,7 +1783,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
 
   // Badge destacado
   badgeDestacado: {
-    position: 'absolute', top: 8, right: 8,
+    position: 'absolute', top: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99,
   },
