@@ -607,7 +607,7 @@
     });
 
     document.getElementById('historial-loading').style.display = 'none';
-    document.getElementById('historial-table').style.display = data.length ? 'table' : 'none';
+    document.getElementById('historial-list').style.display = data.length ? 'block' : 'none';
     if (!data.length) document.getElementById('historial-loading').textContent = 'Sin historial aún.';
   }
 
@@ -749,7 +749,7 @@
     // Cargar solicitudes pendientes
     const { data: sols } = await db.from('solicitudes')
       .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id')
-      .eq('tipo','galeria_extra')
+      .eq('plan','galeria_extra')
       .order('created_at', { ascending: false });
     solicitudesGaleriaData = sols ?? [];
     renderSolicitudesGaleria();

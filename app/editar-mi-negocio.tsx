@@ -138,6 +138,7 @@ export default function EditarMiNegocioScreen() {
   const [comprobanteGal,      setComprobanteGal]      = useState<string|null>(null);
   const [enviandoGal,         setEnviandoGal]         = useState(false);
   const [solGalPendiente,     setSolGalPendiente]     = useState(false);
+  const [galeriaExtraActivo,  setGaleriaExtraActivo]  = useState(true);
 
   // GPS
   const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
@@ -468,7 +469,7 @@ export default function EditarMiNegocioScreen() {
       supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
       supabase.from('config_app').select('clave,valor').in('clave', [
         `lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`,
-        'precio_paquete_galeria', 'slots_paquete_galeria',
+        'precio_paquete_galeria', 'slots_paquete_galeria', 'galeria_extra_activo',
       ]),
     ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
@@ -489,6 +490,7 @@ export default function EditarMiNegocioScreen() {
       }
       if (cfgMap['precio_paquete_galeria']) setPrecioGalConfig(parseFloat(cfgMap['precio_paquete_galeria']) || 5);
       if (cfgMap['slots_paquete_galeria'])  setSlotsGalConfig(parseInt(cfgMap['slots_paquete_galeria'])    || 4);
+      setGaleriaExtraActivo(cfgMap['galeria_extra_activo'] !== 'false');
     });
   }, [resolvedId]));
 
@@ -927,7 +929,7 @@ export default function EditarMiNegocioScreen() {
               )}
 
               {/* Botón comprar espacios extra */}
-              {galeriaItems.length >= slots && (
+              {galeriaExtraActivo && galeriaItems.length >= slots && (
                 solGalPendiente ? (
                   <View style={[styles.btnAgregar, { borderColor: '#16a34a', borderStyle: 'solid', backgroundColor: '#dcfce7' }]}>
                     <Ionicons name="time-outline" size={18} color="#16a34a" />
@@ -1410,7 +1412,6 @@ export default function EditarMiNegocioScreen() {
                       <TouchableOpacity
                         style={[styles.copiarBtn, { backgroundColor: copiado === key ? Colors.success + '22' : Colors.border }]}
                         onPress={async () => {
-                          const Clipboard = await import('expo-clipboard');
                           await Clipboard.setStringAsync(valor);
                           setCopiado(key);
                           setTimeout(() => setCopiado(null), 2000);
