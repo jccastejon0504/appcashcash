@@ -721,10 +721,10 @@
         <div class="card-header">
           <h2>Reglas de Registro y Planes</h2>
         </div>
-        <div style="padding:20px;max-width:560px;display:flex;flex-direction:column;gap:24px">
+        <div style="padding:20px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
 
-          <!-- Límite de tiendas -->
-          <div>
+          <!-- Columna izquierda: Límite de tiendas -->
+          <div style="flex:1;min-width:220px;max-width:340px">
             <div style="font-weight:800;font-size:14px;margin-bottom:6px">Límite de tiendas por cliente</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
               Número máximo de tiendas que un mismo número de teléfono puede registrar. Valor entre 1 y 100.
@@ -741,34 +741,40 @@
             </div>
           </div>
 
-          <hr style="border:none;border-top:1px solid var(--border)" />
+          <!-- Separador vertical -->
+          <div style="width:1px;background:var(--border);align-self:stretch;min-height:100px"></div>
 
-          <!-- Días de gracia -->
-          <div>
-            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Días de gracia tras vencimiento</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-              Días adicionales que un socio permanece activo después de que su plan vence. Pasado ese tiempo se desactiva automáticamente al abrir el admin.
-            </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-              <input type="number" id="cfg-dias-gracia" min="0" max="30" value="0"
-                style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
-              <button class="btn btn-primary btn-sm" onclick="guardarDiasGracia()">Guardar</button>
-              <span id="msg-dias-gracia" style="font-size:12px"></span>
-            </div>
-          </div>
+          <!-- Columna derecha: Días de gracia + Resetear -->
+          <div style="flex:1;min-width:220px;max-width:340px;display:flex;flex-direction:column;gap:20px">
 
-          <hr style="border:none;border-top:1px solid var(--border)" />
+            <!-- Días de gracia -->
+            <div>
+              <div style="font-weight:800;font-size:14px;margin-bottom:6px">Días de gracia tras vencimiento</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Días adicionales que un socio permanece activo después de que su plan vence. Pasado ese tiempo se desactiva automáticamente al abrir el admin.
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <input type="number" id="cfg-dias-gracia" min="0" max="30" value="0"
+                  style="width:80px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:16px;font-weight:800;text-align:center" />
+                <button class="btn btn-primary btn-sm" onclick="guardarDiasGracia()">Guardar</button>
+                <span id="msg-dias-gracia" style="font-size:12px"></span>
+              </div>
+            </div>
 
-          <!-- Reset manual -->
-          <div>
-            <div style="font-weight:800;font-size:14px;margin-bottom:6px">Resetear planes vencidos</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-              Desactiva todos los socios cuyo plan ya venció (respetando los días de gracia configurados).
+            <hr style="border:none;border-top:1px solid var(--border);margin:0" />
+
+            <!-- Reset manual -->
+            <div>
+              <div style="font-weight:800;font-size:14px;margin-bottom:6px">Resetear planes vencidos</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Desactiva todos los socios cuyo plan ya venció (respetando los días de gracia configurados).
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-danger" onclick="resetearVencidos(true)">⟳ Resetear ahora</button>
+                <span id="msg-reset-vencidos" style="font-size:12px"></span>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-              <button class="btn btn-danger" onclick="resetearVencidos(true)">⟳ Resetear ahora</button>
-              <span id="msg-reset-vencidos" style="font-size:12px"></span>
-            </div>
+
           </div>
 
         </div>
