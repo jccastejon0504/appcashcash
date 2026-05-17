@@ -289,6 +289,10 @@ export default function EditarMiNegocioScreen() {
             setGaleriaLoadedAt(Date.now()); // dispara auto-fill de Bs si la tasa ya está lista
           }
         });
+
+      // Verificar pendiente galería extra desde AsyncStorage
+      AsyncStorage.getItem(`sol_gal_pendiente_${socioId}`)
+        .then(v => { if (v === 'true') setSolGalPendiente(true); });
     };
     cargar();
     // Cargar tasa BCV: caché primero (inmediato), luego API
@@ -308,12 +312,6 @@ export default function EditarMiNegocioScreen() {
           if (r.clave === 'slots_paquete_galeria')  setSlotsGalConfig(parseInt(r.valor)    || 4);
         });
       });
-
-    // Verificar pendiente galería extra desde AsyncStorage
-    if (socioId) {
-      AsyncStorage.getItem(`sol_gal_pendiente_${socioId}`)
-        .then(v => { if (v === 'true') setSolGalPendiente(true); });
-    }
 
     supabase.from('metodos_pago').select('*').eq('activo', true).then(({ data }) => {
       if (!data) return;
