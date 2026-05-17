@@ -611,7 +611,7 @@ export default function DirectorioScreen() {
     const waUrl = whatsapp ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${waMsg}` : null;
     return (
       <Modal visible animationType="slide" transparent onRequestClose={() => { setProductoModal(null); setPaginaProducto(0); }}>
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1, backgroundColor: '#000000BB', justifyContent: 'flex-end' }}>
           <View style={[styles.productoBox, { backgroundColor: Colors.card }]}>
 
             {/* Carousel con zoom/pinch */}
@@ -653,9 +653,14 @@ export default function DirectorioScreen() {
             )}
 
             <View style={{ padding: Spacing.lg, paddingTop: imagenes.length > 1 ? 4 : Spacing.lg, gap: 10 }}>
-              {/* Nombre + X */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Nombre + compartir + X */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <Text style={[styles.productoTitulo, { color: Colors.text, flex: 1 }]}>{item.titulo ?? ''}</Text>
+                <TouchableOpacity
+                  style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
+                  onPress={() => Share.share({ message: `Mira "${item.titulo ?? 'este producto'}" en CashCach`, url: urlTienda(comercioModal!) })}>
+                  <Ionicons name="share-outline" size={16} color={Colors.text} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.productoCerrarX, { backgroundColor: Colors.border }]}
                   onPress={() => { setProductoModal(null); setPaginaProducto(0); }}>
@@ -1296,7 +1301,7 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     overflow: 'hidden', maxHeight: '80%',
   },
-  productoImg:       { width: '100%', height: 280 },
+  productoImg:       { width: '100%', height: 380 },
   productoPrecio:    { fontSize: FontSize.xl, fontWeight: '800' },
   productoPrecioBs:  { fontSize: FontSize.md, fontWeight: '600', marginBottom: 2 },
   productoTitulo:    { fontSize: FontSize.lg, fontWeight: '600', marginBottom: 16 },
