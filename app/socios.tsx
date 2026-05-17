@@ -1670,13 +1670,6 @@ export default function SociosScreen() {
           {/* Tiendas aleatorias (ciudad configurada o todas) */}
           {!busqueda && !filtroAplicado && !subcatFiltro && sociosCiudad.length > 0 && (
             <View style={{ marginTop: 8 }}>
-              <View style={styles.seccionHeader}>
-                <Ionicons name="storefront-outline" size={14} color={Colors.accent} />
-                <Text style={[styles.seccionTitulo, { color: Colors.accent, flex: 1 }]}>
-                  {ubicacionCiudad ? `Tiendas en ${ubicacionCiudad}` : 'Tiendas registradas'}
-                </Text>
-                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{sociosCiudad.length} registradas</Text>
-              </View>
               <View style={styles.grilla}>
                 {sociosCiudad.map(s => renderMiniCard(s))}
               </View>
