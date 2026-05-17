@@ -4366,21 +4366,34 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   let solicitudesGaleriaData = [];
 
   async function cargarGaleriaExtra() {
-    const { data: cfg } = await db.from('config_app').select('clave,valor')
-      .in('clave', ['precio_paquete_galeria','slots_paquete_galeria','galeria_extra_activo']);
-    const cfgMap = Object.fromEntries((cfg ?? []).map(r => [r.clave, r.valor]));
-    document.getElementById('gal-precio').value   = cfgMap['precio_paquete_galeria'] ?? '5';
-    document.getElementById('gal-slots').value    = cfgMap['slots_paquete_galeria']  ?? '4';
-    document.getElementById('gal-activo').checked = cfgMap['galeria_extra_activo'] === 'true';
-    actualizarPreviewGal();
+    try {
+      const { data: cfg } = await db.from('config_app').select('clave,valor')
+        .in('clave', ['precio_paquete_galeria','slots_paquete_galeria','galeria_extra_activo']);
+      const cfgMap = Object.fromEntries((cfg ?? []).map(r => [r.clave, r.valor]));
+      document.getElementById('gal-precio').value   = cfgMap['precio_paquete_galeria'] ?? '5';
+      document.getElementById('gal-slots').value    = cfgMap['slots_paquete_galeria']  ?? '4';
+      document.getElementById('gal-activo').checked = cfgMap['galeria_extra_activo'] === 'true';
+      actualizarPreviewGal();
+    } catch(e) { console.error('[galeria_extra] error cfg:', e); }
 
-    const { data: sols, error: errSols } = await db.from('solicitudes')
-      .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id,plan,tipo')
-      .eq('plan','galeria_extra')
-      .order('created_at', { ascending: false });
-    if (errSols) console.error('[galeria_extra] error al cargar solicitudes:', errSols);
-    solicitudesGaleriaData = sols ?? [];
-    renderSolicitudesGaleria();
+    try {
+      const { data: sols, error: errSols } = await db.from('solicitudes')
+        .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id,plan')
+        .eq('plan','galeria_extra')
+        .order('created_at', { ascending: false });
+      if (errSols) {
+        console.error('[galeria_extra] Supabase error:', errSols);
+        const tbody = document.getElementById('gal-solicitudes-body');
+        if (tbody) tbody.innerHTML = `<div style="color:red;padding:12px">Error: ${errSols.message}</div>`;
+        return;
+      }
+      solicitudesGaleriaData = sols ?? [];
+      renderSolicitudesGaleria();
+    } catch(e) {
+      console.error('[galeria_extra] error query:', e);
+      const tbody = document.getElementById('gal-solicitudes-body');
+      if (tbody) tbody.innerHTML = `<div style="color:red;padding:12px">Error JS: ${e.message}</div>`;
+    }
   }
 
   function actualizarPreviewGal() {
