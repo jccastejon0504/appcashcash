@@ -466,7 +466,10 @@ export default function EditarMiNegocioScreen() {
     if (!resolvedId) return;
     Promise.all([
       supabase.from('socios_comerciales').select('fecha_vencimiento, plan, galeria_extra').eq('id', resolvedId).single(),
-      supabase.from('config_app').select('clave,valor').in('clave', [`lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`]),
+      supabase.from('config_app').select('clave,valor').in('clave', [
+        `lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`,
+        'precio_paquete_galeria', 'slots_paquete_galeria',
+      ]),
     ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
       if (data) {
@@ -479,12 +482,13 @@ export default function EditarMiNegocioScreen() {
         } : prev);
         const nuevosExtra = data.galeria_extra ?? 0;
         setGaleriaExtra(nuevosExtra);
-        // Si galería extra aumentó → el admin aprobó → limpiar pendiente
         if (nuevosExtra > 0) {
           AsyncStorage.removeItem(`sol_gal_pendiente_${resolvedId}`);
           setSolGalPendiente(false);
         }
       }
+      if (cfgMap['precio_paquete_galeria']) setPrecioGalConfig(parseFloat(cfgMap['precio_paquete_galeria']) || 5);
+      if (cfgMap['slots_paquete_galeria'])  setSlotsGalConfig(parseInt(cfgMap['slots_paquete_galeria'])    || 4);
     });
   }, [resolvedId]));
 
