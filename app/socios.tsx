@@ -507,7 +507,7 @@ export default function SociosScreen() {
           <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
         </View>
       )}
-      {s.destacado && (
+      {esDestVigente(s) && (
         <View style={[styles.badgeDestacado, { backgroundColor: '#FFD700' }]}>
           <Ionicons name="star" size={10} color="#fff" />
         </View>
@@ -1640,47 +1640,13 @@ export default function SociosScreen() {
                 </ScrollView>
               )}
 
-              {/* Cards horizontales: solo cuando NO hay filtro activo */}
-              {!subcatFiltro && destacados.length > 0 && (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                    {destacados.map(s => (
-                      <TouchableOpacity key={s.id} style={[styles.cardDestacado, { width: '49%', backgroundColor: Colors.card, borderColor: Colors.border }]} onPress={() => setSocioModal(s)} activeOpacity={0.85}>
-                        {s.imagen ? (
-                          <Image source={{ uri: s.imagen }} style={styles.cardDestacadoImg} resizeMode="cover" />
-                        ) : (
-                          <View style={[styles.cardDestacadoImg, { backgroundColor: Colors.accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
-                            <Ionicons name="storefront-outline" size={24} color={Colors.accent} />
-                          </View>
-                        )}
-                        <View style={[styles.badgeDestacado, { backgroundColor: '#FFD700' }]}>
-                          <Ionicons name="star" size={10} color="#fff" />
-                        </View>
-                        <Text style={[styles.cardDestacadoNombre, { color: Colors.text }]} numberOfLines={1}>{s.nombre}</Text>
-                        {s.ciudad ? <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1, paddingHorizontal: 8 }} numberOfLines={1}>{s.ciudad}</Text> : null}
-                        {s.whatsapp ? (
-                          <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: '#25D36622', borderColor: '#25D36644' }]} onPress={() => abrirWhatsApp(s.whatsapp)}>
-                            <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
-                            <Text style={[styles.cardDestacadoBtnText, { color: '#25D366' }]}>WhatsApp</Text>
-                          </TouchableOpacity>
-                        ) : s.telefono ? (
-                          <TouchableOpacity style={[styles.cardDestacadoBtn, { backgroundColor: Colors.success + '1A', borderColor: Colors.success + '44' }]} onPress={() => abrirTelefono(s.telefono)}>
-                            <Ionicons name="call-outline" size={13} color={Colors.success} />
-                            <Text style={[styles.cardDestacadoBtnText, { color: Colors.success }]}>Llamar</Text>
-                          </TouchableOpacity>
-                        ) : null}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-              )}
             </View>
           )}
 
-          {/* Tiendas aleatorias (ciudad configurada o todas) */}
-          {!busqueda && !filtroAplicado && !subcatFiltro && sociosCiudad.length > 0 && (
-            <View style={{ marginTop: 8 }}>
-              <View style={styles.grilla}>
-                {sociosCiudad.map(s => renderMiniCard(s))}
-              </View>
+          {/* Grid unificado: destacados primero (con estrella) + tiendas aleatorias */}
+          {!busqueda && !filtroAplicado && !subcatFiltro && (destacados.length > 0 || sociosCiudad.length > 0) && (
+            <View style={[styles.grilla, { marginTop: 8 }]}>
+              {[...destacados, ...sociosCiudad].map(s => renderMiniCard(s))}
             </View>
           )}
 
