@@ -3475,10 +3475,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function guardarTerminos() {
     const valor = document.getElementById('terminos-texto').value.trim();
     if (!valor) { showMsg('terminos', 'El texto no puede estar vacío.', 'err'); return; }
-    const { data: existe } = await db.from('config_app').select('id').eq('clave', 'terminos_condiciones').single();
-    const { error } = existe
-      ? await db.from('config_app').update({ valor }).eq('clave', 'terminos_condiciones')
-      : await db.from('config_app').insert({ clave: 'terminos_condiciones', valor });
+    const { error } = await db.from('config_app')
+      .upsert({ clave: 'terminos_condiciones', valor }, { onConflict: 'clave' });
     if (error) { showMsg('terminos', 'Error: ' + error.message, 'err'); return; }
     showMsg('terminos', '¡Guardado! La app mostrará este texto.', 'ok');
     await cargarTerminos();
@@ -4416,16 +4414,9 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         { clave: 'slots_paquete_galeria',  valor: slots  },
         { clave: 'galeria_extra_activo',   valor: String(activo) },
       ];
-      for (const { clave, valor } of claves) {
-        const { data: ex } = await db.from('config_app').select('id').eq('clave', clave).maybeSingle();
-        if (ex) {
-          const { error } = await db.from('config_app').update({ valor }).eq('clave', clave);
-          if (error) throw new Error(`update ${clave}: ${error.message}`);
-        } else {
-          const { error } = await db.from('config_app').insert({ clave, valor });
-          if (error) throw new Error(`insert ${clave}: ${error.message}`);
-        }
-      }
+      const { error } = await db.from('config_app')
+        .upsert(claves, { onConflict: 'clave' });
+      if (error) throw new Error(error.message);
       btn.disabled = false; btn.textContent = 'Guardar configuración';
       alert('✅ Configuración guardada.');
       actualizarPreviewGal();
