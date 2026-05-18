@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal, Animated,
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import * as Clipboard from 'expo-clipboard';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -152,9 +153,12 @@ export default function EditarMiNegocioScreen() {
   const [solDestacadoPendiente, setSolDestacadoPendiente] = useState(false);
   const [destacadoHasta,        setDestacadoHasta]        = useState<string|null>(null);
 
-  // GPS
-  const [coordenadas, setCoordenadas] = useState<{ lat: number; lng: number } | null>(null);
-  const [obtenGPS,    setObtenGPS]    = useState(false);
+  // GPS / mapa
+  const [coordenadas,  setCoordenadas]  = useState<{ lat: number; lng: number } | null>(null);
+  const [obtenGPS,     setObtenGPS]     = useState(false);
+  const [modalMapa,    setModalMapa]    = useState(false);
+  const [pinCoords,    setPinCoords]    = useState<{ latitude: number; longitude: number }>({ latitude: 10.0735, longitude: -69.3234 }); // Venezuela centro
+  const mapRef = useRef<MapView>(null);
 
   // Modal personalizado
   const [appModal, setAppModal] = useState<{
@@ -188,24 +192,44 @@ export default function EditarMiNegocioScreen() {
     return `${d}° ${m}' ${s}" ${dir}`;
   };
 
-  const capturarGPS = async () => {
+  const abrirSelectorMapa = async () => {
+    // Centrar en coordenadas guardadas o intentar GPS
+    if (coordenadas) {
+      setPinCoords({ latitude: coordenadas.lat, longitude: coordenadas.lng });
+    } else {
+      setObtenGPS(true);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          setPinCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        }
+      } catch { /* usa el centro de Venezuela */ } finally {
+        setObtenGPS(false);
+      }
+    }
+    setModalMapa(true);
+  };
+
+  const centrarEnGPS = async () => {
     setObtenGPS(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        mostrarModal('info', 'Permiso denegado', 'Necesitamos acceso a tu ubicación para guardar las coordenadas.');
-        return;
-      }
+      if (status !== 'granted') { mostrarModal('info', 'Permiso denegado', 'Necesitamos acceso a tu ubicación.'); return; }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const lat = loc.coords.latitude;
-      const lng = loc.coords.longitude;
-      setCoordenadas({ lat, lng });
-      mostrarModal('exito', 'Ubicación capturada', `${toDMS(lat, true)}\n${toDMS(lng, false)}\n\nPresiona Guardar para actualizar.`);
+      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      setPinCoords(coords);
+      mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.005, longitudeDelta: 0.005 }, 600);
     } catch {
       mostrarModal('error', 'Error GPS', 'No se pudo obtener la ubicación.');
     } finally {
       setObtenGPS(false);
     }
+  };
+
+  const confirmarUbicacionMapa = () => {
+    setCoordenadas({ lat: pinCoords.latitude, lng: pinCoords.longitude });
+    setModalMapa(false);
   };
 
   useEffect(() => {
@@ -1074,23 +1098,23 @@ export default function EditarMiNegocioScreen() {
           </View>
         ))}
 
-        {/* Botón GPS */}
+        {/* Selector de ubicación en mapa */}
         <View style={[styles.campo, { marginTop: -4 }]}>
-          <Text style={[styles.label, { color: Colors.textMuted }]}>Ubicación exacta (GPS)</Text>
+          <Text style={[styles.label, { color: Colors.textMuted }]}>Ubicación de la tienda</Text>
           <TouchableOpacity
-            onPress={capturarGPS}
+            onPress={abrirSelectorMapa}
             disabled={obtenGPS}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: coordenadas ? '#dcfce7' : Colors.card, borderWidth: 1, borderColor: coordenadas ? '#16a34a' : Colors.border, borderRadius: Radius.md, padding: 12 }}
             activeOpacity={0.8}>
             {obtenGPS
               ? <ActivityIndicator size="small" color="#6c3fc5" />
-              : <Ionicons name="location" size={18} color={coordenadas ? '#16a34a' : '#6c3fc5'} />}
+              : <Ionicons name="map" size={18} color={coordenadas ? '#16a34a' : '#6c3fc5'} />}
             <Text style={{ flex: 1, fontSize: FontSize.md, color: coordenadas ? '#15803d' : Colors.text }}>
               {obtenGPS
                 ? 'Obteniendo ubicación…'
                 : coordenadas
                   ? `✓ ${toDMS(coordenadas.lat, true)}  ${toDMS(coordenadas.lng, false)}`
-                  : 'Capturar mi ubicación actual'}
+                  : 'Seleccionar ubicación en mapa'}
             </Text>
             {coordenadas && (
               <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1099,7 +1123,7 @@ export default function EditarMiNegocioScreen() {
             )}
           </TouchableOpacity>
           <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
-            Solo se actualiza si capturas GPS y guardas.
+            Arrastra el pin al lugar exacto de tu tienda y confirma.
           </Text>
         </View>
 
@@ -1748,6 +1772,64 @@ export default function EditarMiNegocioScreen() {
                 }
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal selector de ubicación en mapa */}
+      <Modal visible={modalMapa} animationType="slide" onRequestClose={() => setModalMapa(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 52, backgroundColor: Colors.card, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+            <TouchableOpacity onPress={() => setModalMapa(false)} style={{ marginRight: 12 }}>
+              <Ionicons name="close" size={24} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, fontSize: FontSize.lg, fontWeight: '800', color: Colors.text }}>Ubicación de la tienda</Text>
+            <TouchableOpacity onPress={centrarEnGPS} disabled={obtenGPS} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.accent + '18', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 }}>
+              {obtenGPS
+                ? <ActivityIndicator size="small" color={Colors.accent} />
+                : <Ionicons name="locate" size={16} color={Colors.accent} />}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.accent }}>Mi GPS</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Instrucción */}
+          <View style={{ backgroundColor: '#1e40af', paddingHorizontal: 16, paddingVertical: 8 }}>
+            <Text style={{ color: '#bfdbfe', fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
+              📍 Arrastra el pin hasta la ubicación exacta de tu tienda
+            </Text>
+          </View>
+
+          {/* Mapa */}
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            initialRegion={{
+              latitude:      pinCoords.latitude,
+              longitude:     pinCoords.longitude,
+              latitudeDelta:  0.005,
+              longitudeDelta: 0.005,
+            }}
+            onPress={(e) => setPinCoords(e.nativeEvent.coordinate)}>
+            <Marker
+              coordinate={pinCoords}
+              draggable
+              onDragEnd={(e) => setPinCoords(e.nativeEvent.coordinate)}
+              pinColor="#6c3fc5"
+            />
+          </MapView>
+
+          {/* Footer con coordenadas y botón confirmar */}
+          <View style={{ backgroundColor: Colors.card, padding: 16, paddingBottom: 32, borderTopWidth: 1, borderTopColor: Colors.border, gap: 10 }}>
+            <Text style={{ textAlign: 'center', fontSize: 12, color: Colors.textMuted, fontFamily: 'monospace' }}>
+              {toDMS(pinCoords.latitude, true)}  {toDMS(pinCoords.longitude, false)}
+            </Text>
+            <TouchableOpacity
+              onPress={confirmarUbicacionMapa}
+              style={{ backgroundColor: Colors.accent, borderRadius: Radius.md, padding: 14, alignItems: 'center' }}
+              activeOpacity={0.85}>
+              <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: '800' }}>✓ Confirmar ubicación</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
