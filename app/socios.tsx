@@ -89,8 +89,14 @@ export default function SociosScreen() {
   // Filtro de tienda por ubicación: radio si hay coords, ciudad si no
   const cumpleFiltroUbicacion = useCallback((s: SocioComercial) => {
     const radio = parseFloat(ubicacionRadio);
-    if (mapCoords && s.latitud != null && s.longitud != null) {
-      return haversine(mapCoords.latitude, mapCoords.longitude, s.latitud, s.longitud) <= radio;
+    if (mapCoords) {
+      // GPS activo: si la tienda tiene coords → Haversine estricto
+      if (s.latitud != null && s.longitud != null) {
+        return haversine(mapCoords.latitude, mapCoords.longitude, s.latitud, s.longitud) <= radio;
+      }
+      // Sin coords GPS → fallback a ciudad si está disponible, si no excluir
+      if (ubicacionCiudad) return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
+      return false;
     }
     if (ubicacionCiudad) return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
     return true;
