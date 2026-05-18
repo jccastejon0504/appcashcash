@@ -86,19 +86,21 @@ export default function SociosScreen() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // Filtro de tienda por ubicación: radio si hay coords, ciudad si no
+  // Filtro de tienda por ubicación
+  // - Ciudad escrita → solo coincidencia por nombre (el mapCoords es el centro geocodificado, no la ubicación real)
+  // - GPS real (sin ciudad escrita) → Haversine con radio
   const cumpleFiltroUbicacion = useCallback((s: SocioComercial) => {
-    const radio = parseFloat(ubicacionRadio);
-    if (mapCoords) {
-      // GPS activo: si la tienda tiene coords → Haversine estricto
-      if (s.latitud != null && s.longitud != null) {
-        return haversine(mapCoords.latitude, mapCoords.longitude, s.latitud, s.longitud) <= radio;
-      }
-      // Sin coords GPS → fallback a ciudad si está disponible, si no excluir
-      if (ubicacionCiudad) return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
-      return false;
+    // Caso 1: usuario escribió ciudad → filtrar por nombre de ciudad sin importar radio
+    if (ubicacionCiudad) {
+      return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
     }
-    if (ubicacionCiudad) return s.ciudad?.toLowerCase().includes(ubicacionCiudad.toLowerCase()) ?? false;
+    // Caso 2: solo GPS del dispositivo → Haversine estricto con radio
+    if (mapCoords) {
+      if (s.latitud != null && s.longitud != null) {
+        return haversine(mapCoords.latitude, mapCoords.longitude, s.latitud, s.longitud) <= parseFloat(ubicacionRadio);
+      }
+      return false; // GPS activo pero tienda sin coordenadas
+    }
     return true;
   }, [mapCoords, ubicacionRadio, ubicacionCiudad]);
 
