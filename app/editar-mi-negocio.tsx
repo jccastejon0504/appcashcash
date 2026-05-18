@@ -1076,6 +1076,7 @@ export default function EditarMiNegocioScreen() {
           { label: 'Teléfono',             value: telefono,  set: setTelefono,  placeholder: '0414-0000000', keyboard: 'phone-pad', bloqueado: !!socio?.telefono_bloqueado },
           { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
           { label: 'Redes sociales / web', value: web,       set: setWeb,       placeholder: 'Ej: @minegocio' },
+          { label: 'Descripción',          value: descripcion, set: setDescripcion, placeholder: 'Breve descripción de tu negocio…', multiline: true },
           { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
         ] as any[]).map(({ label, value, set, placeholder, keyboard, multiline, bloqueado }) => (
           <View key={label} style={styles.campo}>
@@ -1124,17 +1125,6 @@ export default function EditarMiNegocioScreen() {
           <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
             Toca el mapa en la ubicación exacta de tu tienda y confirma.
           </Text>
-        </View>
-
-        {/* Descripción */}
-        <View style={styles.campo}>
-          <Text style={[styles.label, { color: Colors.textMuted }]}>Descripción</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, color: Colors.text, height: 80, textAlignVertical: 'top' }]}
-            value={descripcion} onChangeText={setDescripcion}
-            placeholder="Breve descripción de tu negocio…" placeholderTextColor={Colors.textMuted}
-            multiline
-          />
         </View>
 
         {/* Selector Ciudad → Categoría */}
