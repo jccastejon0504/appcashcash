@@ -180,7 +180,7 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                   onPress={() => setModalInfoTienda(true)}
                   style={{
                     position: 'absolute', top: 6, left: Spacing.md,
-                    backgroundColor: (s.latitud != null && s.longitud != null) ? '#16a34a' : '#00000055',
+                    backgroundColor: (s.latitud != null && s.longitud != null) ? Colors.accent : '#00000055',
                     borderRadius: 20, padding: 5,
                   }}>
                   <Ionicons name="information-circle-outline" size={18} color="#fff" />
@@ -202,7 +202,7 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                   </TouchableOpacity>
                 ) : null}
                 {s.telefono ? (
-                  <TouchableOpacity style={[styles.modalContactBtn, { backgroundColor: Colors.success }]} onPress={() => abrirTel(s.telefono)}>
+                  <TouchableOpacity style={[styles.modalContactBtn, { backgroundColor: Colors.accent }]} onPress={() => abrirTel(s.telefono)}>
                     <Ionicons name="call" size={20} color="#fff" />
                     <Text style={styles.modalContactBtnText}>Llamar</Text>
                   </TouchableOpacity>
@@ -304,10 +304,10 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                         latitudeDelta:  0.003,
                         longitudeDelta: 0.003,
                       }}>
-                      <Marker coordinate={{ latitude: s.latitud, longitude: s.longitud }} pinColor="#16a34a" />
+                      <Marker coordinate={{ latitude: s.latitud, longitude: s.longitud }} pinColor={Colors.accent} />
                     </MapView>
                     {/* Overlay con instrucción */}
-                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#16a34a', paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.accent, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <Ionicons name="navigate" size={14} color="#fff" />
                       <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.xs }}>Toca para abrir en Google Maps</Text>
                     </View>
