@@ -2107,11 +2107,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function guardarTextoPromo() {
     const msg   = document.getElementById('msg-texto-promo');
     const valor = document.getElementById('texto-promo').value.trim();
-    if (!valor) { msg.textContent = 'Escribe un texto primero.'; msg.style.color = 'var(--red)'; return; }
+    if (!valor) { msg.textContent = 'Escribe un texto primero.'; msg.className = 'msg err'; return; }
     const { error } = await db.from('config_app').upsert({ clave: 'texto_planes', valor }, { onConflict: 'clave' });
-    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
-    msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)';
-    setTimeout(() => msg.textContent = '', 3000);
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
+    msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+    setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
   }
 
   async function guardarPreciosBase() {
