@@ -1122,7 +1122,7 @@ export default function EditarMiNegocioScreen() {
             )}
           </TouchableOpacity>
           <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
-            Arrastra el pin al lugar exacto de tu tienda y confirma.
+            Toca el mapa en la ubicación exacta de tu tienda y confirma.
           </Text>
         </View>
 
@@ -1806,7 +1806,7 @@ export default function EditarMiNegocioScreen() {
           {/* Instrucción */}
           <View style={{ backgroundColor: '#1e40af', paddingHorizontal: 16, paddingVertical: 8 }}>
             <Text style={{ color: '#bfdbfe', fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
-              📍 Arrastra el pin hasta la ubicación exacta de tu tienda
+              📍 Toca con la punta del dedo la ubicación exacta de tu tienda
             </Text>
           </View>
 
