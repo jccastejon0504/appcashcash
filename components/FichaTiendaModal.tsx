@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, Linking, Image,
   Modal, Dimensions, Share, useWindowDimensions,
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,7 +54,6 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
 
   const esFavorita = (id: string) => favoritas.includes(id);
 
-  const abrirMapa   = (dir: string) => { Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir)}`).catch(() => {}); };
   const abrirEnlace = (url: string) => { Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {}); };
   const abrirWA     = (n: string)   => { Linking.openURL(`https://wa.me/${n.replace(/\D/g, '')}`).catch(() => {}); };
   const abrirTel    = (n: string)   => { Linking.openURL(`tel:${n}`).catch(() => {}); };
@@ -174,11 +174,15 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                   <Ionicons name="storefront-outline" size={64} color={Colors.accent + '55'} />
                 </View>
               )}
-              {/* Info ℹ️ arriba izquierda */}
-              {(s.descripcion || s.direccion) ? (
+              {/* Info ℹ arriba izquierda — verde si tiene ubicación GPS */}
+              {(s.descripcion || s.direccion || (s.latitud != null && s.longitud != null)) ? (
                 <TouchableOpacity
                   onPress={() => setModalInfoTienda(true)}
-                  style={{ position: 'absolute', top: 6, left: Spacing.md, backgroundColor: '#00000055', borderRadius: 20, padding: 5 }}>
+                  style={{
+                    position: 'absolute', top: 6, left: Spacing.md,
+                    backgroundColor: (s.latitud != null && s.longitud != null) ? '#16a34a' : '#00000055',
+                    borderRadius: 20, padding: 5,
+                  }}>
                   <Ionicons name="information-circle-outline" size={18} color="#fff" />
                 </TouchableOpacity>
               ) : null}
@@ -277,16 +281,37 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                   <View style={{ marginHorizontal: 20, marginVertical: 16, height: 1, backgroundColor: Colors.border }} />
                 ) : null}
                 {s.direccion ? (
-                  <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: s.descripcion ? 0 : 16 }}>
+                  <View style={{ paddingHorizontal: 20, paddingBottom: (s.latitud != null && s.longitud != null) ? 0 : 20, paddingTop: s.descripcion ? 0 : 16 }}>
                     <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Dirección</Text>
                     <Text style={{ fontSize: FontSize.sm, color: Colors.text, marginBottom: 14 }}>{s.direccion}</Text>
-                    <TouchableOpacity
-                      onPress={() => { setModalInfoTienda(false); abrirMapa(s.direccion); }}
-                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.md, paddingVertical: 12 }}>
-                      <Ionicons name="navigate" size={16} color="#fff" />
-                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.sm }}>Ver en Google Maps</Text>
-                    </TouchableOpacity>
                   </View>
+                ) : null}
+                {/* Mini-mapa con ubicación exacta */}
+                {s.latitud != null && s.longitud != null ? (
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      const url = `https://www.google.com/maps/search/?api=1&query=${s.latitud},${s.longitud}`;
+                      Linking.openURL(url).catch(() => {});
+                    }}
+                    style={{ marginHorizontal: 20, marginTop: s.direccion ? 4 : 16, marginBottom: 20, borderRadius: 14, overflow: 'hidden', height: 180 }}>
+                    <MapView
+                      style={{ flex: 1 }}
+                      pointerEvents="none"
+                      initialRegion={{
+                        latitude:      s.latitud,
+                        longitude:     s.longitud,
+                        latitudeDelta:  0.003,
+                        longitudeDelta: 0.003,
+                      }}>
+                      <Marker coordinate={{ latitude: s.latitud, longitude: s.longitud }} pinColor="#16a34a" />
+                    </MapView>
+                    {/* Overlay con instrucción */}
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#16a34a', paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <Ionicons name="navigate" size={14} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.xs }}>Toca para abrir en Google Maps</Text>
+                    </View>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             </View>
