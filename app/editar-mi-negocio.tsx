@@ -1077,7 +1077,6 @@ export default function EditarMiNegocioScreen() {
           { label: 'WhatsApp',             value: whatsapp,  set: setWhatsapp,  placeholder: '0414-0000000', keyboard: 'phone-pad' },
           { label: 'Redes sociales / web', value: web,       set: setWeb,       placeholder: 'Ej: @minegocio' },
           { label: 'Dirección',            value: direccion, set: setDireccion, placeholder: 'Ej: Av. Libertador, local 5' },
-          { label: 'Descripción',          value: descripcion, set: setDescripcion, placeholder: 'Breve descripción de tu negocio…', multiline: true },
         ] as any[]).map(({ label, value, set, placeholder, keyboard, multiline, bloqueado }) => (
           <View key={label} style={styles.campo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
@@ -1098,8 +1097,8 @@ export default function EditarMiNegocioScreen() {
           </View>
         ))}
 
-        {/* Selector de ubicación en mapa */}
-        <View style={[styles.campo, { marginTop: -4 }]}>
+        {/* Ubicación en mapa — debajo de Dirección */}
+        <View style={styles.campo}>
           <Text style={[styles.label, { color: Colors.textMuted }]}>Ubicación de la tienda</Text>
           <TouchableOpacity
             onPress={abrirSelectorMapa}
@@ -1114,7 +1113,7 @@ export default function EditarMiNegocioScreen() {
                 ? 'Obteniendo ubicación…'
                 : coordenadas
                   ? `✓ ${toDMS(coordenadas.lat, true)}  ${toDMS(coordenadas.lng, false)}`
-                  : 'Seleccionar ubicación en mapa'}
+                  : 'Seleccionar en mapa'}
             </Text>
             {coordenadas && (
               <TouchableOpacity onPress={() => setCoordenadas(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1125,6 +1124,17 @@ export default function EditarMiNegocioScreen() {
           <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
             Arrastra el pin al lugar exacto de tu tienda y confirma.
           </Text>
+        </View>
+
+        {/* Descripción */}
+        <View style={styles.campo}>
+          <Text style={[styles.label, { color: Colors.textMuted }]}>Descripción</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: Colors.card, borderColor: Colors.border, color: Colors.text, height: 80, textAlignVertical: 'top' }]}
+            value={descripcion} onChangeText={setDescripcion}
+            placeholder="Breve descripción de tu negocio…" placeholderTextColor={Colors.textMuted}
+            multiline
+          />
         </View>
 
         {/* Selector Ciudad → Categoría */}
