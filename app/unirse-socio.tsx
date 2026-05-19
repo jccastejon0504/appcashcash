@@ -40,7 +40,8 @@ export default function UnirseSocioScreen() {
   const { colors: Colors } = useTheme();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const router = useRouter();
-  const { reintentoId } = useLocalSearchParams<{ reintentoId?: string }>();
+  const { reintentoId, adicional } = useLocalSearchParams<{ reintentoId?: string; adicional?: string }>();
+  const esAdicional = adicional === '1';
   const [comprobanteExistente, setComprobanteExistente] = useState<string | null>(null);
 
   const [paso,      setPaso]      = useState<1|2|3|4|5>(1);
@@ -359,9 +360,13 @@ export default function UnirseSocioScreen() {
 
     setGuardando(false);
     if (error) { Alert.alert('Error al enviar', error.message); return; }
-    await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
+    if (esAdicional) {
+      await AsyncStorage.setItem('solicitud_adicional_enviada', 'true');
+    } else {
+      await AsyncStorage.setItem('solicitud_socio_enviada', 'true');
+      if (insertData?.id) await AsyncStorage.setItem('solicitud_id', insertData.id);
+    }
     await AsyncStorage.setItem('socio_telefono', telefono.trim() || whatsapp.trim());
-    if (insertData?.id) await AsyncStorage.setItem('solicitud_id', insertData.id);
     setPaso(5);
   };
 

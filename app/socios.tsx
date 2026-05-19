@@ -29,7 +29,8 @@ export default function SociosScreen() {
   const [socios,           setSocios]           = useState<SocioComercial[]>([]);
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
-  const [yaEnvioSolicitud, setYaEnvioSolicitud] = useState(false);
+  const [yaEnvioSolicitud,  setYaEnvioSolicitud]  = useState(false);
+  const [yaEnvioAdicional,  setYaEnvioAdicional]  = useState(false);
   const [solicitudRechazada, setSolicitudRechazada] = useState<{ motivo: string | null } | null>(null);
   const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; slug?: string | null }[]>([]);
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
@@ -225,13 +226,15 @@ export default function SociosScreen() {
   useFocusEffect(useCallback(() => {
     const cargarMisSocios = async () => {
       // ── Leer estado local persistido ────────────────────────────────────
-      const [enviada, telefonoRaw, solicitudId, rechazadaRaw, idsRaw] = await Promise.all([
+      const [enviada, telefonoRaw, solicitudId, rechazadaRaw, idsRaw, adicionalRaw] = await Promise.all([
         AsyncStorage.getItem('solicitud_socio_enviada'),
         AsyncStorage.getItem('socio_telefono'),
         AsyncStorage.getItem('solicitud_id'),
         AsyncStorage.getItem('solicitud_rechazada'),
         AsyncStorage.getItem('mis_socios_ids'),
+        AsyncStorage.getItem('solicitud_adicional_enviada'),
       ]);
+      if (adicionalRaw === 'true') setYaEnvioAdicional(true);
 
       // Mostrar estado local mientras carga DB (evita parpadeo)
       if (rechazadaRaw) {
@@ -378,12 +381,14 @@ export default function SociosScreen() {
       } else {
         setSolicitudRechazada(null);
         await AsyncStorage.removeItem('solicitud_rechazada');
-        // Si se encontraron tiendas NUEVAS (más de las que había guardadas),
-        // una solicitud adicional fue aprobada → limpiar el estado "en revisión"
+        // Siempre limpiar la solicitud inicial — ya hay tiendas aprobadas
+        setYaEnvioSolicitud(false);
+        await AsyncStorage.removeItem('solicitud_socio_enviada');
+        await AsyncStorage.removeItem('solicitud_id');
+        // Si el número de tiendas aumentó, también limpiar solicitud adicional
         if (resultado.length > idsGuardados.length) {
-          setYaEnvioSolicitud(false);
-          await AsyncStorage.removeItem('solicitud_socio_enviada');
-          await AsyncStorage.removeItem('solicitud_id');
+          setYaEnvioAdicional(false);
+          await AsyncStorage.removeItem('solicitud_adicional_enviada');
         }
       }
     };
@@ -883,7 +888,7 @@ export default function SociosScreen() {
               })}
 
               {/* Tienda adicional en revisión (usuario con tiendas existentes) */}
-              {misSocios.length > 0 && yaEnvioSolicitud && !solicitudRechazada && (
+              {misSocios.length > 0 && yaEnvioAdicional && !solicitudRechazada && (
                 <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="time-outline" size={20} color="#d97706" />
                   <View style={{ flex: 1 }}>
@@ -1000,10 +1005,11 @@ export default function SociosScreen() {
                 </View>
               )}
 
-              {/* Registrar nueva tienda — ocultar si hay solicitud pendiente o rechazada */}
-              {misSocios.length < limiteTiendas && !yaEnvioSolicitud && !solicitudRechazada && (
+              {/* Registrar nueva tienda */}
+              {misSocios.length < limiteTiendas && !solicitudRechazada &&
+                (misSocios.length === 0 ? !yaEnvioSolicitud : !yaEnvioAdicional) && (
                 <TouchableOpacity
-                  onPress={() => { setModalMisTiendas(false); router.push('/unirse-socio'); }}
+                  onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/unirse-socio', params: misSocios.length > 0 ? { adicional: '1' } : {} }); }}
                   activeOpacity={0.8}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
                   <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
