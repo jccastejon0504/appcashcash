@@ -82,10 +82,11 @@ export default function CalculadoraBCVScreen() {
   const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
   const router = useRouter();
 
-  const valorRef = useRef('');
-
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
   const tasa    = fuente === 'bcv' ? tasaBCV : (moneda === 'usd' ? tasaBinance : null);
+
+  // Ref para que el useEffect siempre lea el valor más reciente sin estar en sus deps
+  const valorRef = useRef('');
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchTasa(); fetchUSDT(); }, []);
@@ -118,13 +119,13 @@ export default function CalculadoraBCVScreen() {
     })();
   }, []));
 
-  // Solo recalcula bs cuando cambia la TASA (no cuando el usuario escribe en Bs)
+  // Solo recalcula Bs cuando cambia la TASA/moneda/fuente, nunca cuando el usuario escribe en Bs
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!valorRef.current || !tasa) { setBs(''); return; }
     const n = parseFloat(valorRef.current.replace(',', '.'));
     if (!isNaN(n)) setBs((n * tasa).toFixed(2));
-  }, [tasa, moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
+  }, [tasa, moneda, fuente]);
 
   const fetchConTimeout = async (url: string, ms = 15000) => {
     const ctrl = new AbortController();
@@ -290,16 +291,16 @@ export default function CalculadoraBCVScreen() {
     setBs(val);
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
-      const newValor = isNaN(n) ? '' : (n / tasa).toFixed(2);
-      valorRef.current = newValor;
-      setValor(newValor);
+      const v = isNaN(n) ? '' : (n / tasa).toFixed(2);
+      valorRef.current = v;
+      setValor(v);
     } else {
       valorRef.current = '';
       setValor('');
     }
   };
 
-  const reiniciar = () => { setValor(''); setBs(''); };
+  const reiniciar = () => { valorRef.current = ''; setValor(''); setBs(''); };
 
   const copiar = async (v: string, campo: 'divisa' | 'bs') => {
     if (!v) return;
