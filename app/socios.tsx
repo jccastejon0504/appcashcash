@@ -887,6 +887,18 @@ export default function SociosScreen() {
                 );
               })}
 
+              {/* Botón registrar tienda adicional — justo debajo de las tarjetas */}
+              {misSocios.length > 0 && misSocios.length < limiteTiendas && !yaEnvioAdicional && !solicitudRechazada && (
+                <TouchableOpacity
+                  onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/unirse-socio', params: { adicional: '1' } }); }}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
+                  <Text style={{ flex: 1, color: Colors.accent, fontSize: FontSize.sm, fontWeight: '700' }}>Registrar nueva tienda</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+                </TouchableOpacity>
+              )}
+
               {/* Tienda adicional en revisión (usuario con tiendas existentes) */}
               {misSocios.length > 0 && yaEnvioAdicional && !solicitudRechazada && (
                 <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -1005,11 +1017,10 @@ export default function SociosScreen() {
                 </View>
               )}
 
-              {/* Registrar nueva tienda */}
-              {misSocios.length < limiteTiendas && !solicitudRechazada &&
-                (misSocios.length === 0 ? !yaEnvioSolicitud : !yaEnvioAdicional) && (
+              {/* Registrar primera tienda — solo cuando no hay tiendas ni solicitud pendiente */}
+              {misSocios.length === 0 && misSocios.length < limiteTiendas && !yaEnvioSolicitud && !solicitudRechazada && (
                 <TouchableOpacity
-                  onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/unirse-socio', params: misSocios.length > 0 ? { adicional: '1' } : {} }); }}
+                  onPress={() => { setModalMisTiendas(false); router.push('/unirse-socio'); }}
                   activeOpacity={0.8}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.accent + '55', borderStyle: 'dashed' }}>
                   <Ionicons name="add-circle-outline" size={18} color={Colors.accent} />
