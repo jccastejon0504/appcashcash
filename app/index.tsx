@@ -79,7 +79,7 @@ export default function CalculadoraBCVScreen() {
   const [alertaCar,     setAlertaCar]     = useState<{ id: string; kmProximo: number; fechaProximo: string; producto: string } | null>(null);
   const [modalAlerta,   setModalAlerta]   = useState(false);
   const [alertaVista,   setAlertaVista]   = useState<string | null>(null);
-  const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
+  const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, colorFondo, guardarTema, guardarColor, guardarTexto, guardarBs, guardarFondo } = useTheme();
   const router = useRouter();
 
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
@@ -444,6 +444,40 @@ export default function CalculadoraBCVScreen() {
                 <Text style={[s.temaPillText, { color: temaOscuro ? '#fff' : T.textMuted }]}>Oscuro</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Selector de color de fondo (solo modo claro) */}
+            {!temaOscuro && (
+              <>
+                <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE FONDO</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.paletaRow}>
+                  {[
+                    { nombre: 'Auto',     color: '',        muestra: '#F5F7FA' },
+                    { nombre: 'Crema',    color: '#FEF9EF', muestra: '#FEF9EF' },
+                    { nombre: 'Marfil',   color: '#FFFFF0', muestra: '#FFFFF0' },
+                    { nombre: 'Gris',     color: '#F1F3F5', muestra: '#F1F3F5' },
+                    { nombre: 'Pizarra',  color: '#ECEFF1', muestra: '#ECEFF1' },
+                    { nombre: 'Cielo',    color: '#EFF6FF', muestra: '#EFF6FF' },
+                    { nombre: 'Lavanda',  color: '#F5F0FF', muestra: '#F5F0FF' },
+                    { nombre: 'Menta',    color: '#F0FDF4', muestra: '#F0FDF4' },
+                    { nombre: 'Durazno',  color: '#FFF7ED', muestra: '#FFF7ED' },
+                    { nombre: 'Rosa',     color: '#FFF0F6', muestra: '#FFF0F6' },
+                    { nombre: 'Limón',    color: '#FEFCE8', muestra: '#FEFCE8' },
+                    { nombre: 'Salmón',   color: '#FFF1EE', muestra: '#FFF1EE' },
+                  ].map((p) => {
+                    const activo = colorFondo === p.color;
+                    return (
+                      <TouchableOpacity key={p.nombre} style={s.swatchWrap} onPress={() => guardarFondo(p.color)} activeOpacity={0.8}>
+                        <View style={[s.swatch, { backgroundColor: p.muestra, borderWidth: 1, borderColor: T.border }, activo && s.swatchSelected]}>
+                          {p.color === '' && <Ionicons name="sync-outline" size={20} color={T.textMuted} />}
+                          {activo && p.color !== '' && <Ionicons name="checkmark" size={18} color={T.textMuted} />}
+                        </View>
+                        <Text style={[s.swatchLabel, { color: activo ? T.accent : T.textMuted }]}>{p.nombre}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
 
             {/* Selector de color tema */}
             <Text style={[s.configSectionLabel, { color: T.textMuted }]}>COLOR DE TEMA</Text>

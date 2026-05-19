@@ -46,10 +46,12 @@ type ThemeCtx = {
   colorAccent:  string;
   colorTexto:   string;
   colorBs:      string;
+  colorFondo:   string;
   guardarTema:  (oscuro: boolean) => Promise<void>;
   guardarColor: (color: string)   => Promise<void>;
   guardarTexto: (color: string)   => Promise<void>;
   guardarBs:    (color: string)   => Promise<void>;
+  guardarFondo: (color: string)   => Promise<void>;
 };
 
 const ThemeContext = createContext<ThemeCtx | null>(null);
@@ -58,37 +60,45 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [temaOscuro,  setTemaOscuro]  = useState(false);
   const [colorAccent, setColorAccent] = useState('#4AADE8');
   const [colorTexto,  setColorTexto]  = useState('');
-  const [colorBs,     setColorBs]     = useState('');  // '' = complementario del acento
+  const [colorBs,     setColorBs]     = useState('');
+  const [colorFondo,  setColorFondo]  = useState('');
 
   useEffect(() => {
-    getItem<{ oscuro: boolean; color: string; texto: string; bs: string }>(UI_CONFIG_KEY).then(cfg => {
+    getItem<{ oscuro: boolean; color: string; texto: string; bs: string; fondo: string }>(UI_CONFIG_KEY).then(cfg => {
       if (cfg?.oscuro !== undefined) setTemaOscuro(cfg.oscuro);
       if (cfg?.color)                setColorAccent(cfg.color);
       if (cfg?.texto !== undefined)  setColorTexto(cfg.texto);
       if (cfg?.bs    !== undefined)  setColorBs(cfg.bs);
+      if (cfg?.fondo !== undefined)  setColorFondo(cfg.fondo);
     });
   }, []);
 
   const save = (patch: object) =>
-    setItem(UI_CONFIG_KEY, { oscuro: temaOscuro, color: colorAccent, texto: colorTexto, bs: colorBs, ...patch });
+    setItem(UI_CONFIG_KEY, { oscuro: temaOscuro, color: colorAccent, texto: colorTexto, bs: colorBs, fondo: colorFondo, ...patch });
 
   const guardarTema  = async (oscuro: boolean) => { setTemaOscuro(oscuro);  await save({ oscuro }); };
   const guardarColor = async (color: string)   => { setColorAccent(color);  await save({ color }); };
   const guardarTexto = async (color: string)   => { setColorTexto(color);   await save({ texto: color }); };
   const guardarBs    = async (color: string)   => { setColorBs(color);      await save({ bs: color }); };
+  const guardarFondo = async (color: string)   => { setColorFondo(color);   await save({ fondo: color }); };
 
   const defaultText = temaOscuro ? '#FFFFFF' : '#0D1B35';
 
-  const colors = useMemo<AppColors>(() => ({
-    ...(temaOscuro ? darkBase : lightBase),
-    ...shared,
-    blue:   colorAccent,
-    accent: colorAccent,
-    text:   colorTexto || defaultText,
-  }), [temaOscuro, colorAccent, colorTexto]);
+  const colors = useMemo<AppColors>(() => {
+    const base = temaOscuro ? darkBase : lightBase;
+    const background = (!temaOscuro && colorFondo) ? colorFondo : base.background;
+    return {
+      ...base,
+      background,
+      ...shared,
+      blue:   colorAccent,
+      accent: colorAccent,
+      text:   colorTexto || defaultText,
+    };
+  }, [temaOscuro, colorAccent, colorTexto, colorFondo]);
 
   return (
-    <ThemeContext.Provider value={{ colors, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs }}>
+    <ThemeContext.Provider value={{ colors, temaOscuro, colorAccent, colorTexto, colorBs, colorFondo, guardarTema, guardarColor, guardarTexto, guardarBs, guardarFondo }}>
       {children}
     </ThemeContext.Provider>
   );
