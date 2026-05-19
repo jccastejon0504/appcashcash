@@ -82,7 +82,7 @@ export default function CalculadoraBCVScreen() {
   const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
   const router = useRouter();
 
-  const valorCambioPorBs = useRef(false);
+  const valorRef = useRef('');
 
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
   const tasa    = fuente === 'bcv' ? tasaBCV : (moneda === 'usd' ? tasaBinance : null);
@@ -118,12 +118,13 @@ export default function CalculadoraBCVScreen() {
     })();
   }, []));
 
+  // Solo recalcula bs cuando cambia la TASA (no cuando el usuario escribe en Bs)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (valorCambioPorBs.current) { valorCambioPorBs.current = false; return; }
-    if (!valor || !tasa) { setBs(''); return; }
-    const n = parseFloat(valor.replace(',', '.'));
+    if (!valorRef.current || !tasa) { setBs(''); return; }
+    const n = parseFloat(valorRef.current.replace(',', '.'));
     if (!isNaN(n)) setBs((n * tasa).toFixed(2));
-  }, [valor, tasa, moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
+  }, [tasa, moneda, fuente, tasaUSD, tasaEUR, tasaBinance]);
 
   const fetchConTimeout = async (url: string, ms = 15000) => {
     const ctrl = new AbortController();
@@ -277,6 +278,7 @@ export default function CalculadoraBCVScreen() {
   const recargarTodo = (forzar = true) => { fetchTasa(forzar); fetchUSDT(forzar); };
 
   const onChangeDivisa = (val: string) => {
+    valorRef.current = val;
     setValor(val);
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
@@ -286,11 +288,15 @@ export default function CalculadoraBCVScreen() {
 
   const onChangeBs = (val: string) => {
     setBs(val);
-    valorCambioPorBs.current = true;
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
-      setValor(isNaN(n) ? '' : (n / tasa).toFixed(2));
-    } else { setValor(''); }
+      const newValor = isNaN(n) ? '' : (n / tasa).toFixed(2);
+      valorRef.current = newValor;
+      setValor(newValor);
+    } else {
+      valorRef.current = '';
+      setValor('');
+    }
   };
 
   const reiniciar = () => { setValor(''); setBs(''); };
