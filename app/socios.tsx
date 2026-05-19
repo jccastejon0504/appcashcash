@@ -378,6 +378,13 @@ export default function SociosScreen() {
       } else {
         setSolicitudRechazada(null);
         await AsyncStorage.removeItem('solicitud_rechazada');
+        // Si se encontraron tiendas NUEVAS (más de las que había guardadas),
+        // una solicitud adicional fue aprobada → limpiar el estado "en revisión"
+        if (resultado.length > idsGuardados.length) {
+          setYaEnvioSolicitud(false);
+          await AsyncStorage.removeItem('solicitud_socio_enviada');
+          await AsyncStorage.removeItem('solicitud_id');
+        }
       }
     };
     cargarMisSocios();
@@ -874,6 +881,17 @@ export default function SociosScreen() {
                   </TouchableOpacity>
                 );
               })}
+
+              {/* Tienda adicional en revisión (usuario con tiendas existentes) */}
+              {misSocios.length > 0 && yaEnvioSolicitud && !solicitudRechazada && (
+                <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="time-outline" size={20} color="#d97706" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: '#92400e' }}>Solicitud adicional en revisión</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: '#78350f', marginTop: 2 }}>CashCach está verificando tu nueva tienda. Te notificaremos cuando sea aprobada.</Text>
+                  </View>
+                </View>
+              )}
 
               {/* Sin negocios — en revisión */}
               {misSocios.length === 0 && yaEnvioSolicitud && !solicitudRechazada && (
