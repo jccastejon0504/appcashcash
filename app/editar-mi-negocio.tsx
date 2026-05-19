@@ -95,8 +95,6 @@ export default function EditarMiNegocioScreen() {
   const [dropSubcat,     setDropSubcat]     = useState(false);
   const [subcatBusq,     setSubcatBusq]     = useState('');
 
-  const subcatsFiltradas = subcategorias;
-
   // Renovación
   const [modalRenovar,     setModalRenovar]     = useState(false);
   const [planRenov,        setPlanRenov]        = useState<Exclude<Plan,'gratis'>>('basico');
@@ -1163,7 +1161,7 @@ export default function EditarMiNegocioScreen() {
               onPress={() => { setDropSubcat(v => !v); setDropCiudad(false); if (dropSubcat) setSubcatBusq(''); }}
               activeOpacity={0.8}>
               <Text style={{ color: subcatSelId ? Colors.text : Colors.textMuted, fontSize: FontSize.md }}>
-                {subcatSelId ? (subcatsFiltradas.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
+                {subcatSelId ? (subcategorias.find(s => s.id === subcatSelId)?.nombre ?? 'Selecciona…') : 'Selecciona una categoría…'}
               </Text>
               <Ionicons name={dropSubcat ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
             </TouchableOpacity>
@@ -1183,11 +1181,11 @@ export default function EditarMiNegocioScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {subcatsFiltradas.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).length === 0 ? (
+                {subcategorias.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).length === 0 ? (
                   <View style={styles.dropdownItem}>
                     <Text style={{ color: Colors.textMuted }}>Sin resultados</Text>
                   </View>
-                ) : subcatsFiltradas.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).map(s => (
+                ) : subcategorias.filter(s => s.nombre.toLowerCase().includes(subcatBusq.toLowerCase())).map(s => (
                   <TouchableOpacity key={s.id}
                     style={[styles.dropdownItem, { borderBottomColor: Colors.border }]}
                     onPress={() => { setSubcatSelId(s.id); setDropSubcat(false); setSubcatBusq(''); }}>

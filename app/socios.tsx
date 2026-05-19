@@ -29,6 +29,7 @@ export default function SociosScreen() {
   const [socios,           setSocios]           = useState<SocioComercial[]>([]);
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
+  const [shuffleSeed,      setShuffleSeed]      = useState(() => Math.random());
   const [yaEnvioSolicitud,  setYaEnvioSolicitud]  = useState(false);
   const [yaEnvioAdicional,  setYaEnvioAdicional]  = useState(false);
   const [solicitudRechazada, setSolicitudRechazada] = useState<{ motivo: string | null } | null>(null);
@@ -201,9 +202,14 @@ export default function SociosScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalConfigVisible]);
 
-  // Auto-refresh cada 60 segundos mientras la pantalla está visible
+  // Nuevo seed de aleatorización cada vez que la pantalla recibe foco
   useFocusEffect(useCallback(() => {
-    const timer = setInterval(() => cargar(true), 60000);
+    setShuffleSeed(Math.random());
+  }, []));
+
+  // Auto-refresh cada 5 minutos mientras la pantalla está visible
+  useFocusEffect(useCallback(() => {
+    const timer = setInterval(() => { cargar(true); setShuffleSeed(Math.random()); }, 300000);
     return () => clearInterval(timer);
   }, [cargar]));
 
@@ -426,13 +432,13 @@ export default function SociosScreen() {
     let lista = socios.filter(esDestVigente);
     if (subcatFiltro) lista = lista.filter(s => s.subcategoria_id === subcatFiltro);
     lista = lista.filter(cumpleFiltroUbicacion);
-    // Aleatorizar destacados entre sí
-    for (let i = lista.length - 1; i > 0; i--) {
+    const arr = [...lista];
+    for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [lista[i], lista[j]] = [lista[j], lista[i]];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return lista;
-  }, [socios, subcatFiltro, cumpleFiltroUbicacion]);
+    return arr;
+  }, [socios, subcatFiltro, cumpleFiltroUbicacion, shuffleSeed]);
 
 
   const sugerencias = useMemo(() => {
