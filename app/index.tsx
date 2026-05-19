@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView,
@@ -82,6 +82,8 @@ export default function CalculadoraBCVScreen() {
   const { colors: T, temaOscuro, colorAccent, colorTexto, colorBs, guardarTema, guardarColor, guardarTexto, guardarBs } = useTheme();
   const router = useRouter();
 
+  const valorCambioPorBs = useRef(false);
+
   const tasaBCV = moneda === 'usd' ? tasaUSD : tasaEUR;
   const tasa    = fuente === 'bcv' ? tasaBCV : (moneda === 'usd' ? tasaBinance : null);
 
@@ -117,6 +119,7 @@ export default function CalculadoraBCVScreen() {
   }, []));
 
   useEffect(() => {
+    if (valorCambioPorBs.current) { valorCambioPorBs.current = false; return; }
     if (!valor || !tasa) { setBs(''); return; }
     const n = parseFloat(valor.replace(',', '.'));
     if (!isNaN(n)) setBs((n * tasa).toFixed(2));
@@ -283,6 +286,7 @@ export default function CalculadoraBCVScreen() {
 
   const onChangeBs = (val: string) => {
     setBs(val);
+    valorCambioPorBs.current = true;
     if (tasa && val) {
       const n = parseFloat(val.replace(',', '.'));
       setValor(isNaN(n) ? '' : (n / tasa).toFixed(2));
