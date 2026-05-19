@@ -1481,9 +1481,20 @@ export default function EditarMiNegocioScreen() {
                   <Text style={{ color: '#f59e0b', fontWeight: '900', fontSize: FontSize.lg }}>${paquetesGal * precioGalConfig}</Text>
                 </View>
                 {tasaBCV && (
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>
-                    Bs {(paquetesGal * precioGalConfig * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ color: Colors.textMuted, fontSize: 11 }}>
+                      Bs {(paquetesGal * precioGalConfig * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.copiarBtn, { backgroundColor: copiado === 'gal-bs' ? Colors.success + '22' : Colors.border }]}
+                      onPress={async () => {
+                        await Clipboard.setStringAsync((paquetesGal * precioGalConfig * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 }));
+                        setCopiado('gal-bs');
+                        setTimeout(() => setCopiado(null), 2000);
+                      }}>
+                      <Ionicons name={copiado === 'gal-bs' ? 'checkmark' : 'copy-outline'} size={13} color={copiado === 'gal-bs' ? Colors.success : Colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 
@@ -1695,9 +1706,20 @@ export default function EditarMiNegocioScreen() {
                   <Text style={{ color: '#a855f7', fontWeight: '900', fontSize: FontSize.lg }}>${diasDestacado * precioDestacadoDia}</Text>
                 </View>
                 {tasaBCV && (
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>
-                    Bs {(diasDestacado * precioDestacadoDia * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ color: Colors.textMuted, fontSize: 11 }}>
+                      Bs {(diasDestacado * precioDestacadoDia * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.copiarBtn, { backgroundColor: copiado === 'dest-bs' ? Colors.success + '22' : Colors.border }]}
+                      onPress={async () => {
+                        await Clipboard.setStringAsync((diasDestacado * precioDestacadoDia * tasaBCV).toLocaleString('es-VE', { minimumFractionDigits: 2 }));
+                        setCopiado('dest-bs');
+                        setTimeout(() => setCopiado(null), 2000);
+                      }}>
+                      <Ionicons name={copiado === 'dest-bs' ? 'checkmark' : 'copy-outline'} size={13} color={copiado === 'dest-bs' ? Colors.success : Colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 

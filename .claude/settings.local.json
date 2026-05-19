@@ -85,7 +85,20 @@
       "Bash(npx expo-doctor *)",
       "Bash(eas build:cancel a913c701-fe4d-4140-87bc-d1a8938f0f6a)",
       "Bash(ping *)",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); e=d['expo']; print\\('version:', e.get\\('version'\\)\\); print\\('versionCode:', e.get\\('android',{}\\).get\\('versionCode'\\)\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); e=d['expo']; print\\('version:', e.get\\('version'\\)\\); print\\('versionCode:', e.get\\('android',{}\\).get\\('versionCode'\\)\\)\")",
+      "Bash(du -sh assets/images/*)",
+      "Bash(find . -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" -o -name \"*.html\" \\\\\\) ! -path \"./node_modules/*\" ! -path \"./dist/*\" -exec wc -l {} +)",
+      "Bash(magick --version)",
+      "Bash(convert --version)",
+      "Bash(npx sharp-cli *)",
+      "Bash(cat babel.config.js)",
+      "Bash(cat tailwind.config.js)",
+      "Bash(cat metro.config.js)",
+      "Bash(ls *.config.*)",
+      "Bash(ls *.css global.css)",
+      "Bash(ls \"C:/Program Files/Microsoft/jdk-\"*)",
+      "Bash(export JAVA_HOME=\"C:/Users/yohanna/.gradle/jdks/eclipse_adoptium-17-amd64-windows.2\")",
+      "Bash(export ANDROID_HOME=\"C:/Users/yohanna/AppData/Local/Android/Sdk\")"
     ]
   }
 }

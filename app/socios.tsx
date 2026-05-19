@@ -32,6 +32,7 @@ export default function SociosScreen() {
   const [yaEnvioSolicitud,  setYaEnvioSolicitud]  = useState(false);
   const [yaEnvioAdicional,  setYaEnvioAdicional]  = useState(false);
   const [solicitudRechazada, setSolicitudRechazada] = useState<{ motivo: string | null } | null>(null);
+  const [adicionalRechazada, setAdicionalRechazada] = useState<{ motivo: string | null } | null>(null);
   const [misSocios,        setMisSocios]        = useState<{ id: string; nombre: string; imagen: string | null; fecha_vencimiento: string | null; slug?: string | null }[]>([]);
   const [limiteTiendas,    setLimiteTiendas]    = useState<number>(100);
   const [modalMisTiendas,   setModalMisTiendas]   = useState(false);
@@ -226,15 +227,19 @@ export default function SociosScreen() {
   useFocusEffect(useCallback(() => {
     const cargarMisSocios = async () => {
       // ── Leer estado local persistido ────────────────────────────────────
-      const [enviada, telefonoRaw, solicitudId, rechazadaRaw, idsRaw, adicionalRaw] = await Promise.all([
+      const [enviada, telefonoRaw, solicitudId, rechazadaRaw, idsRaw, adicionalRaw, adicionalRechazadaRaw] = await Promise.all([
         AsyncStorage.getItem('solicitud_socio_enviada'),
         AsyncStorage.getItem('socio_telefono'),
         AsyncStorage.getItem('solicitud_id'),
         AsyncStorage.getItem('solicitud_rechazada'),
         AsyncStorage.getItem('mis_socios_ids'),
         AsyncStorage.getItem('solicitud_adicional_enviada'),
+        AsyncStorage.getItem('solicitud_adicional_rechazada'),
       ]);
       if (adicionalRaw === 'true') setYaEnvioAdicional(true);
+      if (adicionalRechazadaRaw) {
+        try { setAdicionalRechazada(JSON.parse(adicionalRechazadaRaw)); } catch { /* ignorar */ }
+      }
 
       // Mostrar estado local mientras carga DB (evita parpadeo)
       if (rechazadaRaw) {
@@ -385,10 +390,32 @@ export default function SociosScreen() {
         setYaEnvioSolicitud(false);
         await AsyncStorage.removeItem('solicitud_socio_enviada');
         await AsyncStorage.removeItem('solicitud_id');
-        // Si el número de tiendas aumentó, también limpiar solicitud adicional
+        // Limpiar solicitud adicional si aumentaron tiendas o verificar estado en DB
         if (resultado.length > idsGuardados.length) {
           setYaEnvioAdicional(false);
+          setAdicionalRechazada(null);
           await AsyncStorage.removeItem('solicitud_adicional_enviada');
+          await AsyncStorage.removeItem('solicitud_adicional_rechazada');
+        } else if (adicionalRaw === 'true' && tel) {
+          // Verificar en DB si la solicitud adicional sigue pendiente o fue rechazada
+          const { data: solAdicional } = await (supabase
+            .from('solicitudes')
+            .select('id, estado, notas')
+            .or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`)
+            .in('estado', ['pendiente', 'rechazado'])
+            .order('created_at', { ascending: false })
+            .limit(1) as unknown as Promise<any>);
+          if (!solAdicional || solAdicional.length === 0) {
+            // Aprobada o no existe → limpiar
+            setYaEnvioAdicional(false);
+            await AsyncStorage.removeItem('solicitud_adicional_enviada');
+          } else if (solAdicional[0].estado === 'rechazado') {
+            const info = { motivo: solAdicional[0].notas ?? null };
+            setYaEnvioAdicional(false);
+            setAdicionalRechazada(info);
+            await AsyncStorage.removeItem('solicitud_adicional_enviada');
+            await AsyncStorage.setItem('solicitud_adicional_rechazada', JSON.stringify(info));
+          }
         }
       }
     };
@@ -888,7 +915,7 @@ export default function SociosScreen() {
               })}
 
               {/* Botón registrar tienda adicional — justo debajo de las tarjetas */}
-              {misSocios.length > 0 && misSocios.length < limiteTiendas && !yaEnvioAdicional && !solicitudRechazada && (
+              {misSocios.length > 0 && !yaEnvioAdicional && misSocios.length < limiteTiendas && (
                 <TouchableOpacity
                   onPress={() => { setModalMisTiendas(false); router.push({ pathname: '/unirse-socio', params: { adicional: '1' } }); }}
                   activeOpacity={0.8}
@@ -899,14 +926,70 @@ export default function SociosScreen() {
                 </TouchableOpacity>
               )}
 
+              {/* Límite de tiendas alcanzado */}
+              {misSocios.length > 0 && !yaEnvioAdicional && misSocios.length >= limiteTiendas && (
+                <View style={{ backgroundColor: '#f0fdf4', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#86efac', padding: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: '#15803d' }}>Máximo de tiendas alcanzado</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: '#166534', marginTop: 2 }}>Ya tenés {misSocios.length} tienda{misSocios.length > 1 ? 's' : ''} registrada{misSocios.length > 1 ? 's' : ''}. Contactá a CashCach si necesitás ampliar tu límite.</Text>
+                  </View>
+                </View>
+              )}
+
               {/* Tienda adicional en revisión (usuario con tiendas existentes) */}
-              {misSocios.length > 0 && yaEnvioAdicional && !solicitudRechazada && (
+              {misSocios.length > 0 && yaEnvioAdicional && (
                 <View style={{ backgroundColor: '#fefce8', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fde68a', padding: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="time-outline" size={20} color="#d97706" />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: '#92400e' }}>Solicitud adicional en revisión</Text>
                     <Text style={{ fontSize: FontSize.xs, color: '#78350f', marginTop: 2 }}>CashCach está verificando tu nueva tienda. Te notificaremos cuando sea aprobada.</Text>
                   </View>
+                </View>
+              )}
+
+              {/* Tienda adicional rechazada */}
+              {misSocios.length > 0 && adicionalRechazada && (
+                <View style={{ backgroundColor: '#fef2f2', borderRadius: Radius.lg, borderWidth: 1, borderColor: '#fecaca', padding: Spacing.md, gap: 10, alignItems: 'center' }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="close-circle-outline" size={26} color="#ef4444" />
+                  </View>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: '#b91c1c', textAlign: 'center' }}>Solicitud adicional rechazada</Text>
+                  <Text style={{ fontSize: FontSize.sm, color: '#7f1d1d', textAlign: 'center', lineHeight: 20 }}>
+                    Tu solicitud de nueva tienda no pudo ser aprobada. Podés corregir la información e intentarlo nuevamente.
+                  </Text>
+                  {adicionalRechazada.motivo ? (
+                    <View style={{ backgroundColor: '#fee2e2', borderRadius: Radius.md, padding: Spacing.sm, width: '100%' }}>
+                      <Text style={{ fontSize: FontSize.xs, color: '#b91c1c', fontWeight: '700', marginBottom: 2 }}>Motivo:</Text>
+                      <Text style={{ fontSize: FontSize.xs, color: '#7f1d1d', lineHeight: 18 }}>{adicionalRechazada.motivo}</Text>
+                    </View>
+                  ) : null}
+                  <View style={{ backgroundColor: '#fff7ed', borderRadius: Radius.md, padding: Spacing.sm, width: '100%', flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                    <Ionicons name="shield-checkmark-outline" size={16} color="#c2410c" style={{ marginTop: 1 }} />
+                    <Text style={{ flex: 1, fontSize: FontSize.xs, color: '#9a3412', lineHeight: 18 }}>
+                      <Text style={{ fontWeight: '700' }}>Tu pago está protegido. </Text>
+                      Al reintentar podés usar el mismo número de referencia y foto del comprobante — no se te cobrará dos veces.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setAdicionalRechazada(null);
+                      await AsyncStorage.removeItem('solicitud_adicional_rechazada');
+                      setModalMisTiendas(false);
+                      router.push({ pathname: '/unirse-socio', params: { adicional: '1' } });
+                    }}
+                    activeOpacity={0.85}
+                    style={{ backgroundColor: Colors.accent, paddingVertical: 10, paddingHorizontal: 20, borderRadius: Radius.md }}>
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: FontSize.sm }}>Intentar de nuevo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setAdicionalRechazada(null);
+                      await AsyncStorage.removeItem('solicitud_adicional_rechazada');
+                    }}
+                    activeOpacity={0.7}>
+                    <Text style={{ fontSize: FontSize.xs, color: '#9ca3af' }}>Descartar</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 

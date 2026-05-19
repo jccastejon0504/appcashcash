@@ -537,7 +537,7 @@ export default function UnirseSocioScreen() {
       {/* Cards de los 3 planes */}
       <View style={{ flexDirection: 'row', gap: 10 }}>
       {PLANES_DEF.filter(p =>
-        (p.key === 'gratis' && planGratisVisible) ||
+        (p.key === 'gratis' && planGratisVisible && !esAdicional) ||
         (p.key === 'basico' && planBasicoVisible) ||
         (p.key === 'pro'    && planProVisible)
       ).map(p => {
