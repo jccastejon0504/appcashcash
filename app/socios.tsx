@@ -5,6 +5,7 @@ import {
   TextInput, Keyboard, Modal, Share,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Spacing, Radius, FontSize } from '@/constants/theme';
@@ -62,6 +63,24 @@ export default function SociosScreen() {
   const inputRef = useRef<TextInput>(null);
   const pulsoOpacity = useSharedValue(0.4);
   const pulsoStyle   = useAnimatedStyle(() => ({ opacity: pulsoOpacity.value }));
+
+  // FAB arrastrable
+  const fabX      = useSharedValue(0);
+  const fabY      = useSharedValue(0);
+  const fabStartX = useSharedValue(0);
+  const fabStartY = useSharedValue(0);
+  const fabAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: fabX.value }, { translateY: fabY.value }],
+  }));
+  const fabPan = Gesture.Pan()
+    .minDistance(8)
+    .onStart(() => { fabStartX.value = fabX.value; fabStartY.value = fabY.value; })
+    .onChange((e) => { fabX.value = fabStartX.value + e.translationX; fabY.value = fabStartY.value + e.translationY; });
+  const fabInfoGesture = Gesture.Tap().runOnJS(true).onEnd(() => setModalInfo(true));
+  const fabSearchGesture = Gesture.Tap().runOnJS(true).onEnd(() => {
+    if (busqueda) { setBusqueda(''); setModalBuscar(false); }
+    else { setModalBuscar(true); }
+  });
 
   useEffect(() => {
     pulsoOpacity.value = withTiming(1, { duration: 700 }, () => {
@@ -1351,24 +1370,36 @@ export default function SociosScreen() {
         </ScrollView>
       )}
 
-      {/* FAB info — arriba del de búsqueda */}
-      <TouchableOpacity
-        onPress={() => setModalInfo(true)}
-        activeOpacity={0.85}
-        style={{ position: 'absolute', bottom: 92, right: 30, width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.accent + '66', alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}>
-        <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
-      </TouchableOpacity>
-
-      {/* FAB búsqueda / cerrar modal */}
-      <TouchableOpacity
-        onPress={() => {
-          if (busqueda) { setBusqueda(''); setModalBuscar(false); }
-          else { setModalBuscar(true); }
-        }}
-        activeOpacity={0.85}
-        style={{ position: 'absolute', bottom: 28, right: 24, width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
-        <Ionicons name={busqueda ? 'close' : 'search'} size={24} color="#fff" />
-      </TouchableOpacity>
+      {/* FAB flotante arrastrable */}
+      <GestureDetector gesture={fabPan}>
+        <Animated.View style={[{
+          position: 'absolute', bottom: 24, right: 18,
+          alignItems: 'center', gap: 10,
+          paddingVertical: 10, paddingHorizontal: 8,
+          borderRadius: 30,
+          backgroundColor: 'rgba(0,0,0,0.28)',
+        }, fabAnimStyle]}>
+          <GestureDetector gesture={fabInfoGesture}>
+            <Animated.View style={{
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: Colors.card,
+              borderWidth: 1.5, borderColor: Colors.accent + '66',
+              alignItems: 'center', justifyContent: 'center', elevation: 4,
+            }}>
+              <Ionicons name="information-circle-outline" size={16} color={Colors.accent} />
+            </Animated.View>
+          </GestureDetector>
+          <GestureDetector gesture={fabSearchGesture}>
+            <Animated.View style={{
+              width: 46, height: 46, borderRadius: 23,
+              backgroundColor: Colors.accent,
+              alignItems: 'center', justifyContent: 'center', elevation: 6,
+            }}>
+              <Ionicons name={busqueda ? 'close' : 'search'} size={19} color="#fff" />
+            </Animated.View>
+          </GestureDetector>
+        </Animated.View>
+      </GestureDetector>
 
       {renderModalInfo()}
     </SafeAreaView>

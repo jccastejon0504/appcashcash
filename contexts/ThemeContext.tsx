@@ -57,10 +57,10 @@ type ThemeCtx = {
 const ThemeContext = createContext<ThemeCtx | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [temaOscuro,  setTemaOscuro]  = useState(false);
-  const [colorAccent, setColorAccent] = useState('#4AADE8');
+  const [temaOscuro,  setTemaOscuro]  = useState(true);
+  const [colorAccent, setColorAccent] = useState('#EC4899');
   const [colorTexto,  setColorTexto]  = useState('');
-  const [colorBs,     setColorBs]     = useState('');
+  const [colorBs,     setColorBs]     = useState('#F59E0B');
   const [colorFondo,  setColorFondo]  = useState('');
 
   useEffect(() => {
