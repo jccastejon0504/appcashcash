@@ -13,6 +13,20 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase, SocioComercial } from '@/services/supabase';
 import { registrarEvento } from '@/services/analytics';
 
+function detectarRed(url: string): { label: string; icon: string } {
+  const u = url.toLowerCase();
+  if (/instagram\.com|instagr\.am/.test(u))  return { label: 'Instagram', icon: 'logo-instagram' };
+  if (/t\.me|telegram\.me|telegram\.org/.test(u)) return { label: 'Telegram',  icon: 'paper-plane-outline' };
+  if (/facebook\.com|fb\.com|fb\.me/.test(u)) return { label: 'Facebook',  icon: 'logo-facebook' };
+  if (/twitter\.com|x\.com/.test(u))          return { label: 'X / Twitter', icon: 'logo-twitter' };
+  if (/tiktok\.com/.test(u))                  return { label: 'TikTok',    icon: 'musical-notes-outline' };
+  if (/youtube\.com|youtu\.be/.test(u))       return { label: 'YouTube',   icon: 'logo-youtube' };
+  if (/wa\.me|whatsapp\.com/.test(u))         return { label: 'WhatsApp',  icon: 'logo-whatsapp' };
+  if (/linkedin\.com/.test(u))                return { label: 'LinkedIn',  icon: 'logo-linkedin' };
+  if (/^@/.test(url.trim()))                  return { label: 'Perfil',    icon: 'person-outline' };
+  return { label: 'Web', icon: 'globe-outline' };
+}
+
 type ItemGaleria = {
   id: string;
   imagen: string;
@@ -207,12 +221,15 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                     <Text style={styles.modalContactBtnText}>Llamar</Text>
                   </TouchableOpacity>
                 ) : null}
-                {s.web ? (
-                  <TouchableOpacity style={[styles.modalContactBtn, { backgroundColor: Colors.accent }]} onPress={() => abrirEnlace(s.web)}>
-                    <Ionicons name="globe-outline" size={20} color="#fff" />
-                    <Text style={styles.modalContactBtnText}>Web</Text>
-                  </TouchableOpacity>
-                ) : null}
+                {s.web ? (() => {
+                  const red = detectarRed(s.web);
+                  return (
+                    <TouchableOpacity style={[styles.modalContactBtn, { backgroundColor: Colors.accent }]} onPress={() => abrirEnlace(s.web)}>
+                      <Ionicons name={red.icon as any} size={20} color="#fff" />
+                      <Text style={styles.modalContactBtnText}>{red.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })() : null}
               </View>
             </View>
 
