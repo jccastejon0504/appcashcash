@@ -1761,6 +1761,27 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   function fmt(v, prefix = '$') { return v != null ? `${prefix}${Number(v).toFixed(2)}` : '—'; }
   function fmtFecha(f) { return f ? new Date(f).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' }) : '—'; }
 
+  function calcDiasRestantes(fechaVenc) {
+    if (!fechaVenc) return null;
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const venc = new Date(fechaVenc); venc.setHours(0,0,0,0);
+    return Math.ceil((venc - hoy) / 86400000);
+  }
+  function badgeMembresiaHTML(s) {
+    if (s.estado !== 'aprobado' || !s.fecha_vencimiento) return '';
+    const dias = calcDiasRestantes(s.fecha_vencimiento);
+    if (dias === null) return '';
+    const vencida = dias < 0;
+    const color   = vencida ? '#ef4444' : dias <= 7 ? '#f59e0b' : dias <= 30 ? '#f59e0b' : '#22c55e';
+    const dot     = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px"></span>`;
+    const texto   = vencida ? `Vencida hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''}` : `${dias} día${dias!==1?'s':''} restantes`;
+    return `
+      <div style="margin-top:8px;background:#0f172a10;border:1px solid ${color}33;border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.6">
+        <div>${dot}<span style="color:var(--muted)">Membresía:</span> <b style="color:${color}">${texto}</b></div>
+        <div style="color:var(--muted);padding-left:13px">Vence: <b style="color:var(--text)">${fmtFecha(s.fecha_vencimiento)}</b></div>
+      </div>`;
+  }
+
   function showMsg(id, text, tipo) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -2247,6 +2268,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
               📅 ${fmtFecha(s.created_at)}
               ${s.fecha_vencimiento ? ` · Vence: ${fmtFecha(s.fecha_vencimiento)}` : ''}
             </div>
+            ${badgeMembresiaHTML(s)}
           </div>
           <span class="badge status-${estado}">${estado}</span>
           <span onclick="toggleSol('${uid}')" id="arrow-${uid}" style="font-size:12px;color:var(--muted);transition:transform .2s;cursor:pointer">▼</span>
