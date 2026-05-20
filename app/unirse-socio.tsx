@@ -158,9 +158,9 @@ export default function UnirseSocioScreen() {
         setPlanBasicoVisible(basicoVis);
         setPlanProVisible(proVis);
         // Ajustar plan seleccionado al primer plan visible
-        if (basicoVis) setPlan('basico');
+        if (gratisVis && !esAdicional) setPlan('gratis');
+        else if (basicoVis) setPlan('basico');
         else if (proVis) setPlan('pro');
-        else if (gratisVis) setPlan('gratis');
         if (map.gratis_fecha_inicio && map.gratis_fecha_fin) {
           const inicio = new Date(map.gratis_fecha_inicio);
           const fin    = new Date(map.gratis_fecha_fin);
@@ -536,11 +536,12 @@ export default function UnirseSocioScreen() {
 
       {/* Cards de los 3 planes */}
       <View style={{ flexDirection: 'row', gap: 10 }}>
-      {PLANES_DEF.filter(p =>
-        (p.key === 'gratis' && planGratisVisible && !esAdicional) ||
-        (p.key === 'basico' && planBasicoVisible) ||
-        (p.key === 'pro'    && planProVisible)
-      ).map(p => {
+      {PLANES_DEF.filter(p => {
+        const soloGratis = planGratisVisible && !esAdicional;
+        if (soloGratis) return p.key === 'gratis';
+        return (p.key === 'basico' && planBasicoVisible) ||
+               (p.key === 'pro'    && planProVisible);
+      }).map(p => {
         const activo  = plan === p.key;
         const planK   = !p.free ? `${p.key}_${periodo}` as PlanKey : null;
         const oferta  = planK ? ofertas[planK] : null;
