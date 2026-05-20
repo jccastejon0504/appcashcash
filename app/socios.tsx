@@ -815,7 +815,7 @@ export default function SociosScreen() {
             onPress={() => { setCiudadInputTemp(ubicacionCiudad); setRadioInputTemp(ubicacionRadio); setModalConfigVisible(true); }}
             activeOpacity={0.8}
           >
-            <Ionicons name="settings-outline" size={16} color={ubicacionCiudad ? Colors.accent : Colors.text} />
+            <Ionicons name="location-outline" size={16} color={ubicacionCiudad ? Colors.accent : Colors.text} />
           </TouchableOpacity>
           {/* Btn 4: Favoritas */}
           <TouchableOpacity
