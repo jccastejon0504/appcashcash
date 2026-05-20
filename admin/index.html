@@ -4390,7 +4390,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   const _indicador = document.createElement('div');
   _indicador.style.cssText = 'font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px';
   _indicador.innerHTML = '<span id="refresh-dot" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span><span id="refresh-label">Actualizando en 60s</span>';
-  document.getElementById('topbar-right').appendChild(_indicador);
+  document.getElementById('topbar-right')?.appendChild(_indicador);
 
   function _actualizarIndicador() {
     const label = document.getElementById('refresh-label');
