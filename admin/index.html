@@ -2075,14 +2075,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function toggleOferta(id, activoActual) {
     const nuevoEstado = !activoActual;
-    const { error } = await _sb.from('planes_ofertas').update({ activo: nuevoEstado }).eq('id', id);
+    const { error } = await db.from('planes_ofertas').update({ activo: nuevoEstado }).eq('id', id);
     if (error) { alert('Error al actualizar: ' + error.message); return; }
     await cargarOfertas();
   }
 
   async function eliminarOferta(id) {
     if (!confirm('¿Eliminar esta oferta? Esta acción no se puede deshacer.')) return;
-    const { error } = await _sb.from('planes_ofertas').delete().eq('id', id);
+    const { error } = await db.from('planes_ofertas').delete().eq('id', id);
     if (error) { alert('Error al eliminar: ' + error.message); return; }
     await cargarOfertas();
   }
@@ -4145,31 +4145,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     _mapaL.setView([lat, lng], Math.max(_mapaL.getZoom(), 15), { animate: true });
   }
 
-  function irACoordenadas() {
-    const val = document.getElementById('mapa-coords-input').value.trim();
-    if (!val || !_mapaL) return;
-    // Acepta formatos: "10.0688, -69.3474" o "10.0688 -69.3474"
-    const partes = val.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
-    if (partes.length < 2) { alert('Formato inválido. Usa: latitud, longitud\nEj: 10.0688, -69.3474'); return; }
-    const [lat, lng] = partes;
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { alert('Coordenadas fuera de rango.'); return; }
-
-    // Marcador temporal pulsante
-    if (window._markerTemp) window._markerTemp.remove();
-    window._markerTemp = L.marker([lat, lng], {
-      icon: L.divIcon({
-        className: '',
-        html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" style="animation:pulse 1.2s infinite">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-            fill="#6c3fc5" stroke="#4c1d95" stroke-width="1.2"/>
-          <circle cx="12" cy="9" r="2.8" fill="white" opacity="0.9"/>
-        </svg>`,
-        iconSize: [32, 32], iconAnchor: [16, 32],
-      })
-    }).addTo(_mapaL).bindPopup(`<b style="font-family:system-ui">${lat.toFixed(6)}, ${lng.toFixed(6)}</b>`).openPopup();
-
-    _mapaL.setView([lat, lng], 16, { animate: true });
-  }
 
   async function guardarUbicacionSocio(id, lat, lng) {
     const btn = document.getElementById(`btn-guardar-${id}`);
