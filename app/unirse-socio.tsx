@@ -20,12 +20,10 @@ type PlanKey   = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual'
 type MetodoPago = 'pagomovil' | 'zelle' | 'usdt';
 type GaleriaItemLocal = { imagen: string | null; imagen2: string | null; imagen3: string | null; titulo: string; precio: string; precio_bs: string; descripcion: string; };
 
-const PLAN_GALERIA: Record<Plan, number> = { gratis: 3, basico: 6, pro: 12 };
-
 const PLANES_DEF = [
-  { key: 'gratis' as Plan, label: 'Gratis', icono: '🆓', galSlots: 3,  free: true  },
-  { key: 'basico' as Plan, label: 'Básico', icono: '⭐', galSlots: 6,  free: false },
-  { key: 'pro'    as Plan, label: 'Pro',    icono: '🚀', galSlots: 12, free: false },
+  { key: 'gratis' as Plan, label: 'Gratis', icono: '🆓', free: true  },
+  { key: 'basico' as Plan, label: 'Básico', icono: '⭐', free: false },
+  { key: 'pro'    as Plan, label: 'Pro',    icono: '🚀', free: false },
 ];
 
 const METODOS: { key: MetodoPago; label: string; icon: string }[] = [
@@ -51,6 +49,7 @@ export default function UnirseSocioScreen() {
   const [planGratisVisible, setPlanGratisVisible] = useState(false);
   const [planBasicoVisible, setPlanBasicoVisible] = useState(true);
   const [planProVisible,    setPlanProVisible]    = useState(false);
+  const [planSlots, setPlanSlots] = useState<Record<Plan, number>>({ gratis: 3, basico: 6, pro: 12 });
   const [tasaBCV,           setTasaBCV]           = useState<number | null>(null);
 
   type Oferta = { precio_original: number | null; precio_oferta: number; descuento_pct: number | null; meses_gratis: number };
@@ -145,6 +144,7 @@ export default function UnirseSocioScreen() {
         'precio_base_pro_mensual',    'precio_base_pro_anual',
         'plan_gratis_visible',        'plan_basico_visible',   'plan_pro_visible',
         'gratis_fecha_inicio',        'gratis_fecha_fin',
+        'galeria_slots_gratis',       'galeria_slots_basico',  'galeria_slots_pro',
       ])
       .then(({ data }) => {
         if (!data) return;
@@ -172,6 +172,11 @@ export default function UnirseSocioScreen() {
           basico_anual:   map.precio_base_basico_anual   != null ? parseFloat(map.precio_base_basico_anual)   : 150,
           pro_mensual:    map.precio_base_pro_mensual    != null ? parseFloat(map.precio_base_pro_mensual)    : 30,
           pro_anual:      map.precio_base_pro_anual      != null ? parseFloat(map.precio_base_pro_anual)      : 300,
+        });
+        setPlanSlots({
+          gratis: map.galeria_slots_gratis != null ? parseInt(map.galeria_slots_gratis) : 3,
+          basico: map.galeria_slots_basico != null ? parseInt(map.galeria_slots_basico) : 6,
+          pro:    map.galeria_slots_pro    != null ? parseInt(map.galeria_slots_pro)    : 12,
         });
       });
   }, []);
@@ -323,7 +328,7 @@ export default function UnirseSocioScreen() {
     const urlPortada     = portada     ? await subirImagen(portada, 'portada')         : null;
 
     // Subir catálogo de productos (galería con título/precio)
-    const galeriaSlots = PLAN_GALERIA[plan];
+    const galeriaSlots = planSlots[plan];
     const catalogoSubido = await Promise.all(
       galeriaData.slice(0, galeriaSlots).map(async (item, i) => ({
         imagen:      item.imagen  ? await subirImagen(item.imagen,  `catalogo${i + 1}_1`) : null,
@@ -579,7 +584,7 @@ export default function UnirseSocioScreen() {
 
             {/* Descripción */}
             <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 16, marginTop: 4 }}>
-              {`Perfil + portada + galería de ${p.galSlots} fotos`}
+              {`Perfil + portada + galería de ${planSlots[p.key]} fotos`}
             </Text>
             {p.free && gratisMeses != null && gratisMeses > 0 && (
               <Text style={{ fontSize: FontSize.xs, color: Colors.success, fontWeight: '700', textAlign: 'center' }}>
@@ -639,9 +644,7 @@ export default function UnirseSocioScreen() {
         {([
           'Perfil visible en el Directorio',
           'Foto de portada de tu negocio',
-          plan === 'gratis'  && 'Galería de 3 fotos para mostrar tus productos',
-          plan === 'basico'  && 'Galería de 6 fotos para mostrar tus productos',
-          plan === 'pro'     && 'Galería de 12 fotos para mostrar tus productos',
+          `Galería de ${planSlots[plan]} fotos para mostrar tus productos`,
           plan !== 'gratis'  && 'Botones de llamada, WhatsApp y Web',
           plan !== 'gratis'  && 'Apareces en búsquedas por categoría',
           plan === 'pro'     && 'Posición destacada en búsquedas',
@@ -656,7 +659,7 @@ export default function UnirseSocioScreen() {
   );
 
   const renderPaso3 = () => {
-    const galeriaSlots = PLAN_GALERIA[plan];
+    const galeriaSlots = planSlots[plan];
     return (
       <View style={styles.pasoContainer}>
         <Text style={[styles.pasoTitulo, { color: Colors.text }]}>Fotos de tu negocio</Text>

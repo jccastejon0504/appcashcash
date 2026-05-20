@@ -837,6 +837,31 @@
           </div>
         </div>
 
+        <!-- Slots de galería por plan -->
+        <div class="card">
+          <div class="card-header"><h2>Galería por plan (fotos)</h2></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Plan Gratis</label>
+                <input type="number" id="slots-gratis" min="0" max="50" step="1" placeholder="3" />
+              </div>
+              <div class="form-group">
+                <label>Plan Básico</label>
+                <input type="number" id="slots-basico" min="0" max="50" step="1" placeholder="6" />
+              </div>
+              <div class="form-group">
+                <label>Plan Pro</label>
+                <input type="number" id="slots-pro" min="0" max="50" step="1" placeholder="12" />
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+              <button class="btn btn-primary" onclick="guardarSlotsGaleria()">Guardar cambios</button>
+              <span class="msg" id="msg-slots-galeria"></span>
+            </div>
+          </div>
+        </div>
+
         <!-- Precios base -->
         <div class="card">
           <div class="card-header"><h2>Precios base</h2></div>
@@ -2006,7 +2031,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
                     'precio_base_basico_mensual','precio_base_basico_anual',
                     'precio_base_pro_mensual','precio_base_pro_anual','texto_planes',
                     'dias_basico_mensual','dias_basico_anual','dias_pro_mensual','dias_pro_anual',
-                    'dias_gracia_vencimiento']);
+                    'dias_gracia_vencimiento',
+                    'galeria_slots_gratis','galeria_slots_basico','galeria_slots_pro']);
     let preciosBase = {};
     if (configs) {
       const cfg = Object.fromEntries(configs.map(c => [c.clave, c.valor]));
@@ -2025,6 +2051,9 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       document.getElementById('cfg-dias-pro-mensual').value    = parseInt(cfg.dias_pro_mensual)    || 31;
       document.getElementById('cfg-dias-pro-anual').value      = parseInt(cfg.dias_pro_anual)      || 365;
       document.getElementById('cfg-dias-gracia').value         = parseInt(cfg.dias_gracia_vencimiento) || 0;
+      document.getElementById('slots-gratis').value = cfg.galeria_slots_gratis ?? '3';
+      document.getElementById('slots-basico').value = cfg.galeria_slots_basico ?? '6';
+      document.getElementById('slots-pro').value    = cfg.galeria_slots_pro    ?? '12';
       preciosBase = {
         'basico-mensual': cfg.precio_base_basico_mensual ?? '',
         'basico-anual':   cfg.precio_base_basico_anual   ?? '',
@@ -2115,6 +2144,30 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     try {
       for (const [clave, elId] of claves) {
         const valor = String(document.getElementById(elId).checked);
+        const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
+        if (error) throw new Error(`${clave}: ${error.message}`);
+      }
+      msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+      setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message; msg.className = 'msg err';
+    }
+  }
+
+  async function guardarSlotsGaleria() {
+    const msg = document.getElementById('msg-slots-galeria');
+    const claves = [
+      ['galeria_slots_gratis', document.getElementById('slots-gratis').value],
+      ['galeria_slots_basico', document.getElementById('slots-basico').value],
+      ['galeria_slots_pro',    document.getElementById('slots-pro').value],
+    ];
+    for (const [, v] of claves) {
+      if (!v || isNaN(parseInt(v)) || parseInt(v) < 0) {
+        msg.textContent = 'Ingresa valores numéricos válidos.'; msg.className = 'msg err'; return;
+      }
+    }
+    try {
+      for (const [clave, valor] of claves) {
         const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
         if (error) throw new Error(`${clave}: ${error.message}`);
       }

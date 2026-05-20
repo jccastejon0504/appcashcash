@@ -19,7 +19,7 @@ type Plan    = 'gratis' | 'basico' | 'pro';
 type Periodo = 'mensual' | 'anual';
 type PlanKey = 'basico_mensual' | 'basico_anual' | 'pro_mensual' | 'pro_anual';
 
-const PLAN_GALERIA: Record<string, number> = { gratis: 3, basico: 6, pro: 12 };
+const PLAN_GALERIA_DEFAULT: Record<string, number> = { gratis: 3, basico: 6, pro: 12 };
 
 type Ciudad     = { id: string; nombre: string };
 type Subcategoria = { id: string; nombre: string; categoria_id: string };
@@ -126,6 +126,7 @@ export default function EditarMiNegocioScreen() {
   const [galeriaLoadedAt, setGaleriaLoadedAt] = useState(0);
 
   // Galería extra
+  const [planSlots,           setPlanSlots]           = useState<Record<string, number>>(PLAN_GALERIA_DEFAULT);
   const [galeriaExtra,        setGaleriaExtra]        = useState(0);
   const [modalGaleriaExtra,   setModalGaleriaExtra]   = useState(false);
   const [paquetesGal,         setPaquetesGal]         = useState(1);
@@ -523,6 +524,7 @@ export default function EditarMiNegocioScreen() {
         `lock_nombre_${resolvedId}`, `lock_tel_${resolvedId}`,
         'precio_paquete_galeria', 'slots_paquete_galeria', 'galeria_extra_activo',
         'destacado_precio_dia', 'destacado_activo',
+        'galeria_slots_gratis', 'galeria_slots_basico', 'galeria_slots_pro',
       ]),
     ]).then(([{ data }, { data: cfg }]) => {
       const cfgMap = Object.fromEntries((cfg ?? []).map((r: any) => [r.clave, r.valor]));
@@ -556,6 +558,11 @@ export default function EditarMiNegocioScreen() {
       setGaleriaExtraActivo(cfgMap['galeria_extra_activo'] !== 'false');
       if (cfgMap['destacado_precio_dia']) setPrecioDestacadoDia(parseFloat(cfgMap['destacado_precio_dia']) || 1);
       setDestacadoActivo(cfgMap['destacado_activo'] !== 'false');
+      setPlanSlots({
+        gratis: cfgMap['galeria_slots_gratis'] != null ? parseInt(cfgMap['galeria_slots_gratis']) : 3,
+        basico: cfgMap['galeria_slots_basico'] != null ? parseInt(cfgMap['galeria_slots_basico']) : 6,
+        pro:    cfgMap['galeria_slots_pro']    != null ? parseInt(cfgMap['galeria_slots_pro'])    : 12,
+      });
     });
   }, [resolvedId]));
 
@@ -628,7 +635,7 @@ export default function EditarMiNegocioScreen() {
   };
 
   const agregarItemGaleria = () => {
-    const galeriaSlots = (PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6) + galeriaExtra;
+    const galeriaSlots = (planSlots[socio?.plan ?? 'basico'] ?? 6) + galeriaExtra;
     if (galeriaItems.length >= galeriaSlots) return;
     pickImage(uri => {
       setGaleriaItems(prev => [...prev, { imagen: uri, imagen2: '', imagen3: '', titulo: '', precio: '', precio_bs: '', descripcion: '', orden: prev.length }]);
@@ -919,7 +926,7 @@ export default function EditarMiNegocioScreen() {
 
         {/* Catálogo de productos / galería */}
         {(() => {
-          const slotsBase  = PLAN_GALERIA[socio?.plan ?? 'basico'] ?? 6;
+          const slotsBase  = planSlots[socio?.plan ?? 'basico'] ?? 6;
           const slots      = slotsBase + galeriaExtra;
           if (slotsBase === 0) return null;
           return (
