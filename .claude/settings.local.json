@@ -98,7 +98,20 @@
       "Bash(ls *.css global.css)",
       "Bash(ls \"C:/Program Files/Microsoft/jdk-\"*)",
       "Bash(export JAVA_HOME=\"C:/Users/yohanna/.gradle/jdks/eclipse_adoptium-17-amd64-windows.2\")",
-      "Bash(export ANDROID_HOME=\"C:/Users/yohanna/AppData/Local/Android/Sdk\")"
+      "Bash(export ANDROID_HOME=\"C:/Users/yohanna/AppData/Local/Android/Sdk\")",
+      "PowerShell(magick *)",
+      "PowerShell(npm *)",
+      "PowerShell(node -e \"const Jimp = require\\('jimp'\\); console.log\\(Object.keys\\(Jimp\\)\\);\")",
+      "PowerShell(node -e \"const j = require\\('jimp'\\); console.log\\(j.default ? 'has default' : 'no default'\\); const k = Object.keys\\(j\\); console.log\\(k.slice\\(0,20\\)\\);\")",
+      "PowerShell(node -e \"const { Jimp } = require\\('jimp'\\); console.log\\(typeof Jimp\\); const j = new Jimp\\({width:1,height:1}\\); console.log\\(Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(j\\)\\).join\\(','\\)\\);\")",
+      "Bash(git *)",
+      "WebFetch(domain:stitch.withgoogle.com)",
+      "PowerShell(& \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth status 2>&1)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(winget install *)",
+      "PowerShell(git config *)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\" config --global --add safe.directory 'E:/Proyectos app/CalculadoraBCVApp')",
+      "PowerShell(& \"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\" status)"
     ]
   }
 }

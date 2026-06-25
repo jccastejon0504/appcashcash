@@ -16,15 +16,15 @@ const lightBase = {
 };
 
 const darkBase = {
-  background: '#0A1628',
-  card:        '#112240',
-  cardAlt:     '#0D1B35',
+  background: '#0D0D0D',
+  card:        '#1A1A1A',
+  cardAlt:     '#111111',
   text:        '#FFFFFF',
-  textSecondary:'#8BAABF',
-  textMuted:   '#4A6180',
-  border:      '#1E3A5F',
-  tabBar:      '#0D1B35',
-  tabBarBorder:'#1E3A5F',
+  textSecondary:'#AAAAAA',
+  textMuted:   '#555555',
+  border:      '#2A2A2A',
+  tabBar:      '#111111',
+  tabBarBorder:'#2A2A2A',
 };
 
 const shared = {
@@ -58,7 +58,7 @@ const ThemeContext = createContext<ThemeCtx | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [temaOscuro,  setTemaOscuro]  = useState(true);
-  const [colorAccent, setColorAccent] = useState('#EC4899');
+  const [colorAccent, setColorAccent] = useState('#C8F400');
   const [colorTexto,  setColorTexto]  = useState('');
   const [colorBs,     setColorBs]     = useState('#F59E0B');
   const [colorFondo,  setColorFondo]  = useState('');
