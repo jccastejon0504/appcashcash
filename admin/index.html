@@ -2987,6 +2987,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           if (!sol.tipo || sol.tipo !== 'renovacion') {
             // Solicitud nueva: sí actualizar todos los campos del negocio
             Object.assign(updateData, {
+              tipo: sol.tipo || null,
               web: sol.redes, ciudad: sol.ciudad,
               direccion: sol.direccion, descripcion: sol.descripcion,
               subcategoria_id: sol.subcategoria_id,
@@ -3004,6 +3005,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             direccion:         sol.direccion,
             descripcion:       sol.descripcion,
             plan:              sol.plan,
+            tipo:              sol.tipo || null,
             imagen:            sol.imagen,
             imagen2:           sol.imagen2,
             imagen3:           sol.imagen3,
