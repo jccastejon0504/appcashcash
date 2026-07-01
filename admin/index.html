@@ -2304,10 +2304,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarPlanPro() {
     const { data } = await db.from('config_app').select('clave,valor')
-      .in('clave', ['precio_base_pro_mensual', 'precio_base_pro_anual']);
+      .in('clave', ['pro_precio_mensual', 'pro_precio_anual']);
     const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
-    if (map.precio_base_pro_mensual) document.getElementById('pro-precio-mensual').value = map.precio_base_pro_mensual;
-    if (map.precio_base_pro_anual)   document.getElementById('pro-precio-anual').value   = map.precio_base_pro_anual;
+    if (map.pro_precio_mensual) document.getElementById('pro-precio-mensual').value = map.pro_precio_mensual;
+    if (map.pro_precio_anual)   document.getElementById('pro-precio-anual').value   = map.pro_precio_anual;
   }
 
   async function guardarPrecioPro() {
@@ -2315,8 +2315,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const anual   = document.getElementById('pro-precio-anual').value.trim();
     if (!mensual && !anual) { showMsg('msg-precio-pro', 'Ingresa al menos un precio', 'err'); return; }
     const rows = [];
-    if (mensual) rows.push({ clave: 'precio_base_pro_mensual', valor: mensual });
-    if (anual)   rows.push({ clave: 'precio_base_pro_anual',   valor: anual   });
+    if (mensual) rows.push({ clave: 'pro_precio_mensual', valor: mensual });
+    if (anual)   rows.push({ clave: 'pro_precio_anual',   valor: anual   });
     const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
     if (error) { showMsg('msg-precio-pro', 'Error al guardar', 'err'); return; }
     showMsg('msg-precio-pro', '✓ Precio guardado', 'ok');
