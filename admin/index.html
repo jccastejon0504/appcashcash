@@ -1382,75 +1382,23 @@
     <!-- ══ PLAN PRO ══════════════════════════════════════ -->
     <div class="section" id="section-plan-pro">
 
-      <!-- Banner -->
-      <div class="grid-2" style="margin-bottom:20px">
-
-        <div class="card">
-          <div class="card-header"><h2>Banner de la pantalla Tienda Pro</h2></div>
-          <div class="card-body">
-            <div class="form-group" style="margin-bottom:14px">
-              <label>Título</label>
-              <input type="text" id="pro-banner-titulo" placeholder="Tienda Pro" />
+      <div class="card" style="max-width:420px">
+        <div class="card-header"><h2>Precio del Plan Pro</h2></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Mensual ($)</label>
+              <input type="number" id="pro-precio-mensual" step="0.01" placeholder="30" />
             </div>
             <div class="form-group">
-              <label>Descripción</label>
-              <textarea id="pro-banner-desc" placeholder="Categorías de productos, carrito de compra, header personalizado y mucho más." style="min-height:80px"></textarea>
-            </div>
-            <div class="btn-row">
-              <button class="btn btn-primary" onclick="guardarProBanner()">Guardar banner</button>
-              <span class="msg" id="msg-pro-banner"></span>
+              <label>Anual ($)</label>
+              <input type="number" id="pro-precio-anual" step="0.01" placeholder="300" />
             </div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2>Vista previa en la app</h2></div>
-          <div class="card-body">
-            <div style="background:#1e1b4b;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px">
-              <div style="width:56px;height:56px;border-radius:28px;background:#a5b4fc22;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🚀</div>
-              <div style="flex:1">
-                <div id="pro-preview-titulo" style="font-size:16px;font-weight:800;color:#a5b4fc">Tienda Pro</div>
-                <div id="pro-preview-desc" style="font-size:12px;color:#a5b4fc99;margin-top:4px;line-height:1.5">Categorías de productos, carrito de compra, header personalizado y mucho más.</div>
-              </div>
-            </div>
-            <div style="margin-top:12px;font-size:12px;color:var(--muted)">
-              Este banner se muestra en la pantalla <b>Tienda Pro</b> dentro de la app cuando el usuario entra a explorar el plan.
-            </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="guardarPrecioPro()">Guardar</button>
+            <span class="msg" id="msg-precio-pro"></span>
           </div>
-        </div>
-
-      </div>
-
-      <!-- Características Pro -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header">
-          <h2>Características del Plan Pro</h2>
-          <button class="btn btn-outline btn-sm" onclick="agregarCaracteristicaPro()">+ Agregar</button>
-        </div>
-        <div class="card-body">
-          <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
-            Lista de beneficios que se muestran en la pantalla <b>Tienda Pro</b> de la app. Cada ítem aparece como una línea descriptiva debajo del banner.
-          </p>
-          <div id="pro-caracteristicas-lista" style="display:flex;flex-direction:column;gap:8px">
-            <div class="loading">Cargando…</div>
-          </div>
-          <div class="btn-row" style="margin-top:16px">
-            <button class="btn btn-primary" onclick="guardarCaracteristicasPro()">Guardar características</button>
-            <span class="msg" id="msg-pro-caracteristicas"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Info: cómo se usa -->
-      <div class="card">
-        <div class="card-header"><h2>Cómo funciona</h2></div>
-        <div class="card-body">
-          <ul style="font-size:13px;color:var(--muted);line-height:1.9;padding-left:18px">
-            <li>El usuario toca <b>"Registrar Tienda Pro"</b> en la pantalla de tipos de tiendas</li>
-            <li>Ve el banner personalizado y la lista de características</li>
-            <li>Toca <b>"Registrar Tienda Pro"</b> y completa el formulario de registro con plan Pro fijo</li>
-            <li>Los precios del plan se configuran en <b>Ofertas de Planes → Precios base</b></li>
-          </ul>
         </div>
       </div>
 
@@ -2356,79 +2304,22 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarPlanPro() {
     const { data } = await db.from('config_app').select('clave,valor')
-      .in('clave', ['pro_banner_titulo', 'pro_banner_desc', 'pro_caracteristicas']);
+      .in('clave', ['precio_base_pro_mensual', 'precio_base_pro_anual']);
     const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
-
-    const titulo = map.pro_banner_titulo || 'Tienda Pro';
-    const desc   = map.pro_banner_desc   || 'Categorías de productos, carrito de compra, header personalizado y mucho más.';
-    document.getElementById('pro-banner-titulo').value = titulo;
-    document.getElementById('pro-banner-desc').value   = desc;
-    document.getElementById('pro-preview-titulo').textContent = titulo;
-    document.getElementById('pro-preview-desc').textContent   = desc;
-
-    let lista = ['10 categorías de productos', 'Hasta 20 productos por categoría', 'Carrito de compra', 'Header personalizado', 'Perfil premium', 'Posición destacada en búsquedas'];
-    try { if (map.pro_caracteristicas) lista = JSON.parse(map.pro_caracteristicas); } catch {}
-    renderCaracteristicasPro(lista);
-
-    document.getElementById('pro-banner-titulo').oninput = () => {
-      document.getElementById('pro-preview-titulo').textContent = document.getElementById('pro-banner-titulo').value || 'Tienda Pro';
-    };
-    document.getElementById('pro-banner-desc').oninput = () => {
-      document.getElementById('pro-preview-desc').textContent = document.getElementById('pro-banner-desc').value;
-    };
+    if (map.precio_base_pro_mensual) document.getElementById('pro-precio-mensual').value = map.precio_base_pro_mensual;
+    if (map.precio_base_pro_anual)   document.getElementById('pro-precio-anual').value   = map.precio_base_pro_anual;
   }
 
-  function renderCaracteristicasPro(lista) {
-    const cont = document.getElementById('pro-caracteristicas-lista');
-    cont.innerHTML = lista.map((c, i) => `
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:14px;flex-shrink:0">✦</span>
-        <input type="text" value="${c.replace(/"/g,'&quot;').replace(/</g,'&lt;')}" data-pro-item="${i}"
-          style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:inherit;background:#fff"
-          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
-        <button onclick="eliminarCaracteristicaPro(${i})"
-          style="background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">✕</button>
-      </div>
-    `).join('');
-  }
-
-  function agregarCaracteristicaPro() {
-    const inputs = document.querySelectorAll('[data-pro-item]');
-    const lista  = Array.from(inputs).map(el => el.value);
-    lista.push('');
-    renderCaracteristicasPro(lista);
-    const all = document.querySelectorAll('[data-pro-item]');
-    if (all.length) all[all.length - 1].focus();
-  }
-
-  function eliminarCaracteristicaPro(idx) {
-    const inputs = document.querySelectorAll('[data-pro-item]');
-    const lista  = Array.from(inputs).map(el => el.value);
-    lista.splice(idx, 1);
-    renderCaracteristicasPro(lista);
-  }
-
-  async function guardarProBanner() {
-    const titulo = document.getElementById('pro-banner-titulo').value.trim();
-    const desc   = document.getElementById('pro-banner-desc').value.trim();
-    if (!titulo) { showMsg('msg-pro-banner', 'El título no puede estar vacío', 'err'); return; }
-    const { error } = await db.from('config_app').upsert([
-      { clave: 'pro_banner_titulo', valor: titulo },
-      { clave: 'pro_banner_desc',   valor: desc   },
-    ], { onConflict: 'clave' });
-    if (error) { showMsg('msg-pro-banner', 'Error al guardar', 'err'); return; }
-    showMsg('msg-pro-banner', '✓ Banner guardado', 'ok');
-  }
-
-  async function guardarCaracteristicasPro() {
-    const inputs = document.querySelectorAll('[data-pro-item]');
-    const lista  = Array.from(inputs).map(el => el.value.trim()).filter(Boolean);
-    const { error } = await db.from('config_app').upsert(
-      { clave: 'pro_caracteristicas', valor: JSON.stringify(lista) },
-      { onConflict: 'clave' }
-    );
-    if (error) { showMsg('msg-pro-caracteristicas', 'Error al guardar', 'err'); return; }
-    showMsg('msg-pro-caracteristicas', `✓ ${lista.length} característica${lista.length !== 1 ? 's' : ''} guardada${lista.length !== 1 ? 's' : ''}`, 'ok');
+  async function guardarPrecioPro() {
+    const mensual = document.getElementById('pro-precio-mensual').value.trim();
+    const anual   = document.getElementById('pro-precio-anual').value.trim();
+    if (!mensual && !anual) { showMsg('msg-precio-pro', 'Ingresa al menos un precio', 'err'); return; }
+    const rows = [];
+    if (mensual) rows.push({ clave: 'precio_base_pro_mensual', valor: mensual });
+    if (anual)   rows.push({ clave: 'precio_base_pro_anual',   valor: anual   });
+    const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
+    if (error) { showMsg('msg-precio-pro', 'Error al guardar', 'err'); return; }
+    showMsg('msg-precio-pro', '✓ Precio guardado', 'ok');
   }
 
   // ── Solicitudes ───────────────────────────────────────────────────────────
