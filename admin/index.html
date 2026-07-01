@@ -1382,20 +1382,45 @@
     <!-- ══ PLAN PRO ══════════════════════════════════════ -->
     <div class="section" id="section-plan-pro">
 
-      <div class="card" style="max-width:420px">
+      <div class="card" style="max-width:480px">
         <div class="card-header"><h2>Precio del Plan Pro</h2></div>
-        <div class="card-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Mensual ($)</label>
-              <input type="number" id="pro-precio-mensual" step="0.01" placeholder="30" />
+        <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Mensual -->
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:6px">Mensual</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13px;color:var(--muted);font-weight:600">$</span>
+                <input type="number" id="pro-precio-mensual" step="0.01" placeholder="30"
+                  style="width:100px;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;color:var(--text);outline:none"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
             </div>
-            <div class="form-group">
-              <label>Anual ($)</label>
-              <input type="number" id="pro-precio-anual" step="0.01" placeholder="300" />
-            </div>
+            <label class="toggle" title="Activar / desactivar precio mensual">
+              <input type="checkbox" id="pro-mensual-activo" checked />
+              <span class="slider"></span>
+            </label>
           </div>
-          <div class="btn-row">
+
+          <!-- Anual -->
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:6px">Anual</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13px;color:var(--muted);font-weight:600">$</span>
+                <input type="number" id="pro-precio-anual" step="0.01" placeholder="300"
+                  style="width:100px;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;color:var(--text);outline:none"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
+            </div>
+            <label class="toggle" title="Activar / desactivar precio anual">
+              <input type="checkbox" id="pro-anual-activo" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="btn-row" style="margin-top:4px">
             <button class="btn btn-primary" onclick="guardarPrecioPro()">Guardar</button>
             <span class="msg" id="msg-precio-pro"></span>
           </div>
@@ -2304,22 +2329,29 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarPlanPro() {
     const { data } = await db.from('config_app').select('clave,valor')
-      .in('clave', ['pro_precio_mensual', 'pro_precio_anual']);
+      .in('clave', ['pro_precio_mensual', 'pro_precio_anual', 'pro_mensual_activo', 'pro_anual_activo']);
     const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
     if (map.pro_precio_mensual) document.getElementById('pro-precio-mensual').value = map.pro_precio_mensual;
     if (map.pro_precio_anual)   document.getElementById('pro-precio-anual').value   = map.pro_precio_anual;
+    document.getElementById('pro-mensual-activo').checked = map.pro_mensual_activo !== 'false';
+    document.getElementById('pro-anual-activo').checked   = map.pro_anual_activo   !== 'false';
   }
 
   async function guardarPrecioPro() {
-    const mensual = document.getElementById('pro-precio-mensual').value.trim();
-    const anual   = document.getElementById('pro-precio-anual').value.trim();
-    if (!mensual && !anual) { showMsg('msg-precio-pro', 'Ingresa al menos un precio', 'err'); return; }
-    const rows = [];
+    const mensual        = document.getElementById('pro-precio-mensual').value.trim();
+    const anual          = document.getElementById('pro-precio-anual').value.trim();
+    const mensualActivo  = document.getElementById('pro-mensual-activo').checked;
+    const anualActivo    = document.getElementById('pro-anual-activo').checked;
+    if (!mensualActivo && !anualActivo) { showMsg('msg-precio-pro', 'Activa al menos un período', 'err'); return; }
+    const rows = [
+      { clave: 'pro_mensual_activo', valor: String(mensualActivo) },
+      { clave: 'pro_anual_activo',   valor: String(anualActivo)   },
+    ];
     if (mensual) rows.push({ clave: 'pro_precio_mensual', valor: mensual });
     if (anual)   rows.push({ clave: 'pro_precio_anual',   valor: anual   });
     const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
     if (error) { showMsg('msg-precio-pro', 'Error al guardar', 'err'); return; }
-    showMsg('msg-precio-pro', '✓ Precio guardado', 'ok');
+    showMsg('msg-precio-pro', '✓ Guardado', 'ok');
   }
 
   // ── Solicitudes ───────────────────────────────────────────────────────────
