@@ -2899,11 +2899,24 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     // Deshabilitar botones de esa solicitud mientras procesa
     document.querySelectorAll(`[onclick*="cambiarEstado('${id}'"]`).forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
     try {
+    // Obtener datos de la solicitud antes de actualizar
+    const { data: solPrev } = await db.from('solicitudes').select('telefono,whatsapp').eq('id', id).single();
     // Actualizar estado y notas en una sola operación
     const updateData = { estado };
     if (notas !== null) updateData.notas = notas;
     const { error: errEstado } = await db.from('solicitudes').update(updateData).eq('id', id);
     if (errEstado) { alert('Error al cambiar estado: ' + errEstado.message); return; }
+
+    // Señal en config_app para que la app detecte el rechazo sin depender de leer solicitudes
+    if (estado === 'rechazado' && solPrev) {
+      const tel = (solPrev.telefono || solPrev.whatsapp || '').replace(/\D/g, '');
+      if (tel) {
+        await db.from('config_app').upsert(
+          { clave: `rechazo_tel_${tel}`, valor: notas || 'Tu solicitud fue rechazada.' },
+          { onConflict: 'clave' }
+        );
+      }
+    }
 
     if (estado === 'aprobado') {
       const { data: sol } = await db.from('solicitudes').select('*').eq('id', id).single();
@@ -2939,8 +2952,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           fecha_vencimiento: fechaVenc,
         }).eq('id', id);
 
+        // Limpiar señal de rechazo si existía (usuario se re-registró y fue aprobado)
+        const telClean = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+        if (telClean) await db.from('config_app').delete().eq('clave', `rechazo_tel_${telClean}`);
+
         // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
-        const tel = (sol.telefono || sol.whatsapp || '').replace(/\D/g, '');
+        const tel = telClean;
         let socioId = sol.socio_id ?? null;   // renovaciones traen el id directo
         if (!socioId && tel) {
           const { data: exist } = await db.from('socios_comerciales')
