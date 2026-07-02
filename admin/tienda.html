@@ -746,6 +746,13 @@
     // Mostrar página
     document.getElementById('loading').style.display = 'none';
     document.getElementById('pagina').style.display  = 'block';
+
+    // Si el link trae un producto específico (?p=), abrirlo directamente
+    const productoId = new URLSearchParams(location.search).get('p');
+    if (productoId && galeria?.length) {
+      const item = galeria.find(g => g.id === productoId);
+      if (item) abrirProducto(item);
+    }
   }
 
   function abrirProducto(item) {

@@ -2,7 +2,7 @@ const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
 
 module.exports = async function handler(req, res) {
-  const { slug } = req.query;
+  const { slug, p } = req.query;
   if (!slug) return res.status(400).send('Slug requerido');
 
   try {
@@ -21,7 +21,9 @@ module.exports = async function handler(req, res) {
     const desc     = descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en appcashcash';
     const img      = imagen || 'https://appcashcash.com/og-default.png';
     const urlCorta = `https://appcashcash.com/t/${slug}`;
-    const urlDest  = `https://appcashcash.com/admin/tienda.html?id=${id}`;
+    const urlDest  = p
+      ? `https://appcashcash.com/admin/tienda.html?id=${id}&p=${encodeURIComponent(p)}`
+      : `https://appcashcash.com/admin/tienda.html?id=${id}`;
 
     // Siempre servir HTML con OG tags.
     // Los crawlers (WhatsApp, Facebook, etc.) no ejecutan JS → leen los meta tags.
