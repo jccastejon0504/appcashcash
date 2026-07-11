@@ -962,7 +962,9 @@
     // WhatsApp
     const waWrap = document.getElementById('m-wa');
     if (_waGlobal) {
-      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${item.precio ? ' ($'+item.precio+')' : ''}`);
+      const descPctWa   = descuentoProductoPct(item, _promo);
+      const precioWa    = descPctWa > 0 ? precioConDescuento(item.precio, descPctWa) : item.precio;
+      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioWa ? ' ($'+precioWa+')' : ''}`);
       document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
       waWrap.style.display = 'flex';
     } else { waWrap.style.display = 'none'; }
