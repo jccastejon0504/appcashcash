@@ -465,8 +465,9 @@
       width: 44px; height: 44px; border-radius: 12px;
       background: linear-gradient(135deg, #1e1040, var(--accent));
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
+      font-size: 22px; flex-shrink: 0; overflow: hidden;
     }
+    .banner-logo img { width: 100%; height: 100%; object-fit: cover; }
     .banner-txt { flex: 1; min-width: 0; }
     .banner-t1 { font-size: 13px; font-weight: 800; color: var(--text); }
     .banner-t2 { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -641,7 +642,7 @@
 
 <!-- Banner Descarga -->
 <div class="banner">
-  <div class="banner-logo">💰</div>
+  <div class="banner-logo"><img src="icon.png" alt="CashCash" /></div>
   <div class="banner-txt">
     <div class="banner-t1">Descarga CashCach</div>
     <div class="banner-t2">Tasa BCV · Calculadora · Directorio completo</div>
