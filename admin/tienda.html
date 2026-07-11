@@ -226,9 +226,22 @@
     .prod-precio {
       font-size: 18px; font-weight: 900;
       color: var(--accent); line-height: 1;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .prod-precio-tachado { font-size: 11px; font-weight: 600; color: var(--muted2); text-decoration: line-through; }
+    .prod-oferta-badge {
+      background: #ef4444; color: #fff; font-size: 9px; font-weight: 800;
+      padding: 1px 6px; border-radius: 6px; line-height: 1.6;
     }
     .prod-precio-bs {
       font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 500;
+    }
+    .prod-no-aplica { font-size: 10px; color: var(--muted2); font-style: italic; }
+    .prod-chips { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+    .prod-chip {
+      font-size: 9px; font-weight: 800; color: var(--muted);
+      background: #f1f5f9; border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 8px;
     }
     .prod-sin-precio {
       font-size: 12px; color: var(--muted2); font-style: italic;
@@ -286,8 +299,20 @@
     .modal-body { padding: 18px 18px 24px; }
     .modal-nombre { font-size: 20px; font-weight: 800; line-height: 1.3; margin-bottom: 10px; }
     .modal-precios { margin-bottom: 14px; }
-    .modal-precio { font-size: 28px; font-weight: 900; color: var(--accent); }
+    .modal-precio { font-size: 28px; font-weight: 900; color: var(--accent); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .modal-precio-tachado { font-size: 16px; font-weight: 600; color: var(--muted2); text-decoration: line-through; }
+    .modal-oferta-badge {
+      background: #ef4444; color: #fff; font-size: 12px; font-weight: 800;
+      padding: 3px 9px; border-radius: 10px;
+    }
     .modal-precio-bs { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .modal-no-aplica { font-size: 12px; color: var(--muted2); font-style: italic; }
+    .modal-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+    .modal-chip {
+      font-size: 11px; font-weight: 800; color: var(--muted);
+      background: #f1f5f9; border: 1px solid var(--border);
+      padding: 3px 9px; border-radius: 10px;
+    }
     .modal-sep { height: 1px; background: var(--border); margin: 14px 0; }
     .modal-desc { font-size: 14px; color: #374151; line-height: 1.7; }
     .modal-wa {
@@ -635,6 +660,152 @@
 
   let _waGlobal  = null;
   let _socioData = null;
+  let _promo     = null;
+  let _metodos   = [];
+  let _tasas     = { usd: null, eur: null, usdt: null };
+
+  /* ── Promociones / métodos de pago (mismo modelo que la app nativa) ── */
+
+  // % de descuento que le toca a un producto según la promo activa de la
+  // tienda. `metodo` permite consultar si ESE método específico está
+  // habilitado para el descuento de categoría; sin `metodo` alcanza con que
+  // al menos un método esté habilitado. Pago Móvil y Transferencia se tratan
+  // como un solo método "bs".
+  function descuentoProductoPct(item, promo, metodo) {
+    if (!promo) return 0;
+    const esBs = metodo === 'pago_movil' || metodo === 'transferencia';
+    if (promo.tipo_activo === 'todos') {
+      if (esBs) return 0;
+      return promo.descuento_todos_pct || 0;
+    }
+    if (promo.tipo_activo === 'categoria' && item.categoria_id) {
+      const d = (promo.descuentos_categoria || []).find(d => d.categoria_id === item.categoria_id && d.activo);
+      if (!d) return 0;
+      const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
+      if (metodo) {
+        const clave = esBs ? 'bs' : metodo;
+        return metodosActivos.includes(clave) ? (d.pct || 0) : 0;
+      }
+      return metodosActivos.length > 0 ? (d.pct || 0) : 0;
+    }
+    return 0;
+  }
+
+  function precioConDescuento(precio, pct) {
+    const p = parseFloat(precio);
+    if (isNaN(p)) return null;
+    if (pct <= 0) return p;
+    return +(p * (1 - pct / 100)).toFixed(2);
+  }
+
+  // Tasa BCV (oficial), EUR y la "paralela" (la que de hecho sigue el P2P
+  // de USDT en Venezuela), mismas fuentes que usa la app nativa.
+  async function obtenerTasas() {
+    const t = { usd: null, eur: null, usdt: null };
+    try {
+      const r = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      const d = await r.json();
+      t.usd = parseFloat(d.promedio ?? d.promedio_real) || null;
+    } catch {}
+    try {
+      const r = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
+      const d = await r.json();
+      t.usdt = parseFloat(d.promedio ?? d.promedio_real) || null;
+    } catch {}
+    try {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD');
+      const d = await r.json();
+      if (!t.usd) t.usd = parseFloat(d?.rates?.VES) || null;
+      const eurPorUsd = parseFloat(d?.rates?.EUR) || 0;
+      if (t.usd && eurPorUsd > 0) t.eur = t.usd / eurPorUsd;
+    } catch {}
+    return t;
+  }
+
+  function tieneMetodo(tipo) { return _metodos.some(m => m.tipo === tipo); }
+
+  function metodoBsGlobalPct() {
+    const m = _metodos.find(m => (m.tipo === 'pago_movil' || m.tipo === 'transferencia') && m.oferta_activa);
+    return m ? (m.oferta_pct || 0) : 0;
+  }
+
+  // Tasa a usar para el Bs "genérico" (sin método de pago elegido, como en
+  // esta página): prioridad $ efectivo (USD/BCV) > € (EUR/BCV) > USDT
+  // (paralela) > USD/BCV por defecto.
+  function tasaGenerica() {
+    if (tieneMetodo('efectivo')) return _tasas.usd;
+    if (tieneMetodo('euro'))     return _tasas.eur;
+    if (tieneMetodo('usdt'))     return _tasas.usdt;
+    return _tasas.usd;
+  }
+
+  function bsDesdeUsd(precioUsd, precioBsGuardado, pct) {
+    const usd = parseFloat(precioUsd);
+    const tasa = tasaGenerica();
+    if (tasa != null && !isNaN(usd)) return precioConDescuento(String(usd * tasa), pct);
+    if (precioBsGuardado) { const v = parseFloat(precioBsGuardado); return isNaN(v) ? null : v; }
+    return null;
+  }
+
+  // Arma el bloque de precio ($ con oferta + Bs + chips de métodos),
+  // reutilizado tanto en la tarjeta de la grilla como en el modal del
+  // producto. `tam` es 'grid' (por defecto) o 'modal'.
+  function precioBloqueHtml(item, tam) {
+    if (!item.precio) {
+      return tam === 'modal'
+        ? `<div style="font-size:14px;color:var(--muted);font-style:italic">Consultar precio</div>`
+        : `<div class="prod-sin-precio">Consultar precio</div>`;
+    }
+
+    const cls = tam === 'modal'
+      ? { precio: 'modal-precio', tachado: 'modal-precio-tachado', badge: 'modal-oferta-badge',
+          bs: 'modal-precio-bs', noAplica: 'modal-no-aplica', chips: 'modal-chips', chip: 'modal-chip' }
+      : { precio: 'prod-precio', tachado: 'prod-precio-tachado', badge: 'prod-oferta-badge',
+          bs: 'prod-precio-bs', noAplica: 'prod-no-aplica', chips: 'prod-chips', chip: 'prod-chip' };
+
+    const descPct    = descuentoProductoPct(item, _promo);
+    const precioDesc = descPct > 0 ? precioConDescuento(item.precio, descPct) : null;
+    const pctBs       = Math.max(metodoBsGlobalPct(), descuentoProductoPct(item, _promo, 'pago_movil'));
+    const precioBs     = bsDesdeUsd(item.precio, item.precio_bs, pctBs);
+    const efectivoElegible = descuentoProductoPct(item, _promo, 'efectivo') > 0;
+    const zelleElegible    = descuentoProductoPct(item, _promo, 'zelle') > 0;
+    const usdtElegible      = descuentoProductoPct(item, _promo, 'usdt') > 0;
+
+    let html = `<div class="${cls.precio}">$${precioDesc ?? item.precio}`;
+    if (precioDesc != null) {
+      html += `<span class="${cls.tachado}">$${item.precio}</span><span class="${cls.badge}">-${descPct}%</span>`;
+    }
+    html += `</div>`;
+
+    const bsMostrado = precioBs ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
+    if (bsMostrado != null) {
+      html += `<div class="${cls.bs}">Bs. ${bsMostrado.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (precioDesc != null && pctBs <= 0) html += ` &nbsp;<span class="${cls.noAplica}">No aplica oferta</span>`;
+      html += `</div>`;
+    }
+
+    const chips = [];
+    if (precioDesc != null) {
+      if (pctBs <= 0) {
+        if (tieneMetodo('efectivo') && efectivoElegible) chips.push('$');
+        if (tieneMetodo('euro')) chips.push('€');
+      } else {
+        chips.push('Bs');
+      }
+      if (tieneMetodo('usdt') && usdtElegible) chips.push('USDT');
+      if (tieneMetodo('zelle') && zelleElegible) chips.push('Zelle');
+    } else {
+      if (tieneMetodo('efectivo')) chips.push('$');
+      if (tieneMetodo('euro')) chips.push('€');
+      if (tieneMetodo('pago_movil') || tieneMetodo('transferencia')) chips.push('Bs');
+      if (tieneMetodo('usdt')) chips.push('USDT');
+      if (tieneMetodo('zelle')) chips.push('Zelle');
+    }
+    if (chips.length) {
+      html += `<div class="${cls.chips}">${chips.map(c => `<span class="${cls.chip}">${c}</span>`).join('')}</div>`;
+    }
+    return html;
+  }
 
   const DEMO = {
     s: {
@@ -669,12 +840,18 @@
       s = DEMO.s;
       galeria = DEMO.galeria;
     } else {
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, r3, r4, tasas] = await Promise.all([
         db.from('socios_comerciales').select('*').eq('id', id).single(),
         db.from('galeria_items').select('*').eq('socio_id', id).order('orden'),
+        db.from('promociones_tienda').select('*').eq('tienda_id', id).maybeSingle(),
+        db.from('metodos_pago_tienda').select('tipo, oferta_activa, oferta_pct').eq('tienda_id', id).eq('activo', true),
+        obtenerTasas(),
       ]);
       s = r1.data;
       galeria = r2.data;
+      _promo = r3.data;
+      _metodos = r4.data ?? [];
+      _tasas = tasas;
     }
 
     if (!s) return mostrarError('Tienda no encontrada', 'Este link ya no está disponible.');
@@ -733,10 +910,7 @@
           </div>
           <div class="prod-info">
             ${item.titulo ? `<div class="prod-nombre">${item.titulo}</div>` : ''}
-            ${item.precio
-              ? `<div class="prod-precio">$${item.precio}</div>
-                 ${item.precio_bs ? `<div class="prod-precio-bs">Bs. ${Number(item.precio_bs).toLocaleString('es-VE')}</div>` : ''}`
-              : `<div class="prod-sin-precio">Consultar precio</div>`}
+            ${precioBloqueHtml(item)}
           </div>`;
         grid.appendChild(div);
       });
@@ -776,13 +950,7 @@
     document.getElementById('m-nombre').textContent = item.titulo ?? 'Producto';
 
     // Precios
-    const prEl = document.getElementById('m-precios');
-    if (item.precio) {
-      prEl.innerHTML = `<div class="modal-precio">$${item.precio}</div>
-        ${item.precio_bs ? `<div class="modal-precio-bs">Bs. ${Number(item.precio_bs).toLocaleString('es-VE')}</div>` : ''}`;
-    } else {
-      prEl.innerHTML = `<div style="font-size:14px;color:var(--muted);font-style:italic">Consultar precio</div>`;
-    }
+    document.getElementById('m-precios').innerHTML = precioBloqueHtml(item, 'modal');
 
     // Descripción
     const dw = document.getElementById('m-desc-wrap');
