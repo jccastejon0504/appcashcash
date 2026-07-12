@@ -2961,7 +2961,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
         // Nivel de la tienda (socios_comerciales.tipo solo acepta 'pro'/'basico'); no confundir con
         // sol.tipo, que marca el TIPO DE SOLICITUD ('renovacion'/'destacado'/'galeria_extra'/'registro_pro'/null)
-        const tipoSocio = (sol.plan === 'pro' || sol.tipo === 'registro_pro') ? 'pro' : 'basico';
+        const tipoSocio = sol.tipo === 'registro_pro' ? 'pro' : 'basico';
 
         // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
         const tel = telClean;
@@ -3533,7 +3533,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const multiBadge = nTiendas > 1
         ? ` <span class="badge badge-purple" title="Este cliente tiene ${nTiendas} tiendas registradas">👥 ${nTiendas}</span>`
         : '';
-      const planBadge = s.tipo === 'registro_pro'
+      const planBadge = s.tipo === 'pro'
         ? '<span class="badge badge-gold" title="Tienda Pro">🚀 Pro</span>'
         : s.plan === 'pro'
           ? '<span class="badge badge-orange" title="Plan Medio">🎗️ Medio</span>'
