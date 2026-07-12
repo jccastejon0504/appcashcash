@@ -2515,7 +2515,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;font-size:12px;background:#f8f9fb">
             <div>
               <span style="color:var(--muted);font-weight:700">Plan</span><br>
-              <span style="font-weight:800;font-size:13px">${s.plan ? (s.plan.charAt(0).toUpperCase()+s.plan.slice(1)) : '—'}${s.periodo ? ' · '+s.periodo : ''}</span>
+              <span style="font-weight:800;font-size:13px">${s.plan === 'pro' ? (s.tipo === 'registro_pro' ? 'Pro' : 'Medio') : s.plan ? (s.plan.charAt(0).toUpperCase()+s.plan.slice(1)) : '—'}${s.periodo ? ' · '+s.periodo : ''}</span>
             </div>
             <div>
               <span style="color:var(--muted);font-weight:700">Aprobado</span><br>
@@ -3533,7 +3533,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const multiBadge = nTiendas > 1
         ? ` <span class="badge badge-purple" title="Este cliente tiene ${nTiendas} tiendas registradas">👥 ${nTiendas}</span>`
         : '';
-      const planBadge = s.tipo === 'pro'
+      const planBadge = s.tipo === 'registro_pro'
         ? '<span class="badge badge-gold" title="Tienda Pro">🚀 Pro</span>'
         : s.plan === 'pro'
           ? '<span class="badge badge-orange" title="Plan Medio">🎗️ Medio</span>'
