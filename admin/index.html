@@ -827,7 +827,7 @@
               </label>
             </div>
             <div class="toggle-row" style="margin-top:14px">
-              <span>Plan Pro</span>
+              <span>Plan Medio</span>
               <label class="toggle">
                 <input type="checkbox" id="vis-pro" />
                 <span class="slider"></span>
@@ -854,7 +854,7 @@
                 <input type="number" id="slots-basico" min="0" max="50" step="1" placeholder="6" />
               </div>
               <div class="form-group">
-                <label>Plan Pro</label>
+                <label>Plan Medio</label>
                 <input type="number" id="slots-pro" min="0" max="50" step="1" placeholder="12" />
               </div>
             </div>
@@ -879,11 +879,11 @@
                 <input type="number" id="precio-base-basico-anual" step="0.01" placeholder="150" />
               </div>
               <div class="form-group">
-                <label>Pro mensual ($)</label>
+                <label>Medio mensual ($)</label>
                 <input type="number" id="precio-base-pro-mensual" step="0.01" placeholder="30" />
               </div>
               <div class="form-group">
-                <label>Pro anual ($)</label>
+                <label>Medio anual ($)</label>
                 <input type="number" id="precio-base-pro-anual" step="0.01" placeholder="300" />
               </div>
             </div>
@@ -923,11 +923,11 @@
                 <input type="number" id="cfg-dias-basico-anual" min="1" max="9999" value="365" />
               </div>
               <div class="form-group">
-                <label>Pro mensual (días)</label>
+                <label>Medio mensual (días)</label>
                 <input type="number" id="cfg-dias-pro-mensual" min="1" max="9999" value="31" />
               </div>
               <div class="form-group">
-                <label>Pro anual (días)</label>
+                <label>Medio anual (días)</label>
                 <input type="number" id="cfg-dias-pro-anual" min="1" max="9999" value="365" />
               </div>
             </div>
@@ -1059,10 +1059,10 @@
           </div>
         </div>
 
-        <!-- Pro · Mensual -->
+        <!-- Medio · Mensual -->
         <div class="card">
           <div class="card-header">
-            <h2>Plan Pro · Mensual</h2>
+            <h2>Plan Medio · Mensual</h2>
             <span class="badge badge-gray" id="badge-pro-mensual">Sin oferta</span>
           </div>
           <div class="card-body">
@@ -1117,10 +1117,10 @@
           </div>
         </div>
 
-        <!-- Pro · Anual -->
+        <!-- Medio · Anual -->
         <div class="card">
           <div class="card-header">
-            <h2>Plan Pro · Anual</h2>
+            <h2>Plan Medio · Anual</h2>
             <span class="badge badge-gray" id="badge-pro-anual">Sin oferta</span>
           </div>
           <div class="card-body">
@@ -1131,7 +1131,7 @@
               <input type="hidden" id="id-pro-anual" />
               <div class="form-group" style="margin-bottom:12px">
                 <label>Tagline</label>
-                <textarea id="descripcion-pro-anual" placeholder="Lo mejor del Pro con máximo ahorro"></textarea>
+                <textarea id="descripcion-pro-anual" placeholder="Lo mejor del Medio con máximo ahorro"></textarea>
               </div>
               <div class="form-grid">
                 <div class="form-group">
@@ -2004,8 +2004,8 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   const PLAN_LABELS = {
     'basico-mensual': 'Plan Básico · Mensual',
     'basico-anual':   'Plan Básico · Anual',
-    'pro-mensual':    'Plan Pro · Mensual',
-    'pro-anual':      'Plan Pro · Anual',
+    'pro-mensual':    'Plan Medio · Mensual',
+    'pro-anual':      'Plan Medio · Anual',
   };
   const PLAN_DEFAULT = {
     'basico-mensual': '$15 / mes',
