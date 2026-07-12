@@ -3510,6 +3510,13 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true').order('nombre');
     const tbody = document.getElementById('tabla-socios');
     if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; return; }
+
+    const telCount = {};
+    data.forEach(s => {
+      const tel = (s.telefono || s.whatsapp || '').replace(/\D/g, '');
+      if (tel) telCount[tel] = (telCount[tel] || 0) + 1;
+    });
+
     tbody.innerHTML = data.map(s => {
       const hoy = new Date();
       const venc = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
@@ -3518,10 +3525,15 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         ? `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-gray">Sin fecha</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`
         : dias > 0 ? `<span class="badge badge-green">${dias}d</span>`
         : `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-red">Vencido</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`;
+      const telNorm    = (s.telefono || s.whatsapp || '').replace(/\D/g, '');
+      const nTiendas   = telNorm ? telCount[telNorm] : 0;
+      const multiBadge = nTiendas > 1
+        ? ` <span class="badge badge-purple" title="Este cliente tiene ${nTiendas} tiendas registradas">👥 ${nTiendas}</span>`
+        : '';
       return `
         <tr>
           <td><b>${s.nombre}</b></td>
-          <td>${s.telefono ?? '—'}</td>
+          <td>${s.telefono ?? '—'}${multiBadge}</td>
           <td>${s.whatsapp ?? '—'}</td>
           <td>${s.redes ?? '—'}</td>
           <td>${s.ciudad ?? '—'}</td>
