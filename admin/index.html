@@ -203,6 +203,9 @@
     .badge-gray   { background: #f1f5f9; color: var(--muted); }
     .badge-purple { background: #ede9fe; color: var(--accent); }
     .badge-red    { background: #fee2e2; color: var(--red); }
+    .badge-gold   { background: #FFD700; color: #5c4b43; }
+    .badge-orange { background: #f59e0b; color: #fff; }
+    .badge-blue   { background: #3b82f6; color: #fff; }
 
     /* ── Toggle ───────────────────────────────────────────── */
     .toggle-row {
@@ -3530,9 +3533,16 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       const multiBadge = nTiendas > 1
         ? ` <span class="badge badge-purple" title="Este cliente tiene ${nTiendas} tiendas registradas">👥 ${nTiendas}</span>`
         : '';
+      const planBadge = s.tipo === 'pro'
+        ? '<span class="badge badge-gold" title="Tienda Pro">🚀 Pro</span>'
+        : s.plan === 'pro'
+          ? '<span class="badge badge-orange" title="Plan Medio">🎗️ Medio</span>'
+          : s.plan === 'basico'
+            ? '<span class="badge badge-blue" title="Plan Básico">🏬 Básico</span>'
+            : '';
       return `
         <tr>
-          <td><b>${s.nombre}</b></td>
+          <td><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${s.nombre}</b>${planBadge}</div></td>
           <td>${s.telefono ?? '—'}${multiBadge}</td>
           <td>${s.whatsapp ?? '—'}</td>
           <td>${s.redes ?? '—'}</td>
