@@ -1658,6 +1658,7 @@
             Cuando está activo, el cintillo con estas imágenes reemplaza el texto "Catálogo · BCV" en la ficha de cada tienda dentro de la app (carrusel si hay más de una). Cada imagen tiene su propio switch para activarla o no sin borrarla.
           </p>
           <div id="lista-publicidad-banners" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="text-align:right;font-size:11px;color:var(--muted)">Dimensión recomendada: 1200×120 px · JPG o WEBP</div>
           <div class="btn-row" style="margin-top:4px">
             <button class="btn btn-outline btn-sm" onclick="agregarBannerPublicidad()">+ Agregar imagen</button>
             <button class="btn btn-primary" onclick="guardarPublicidad()">Guardar</button>
@@ -1688,6 +1689,7 @@
               <input type="file" accept="image/*" style="display:none" onchange="subirPopupPublicidad(this)" />
             </label>
           </div>
+          <div style="text-align:right;font-size:11px;color:var(--muted)">Dimensión recomendada: 1080×1080 px (cuadrada) · JPG o WEBP</div>
           <div class="btn-row" style="margin-top:4px">
             <button class="btn btn-primary" onclick="guardarPopupPublicidad()">Guardar</button>
             <span class="msg" id="msg-popup-publicidad"></span>
