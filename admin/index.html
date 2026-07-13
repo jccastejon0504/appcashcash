@@ -395,6 +395,9 @@
     <div class="nav-item" data-section="metodos">
       <span class="icon">💳</span> Métodos de Pago
     </div>
+    <div class="nav-item" data-section="publicidad">
+      <span class="icon">📣</span> Publicidad
+    </div>
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
     </div>
@@ -1640,6 +1643,30 @@
       </div>
     </div>
 
+    <!-- ══ PUBLICIDAD ══════════════════════════════════════ -->
+    <div class="section" id="section-publicidad">
+      <div class="card" style="max-width:560px">
+        <div class="card-header">
+          <h2>Publicidad</h2>
+          <label class="toggle" title="Activar / desactivar publicidad">
+            <input type="checkbox" id="publicidad-activa" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+          <p style="font-size:12px;color:var(--muted);line-height:1.5;margin:0">
+            Cuando está activo, el cintillo con estas imágenes reemplaza el texto "Catálogo · BCV" en la ficha de cada tienda dentro de la app (carrusel si hay más de una). Cada imagen tiene su propio switch para activarla o no sin borrarla.
+          </p>
+          <div id="lista-publicidad-banners" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="btn btn-outline btn-sm" onclick="agregarBannerPublicidad()">+ Agregar imagen</button>
+            <button class="btn btn-primary" onclick="guardarPublicidad()">Guardar</button>
+            <span class="msg" id="msg-publicidad"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MÉTODOS DE PAGO ════════════════════════════════ -->
     <div class="section" id="section-metodos">
       <div class="grid-2">
@@ -1766,6 +1793,7 @@
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
+    publicidad:   { title: 'Publicidad',               sub: 'Cintillo publicitario que reemplaza Catálogo · BCV en la ficha' },
     terminos:     { title: 'Términos y Condiciones',   sub: 'Texto legal que se muestra en la app' },
   };
 
@@ -1832,6 +1860,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'socios')      cargarSocios();
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
+    if (id === 'publicidad')  cargarPublicidad();
     if (id === 'terminos')    cargarTerminos();
   }
 
@@ -2355,6 +2384,81 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
     if (error) { showMsg('msg-precio-pro', 'Error al guardar', 'err'); return; }
     showMsg('msg-precio-pro', '✓ Guardado', 'ok');
+  }
+
+  // ── Publicidad (cintillo Catálogo · BCV) ──────────────────────────────────
+
+  let _publicidadBanners = [];
+
+  async function cargarPublicidad() {
+    const { data } = await db.from('config_app').select('clave,valor')
+      .in('clave', ['publicidad_activa', 'publicidad_banners']);
+    const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
+    document.getElementById('publicidad-activa').checked = map.publicidad_activa === 'true';
+    try { _publicidadBanners = map.publicidad_banners ? JSON.parse(map.publicidad_banners) : []; }
+    catch { _publicidadBanners = []; }
+    renderBannersPublicidad();
+  }
+
+  function renderBannersPublicidad() {
+    const cont = document.getElementById('lista-publicidad-banners');
+    if (!_publicidadBanners.length) {
+      cont.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;margin:0">Sin imágenes agregadas.</p>';
+      return;
+    }
+    cont.innerHTML = _publicidadBanners.map((b, i) => `
+      <div style="border:1.5px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center">
+        <div style="width:64px;height:40px;border-radius:6px;overflow:hidden;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          ${b.imagen ? `<img src="${b.imagen}" style="width:100%;height:100%;object-fit:cover" />` : '<span style="font-size:9px;color:var(--muted)">Sin foto</span>'}
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
+          <label class="btn btn-outline btn-sm" style="text-align:center;cursor:pointer">
+            ${b.imagen ? 'Cambiar imagen' : 'Subir imagen'}
+            <input type="file" accept="image/*" style="display:none" onchange="subirBannerPublicidad(${i}, this)" />
+          </label>
+          <input type="text" placeholder="Link (opcional)" value="${(b.link ?? '').replace(/"/g, '&quot;')}"
+            oninput="_publicidadBanners[${i}].link = this.value"
+            style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px" />
+        </div>
+        <label class="toggle" title="Activar / desactivar esta imagen">
+          <input type="checkbox" ${b.activo ? 'checked' : ''} onchange="_publicidadBanners[${i}].activo = this.checked" />
+          <span class="slider"></span>
+        </label>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="eliminarBannerPublicidad(${i})">🗑</button>
+      </div>
+    `).join('');
+  }
+
+  function agregarBannerPublicidad() {
+    _publicidadBanners.push({ id: 'b' + Date.now(), imagen: '', link: '', activo: true });
+    renderBannersPublicidad();
+  }
+
+  function eliminarBannerPublicidad(i) {
+    _publicidadBanners.splice(i, 1);
+    renderBannersPublicidad();
+  }
+
+  async function subirBannerPublicidad(i, input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = `publicidad/${Date.now()}_${i}.${ext}`;
+    const { error } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { alert('Error al subir: ' + error.message); return; }
+    const { data: { publicUrl } } = db.storage.from('socios comerciales').getPublicUrl(path);
+    _publicidadBanners[i].imagen = publicUrl;
+    renderBannersPublicidad();
+  }
+
+  async function guardarPublicidad() {
+    const rows = [
+      { clave: 'publicidad_activa',  valor: String(document.getElementById('publicidad-activa').checked) },
+      { clave: 'publicidad_banners', valor: JSON.stringify(_publicidadBanners) },
+    ];
+    const { error } = await db.from('config_app').upsert(rows, { onConflict: 'clave' });
+    if (error) { showMsg('msg-publicidad', 'Error al guardar', 'err'); return; }
+    showMsg('msg-publicidad', '✓ Guardado', 'ok');
   }
 
   // ── Solicitudes ───────────────────────────────────────────────────────────
