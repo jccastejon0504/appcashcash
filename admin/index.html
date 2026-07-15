@@ -1361,17 +1361,17 @@
             <div id="rep-total-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
           </div>
           <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
-            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLANES</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLAN PRO</div>
             <div id="rep-planes" style="font-size:22px;font-weight:900;color:#3b82f6">$0.00</div>
             <div id="rep-planes-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
           </div>
           <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
-            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">GALERÍA EXTRA</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLAN MEDIO</div>
             <div id="rep-galeria" style="font-size:22px;font-weight:900;color:#f59e0b">$0.00</div>
             <div id="rep-galeria-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
           </div>
           <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
-            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">DESTACADOS</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLAN BÁSICO</div>
             <div id="rep-destacados" style="font-size:22px;font-weight:900;color:#a855f7">$0.00</div>
             <div id="rep-destacados-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
           </div>
@@ -5200,7 +5200,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     hdr.style.display = 'none';
 
     const { data, error } = await db.from('solicitudes')
-      .select('id,nombre,plan,monto,metodo_pago,referencia,created_at')
+      .select('id,nombre,plan,tipo,monto,metodo_pago,referencia,created_at')
       .eq('estado', 'aprobado')
       .gte('created_at', desde)
       .lte('created_at', hasta)
@@ -5212,7 +5212,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const filas = data ?? [];
 
     // Clasificar
-    const PLANES_KEYS = ['gratis','basico_mensual','basico_anual','pro_mensual','pro_anual'];
     const conceptoLabel = p => {
       if (p === 'galeria_extra') return 'Galería Extra';
       if (p === 'destacado')    return 'Destacado';
@@ -5221,28 +5220,34 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     };
     const conceptoColor = p => p === 'galeria_extra' ? '#f59e0b' : p === 'destacado' ? '#a855f7' : '#3b82f6';
 
-    let totPlanes = 0, cntPlanes = 0;
-    let totGal    = 0, cntGal    = 0;
-    let totDest   = 0, cntDest   = 0;
+    // Nivel del plan por solicitud: Pro = registro de Tienda Pro (precio fijo);
+    // Medio = mismo campo plan='pro' pero comprado por el flujo normal (o su
+    // renovación); Básico = plan='basico'. Ver project_appcashcash_tipo_fields:
+    // sol.tipo='registro_pro' es el único marcador confiable de Tienda Pro real.
+    let totPro    = 0, cntPro    = 0;
+    let totMedio  = 0, cntMedio  = 0;
+    let totBasico = 0, cntBasico = 0;
+    let totOtros  = 0, cntOtros  = 0; // gratis, galería extra, destacado — no tienen bloque propio
 
     filas.forEach(s => {
       const m = parseFloat(s.monto) || 0;
-      if (s.plan === 'galeria_extra')     { totGal  += m; cntGal++;   }
-      else if (s.plan === 'destacado')    { totDest += m; cntDest++;  }
-      else                               { totPlanes += m; cntPlanes++; }
+      if (s.tipo === 'registro_pro')      { totPro    += m; cntPro++;    }
+      else if (s.plan === 'pro')          { totMedio  += m; cntMedio++;  }
+      else if (s.plan === 'basico')       { totBasico += m; cntBasico++; }
+      else                                { totOtros  += m; cntOtros++;  }
     });
 
-    const total = totPlanes + totGal + totDest;
+    const total = totPro + totMedio + totBasico + totOtros;
     const fmt   = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     document.getElementById('rep-total').textContent          = fmt(total);
-    document.getElementById('rep-total-count').textContent    = (cntPlanes + cntGal + cntDest) + ' pagos';
-    document.getElementById('rep-planes').textContent         = fmt(totPlanes);
-    document.getElementById('rep-planes-count').textContent   = cntPlanes + ' pagos';
-    document.getElementById('rep-galeria').textContent        = fmt(totGal);
-    document.getElementById('rep-galeria-count').textContent  = cntGal + ' pagos';
-    document.getElementById('rep-destacados').textContent     = fmt(totDest);
-    document.getElementById('rep-destacados-count').textContent = cntDest + ' pagos';
+    document.getElementById('rep-total-count').textContent    = (cntPro + cntMedio + cntBasico + cntOtros) + ' pagos';
+    document.getElementById('rep-planes').textContent         = fmt(totPro);
+    document.getElementById('rep-planes-count').textContent   = cntPro + ' pagos';
+    document.getElementById('rep-galeria').textContent        = fmt(totMedio);
+    document.getElementById('rep-galeria-count').textContent  = cntMedio + ' pagos';
+    document.getElementById('rep-destacados').textContent     = fmt(totBasico);
+    document.getElementById('rep-destacados-count').textContent = cntBasico + ' pagos';
 
     if (!filas.length) {
       body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Sin ingresos en este período.</div>';
