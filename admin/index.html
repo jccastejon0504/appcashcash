@@ -951,11 +951,14 @@
 
         <!-- Básico · Mensual -->
         <div class="card">
-          <div class="card-header">
-            <h2>Plan Básico · Mensual</h2>
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('basico-mensual')">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="arrow-oferta-basico-mensual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+              <h2>Plan Básico · Mensual</h2>
+            </div>
             <span class="badge badge-gray" id="badge-basico-mensual">Sin oferta</span>
           </div>
-          <div class="card-body">
+          <div class="card-body" id="cardbody-basico-mensual" style="display:none">
             <div class="preview-oferta" id="preview-basico-mensual">
               <p class="preview-default">$15 / mes</p>
             </div>
@@ -1009,11 +1012,14 @@
 
         <!-- Básico · Anual -->
         <div class="card">
-          <div class="card-header">
-            <h2>Plan Básico · Anual</h2>
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('basico-anual')">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="arrow-oferta-basico-anual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+              <h2>Plan Básico · Anual</h2>
+            </div>
             <span class="badge badge-gray" id="badge-basico-anual">Sin oferta</span>
           </div>
-          <div class="card-body">
+          <div class="card-body" id="cardbody-basico-anual" style="display:none">
             <div class="preview-oferta" id="preview-basico-anual">
               <p class="preview-default">$150 / año</p>
             </div>
@@ -1067,11 +1073,14 @@
 
         <!-- Medio · Mensual -->
         <div class="card">
-          <div class="card-header">
-            <h2>Plan Medio · Mensual</h2>
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('pro-mensual')">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="arrow-oferta-pro-mensual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+              <h2>Plan Medio · Mensual</h2>
+            </div>
             <span class="badge badge-gray" id="badge-pro-mensual">Sin oferta</span>
           </div>
-          <div class="card-body">
+          <div class="card-body" id="cardbody-pro-mensual" style="display:none">
             <div class="preview-oferta" id="preview-pro-mensual">
               <p class="preview-default">$30 / mes</p>
             </div>
@@ -1125,11 +1134,14 @@
 
         <!-- Medio · Anual -->
         <div class="card">
-          <div class="card-header">
-            <h2>Plan Medio · Anual</h2>
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('pro-anual')">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="arrow-oferta-pro-anual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+              <h2>Plan Medio · Anual</h2>
+            </div>
             <span class="badge badge-gray" id="badge-pro-anual">Sin oferta</span>
           </div>
-          <div class="card-body">
+          <div class="card-body" id="cardbody-pro-anual" style="display:none">
             <div class="preview-oferta" id="preview-pro-anual">
               <p class="preview-default">$300 / año</p>
             </div>
@@ -1956,6 +1968,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const open  = wrap.style.display === 'none';
     wrap.style.display  = open ? 'block' : 'none';
     arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+
+  function toggleOferta(key) {
+    const body  = document.getElementById(`cardbody-${key}`);
+    const arrow = document.getElementById(`arrow-oferta-${key}`);
+    const open  = body.style.display === 'none';
+    body.style.display    = open ? 'block' : 'none';
+    arrow.style.transform  = open ? 'rotate(0deg)' : 'rotate(-90deg)';
   }
 
   async function cargarDescargas() {
