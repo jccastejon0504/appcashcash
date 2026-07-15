@@ -951,7 +951,7 @@
 
         <!-- Básico · Mensual -->
         <div class="card">
-          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('basico-mensual')">
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOfertaCard('basico-mensual')">
             <div style="display:flex;align-items:center;gap:8px">
               <span id="arrow-oferta-basico-mensual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
               <h2>Plan Básico · Mensual</h2>
@@ -1012,7 +1012,7 @@
 
         <!-- Básico · Anual -->
         <div class="card">
-          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('basico-anual')">
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOfertaCard('basico-anual')">
             <div style="display:flex;align-items:center;gap:8px">
               <span id="arrow-oferta-basico-anual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
               <h2>Plan Básico · Anual</h2>
@@ -1073,7 +1073,7 @@
 
         <!-- Medio · Mensual -->
         <div class="card">
-          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('pro-mensual')">
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOfertaCard('pro-mensual')">
             <div style="display:flex;align-items:center;gap:8px">
               <span id="arrow-oferta-pro-mensual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
               <h2>Plan Medio · Mensual</h2>
@@ -1134,7 +1134,7 @@
 
         <!-- Medio · Anual -->
         <div class="card">
-          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOferta('pro-anual')">
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleOfertaCard('pro-anual')">
             <div style="display:flex;align-items:center;gap:8px">
               <span id="arrow-oferta-pro-anual" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
               <h2>Plan Medio · Anual</h2>
@@ -1970,7 +1970,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
   }
 
-  function toggleOferta(key) {
+  function toggleOfertaCard(key) {
     const body  = document.getElementById(`cardbody-${key}`);
     const arrow = document.getElementById(`arrow-oferta-${key}`);
     const open  = body.style.display === 'none';
