@@ -5149,6 +5149,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   // ── Reporte de Ingresos ───────────────────────────────────────────────────
 
   var repPeriodo = 'mensual';
+  var repReqId   = 0;
 
   function selPeriodo(p) {
     repPeriodo = p;
@@ -5181,6 +5182,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   async function cargarReporte() {
+    const miReqId = ++repReqId;
     const fechaDesde = document.getElementById('rep-fecha-desde').value;
     const fechaHasta = document.getElementById('rep-fecha-hasta').value;
     let desde, hasta;
@@ -5205,6 +5207,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       .gte('created_at', desde)
       .lte('created_at', hasta)
       .order('created_at', { ascending: false });
+
+    // Si otra llamada más reciente ya empezó (ej. el usuario cambió de
+    // período antes de que esta terminara), descartar esta respuesta para
+    // no mezclar filas de dos períodos distintos ni pisar el resumen.
+    if (miReqId !== repReqId) return;
 
     loading.style.display = 'none';
     if (error) { body.innerHTML = `<div style="color:red;padding:10px">Error: ${error.message}</div>`; return; }
