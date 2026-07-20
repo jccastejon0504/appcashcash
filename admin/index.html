@@ -5164,7 +5164,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     bell.title = `${etiqueta}: ${row?.nombre ?? ''}`.trim();
   }
 
-  db.channel('solicitudes-realtime')
+  const _canalSolicitudes = db.channel('solicitudes-realtime')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes' }, (payload) => {
       if (_seccionActual === 'solicitudes') {
         // Si estamos en la sección, recargar directo
@@ -5181,6 +5181,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       }
     })
     .subscribe();
+
+  // Cerrar el canal explícitamente al salir de la página — evita dejar
+  // conexiones realtime huérfanas consumiendo el cupo de Supabase cuando
+  // se cierra o refresca la pestaña.
+  window.addEventListener('pagehide', () => db.removeChannel(_canalSolicitudes));
 
   // Limpiar badge al entrar a solicitudes
   const _navToOriginal2 = navTo;
