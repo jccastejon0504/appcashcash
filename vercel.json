@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/t/:slug", "destination": "/api/t/:slug" }
+    { "source": "/t/:slug", "destination": "/api/t/:slug" },
+    { "source": "/p/:codigo", "destination": "/api/p/:codigo" }
   ],
   "headers": [
     {
