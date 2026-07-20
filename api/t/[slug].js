@@ -1,13 +1,20 @@
 const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
 
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 module.exports = async function handler(req, res) {
   const { slug, p } = req.query;
   if (!slug) return res.status(400).send('Slug requerido');
 
   try {
+    // Tiendas sin slug asignado comparten este mismo link con su id (uuid)
+    // en vez del slug, para que el preview de WhatsApp siempre pase por aqui
+    // en vez de caer directo en admin/tienda.html (cuyas meta tags OG se
+    // llenan por JS y un crawler que no ejecuta JS nunca las ve).
+    const filtro = RE_UUID.test(slug) ? `id=eq.${encodeURIComponent(slug)}` : `slug=eq.${encodeURIComponent(slug)}`;
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/socios_comerciales?slug=eq.${encodeURIComponent(slug)}&select=id,nombre,descripcion,imagen&limit=1`,
+      `${SUPABASE_URL}/rest/v1/socios_comerciales?${filtro}&select=id,nombre,descripcion,imagen&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const data = await r.json();
