@@ -5072,34 +5072,45 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
   }
 
-  // Desbloquea el audio en el primer click/tecla (los navegadores bloquean
-  // sonido autónomo hasta que hay un gesto del usuario en la página).
+  // Desbloquea el audio en cada click/tecla (los navegadores bloquean sonido
+  // autónomo hasta que hay un gesto del usuario, y pueden volver a suspender
+  // el AudioContext tras un rato sin actividad — por eso no basta con
+  // desbloquearlo una sola vez, hay que poder reanudarlo cada vez).
   let _audioCtx = null;
   function _obtenerAudioCtx() {
     if (!_audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) _audioCtx = new AC();
     }
-    if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
     return _audioCtx;
   }
-  ['click', 'keydown'].forEach(ev => document.addEventListener(ev, _obtenerAudioCtx, { once: true }));
+  ['click', 'keydown'].forEach(ev => document.addEventListener(ev, () => {
+    const ctx = _obtenerAudioCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  }));
 
   function _sonarNotif() {
     const ctx = _obtenerAudioCtx();
     if (!ctx) return;
-    const tono = (freq, inicio, dur) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine'; o.frequency.value = freq;
-      const t0 = ctx.currentTime + inicio;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.start(t0); o.stop(t0 + dur + 0.02);
+    const tocar = () => {
+      const tono = (freq, inicio, dur) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        const t0 = ctx.currentTime + inicio;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        o.start(t0); o.stop(t0 + dur + 0.02);
+      };
+      tono(880, 0, 0.22);
+      tono(1175, 0.16, 0.22);
     };
-    tono(880, 0, 0.22);
-    tono(1175, 0.16, 0.22);
+    // Si el contexto quedó suspendido (tab inactiva, o pasó tiempo desde el
+    // último click), hay que esperar a que resume() termine antes de agendar
+    // los tonos — si se agendan mientras sigue suspendido, no se escuchan.
+    if (ctx.state === 'suspended') ctx.resume().then(tocar).catch(() => {});
+    else tocar();
   }
 
   const _TIPO_NOTIF = {
