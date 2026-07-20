@@ -17,10 +17,28 @@ module.exports = async function handler(req, res) {
     }
 
     const { id, nombre, descripcion, imagen } = data[0];
-    const titulo   = `${nombre} — appcashcash`;
-    const desc     = descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en appcashcash';
-    const img      = imagen || 'https://appcashcash.com/og-default.png';
-    const urlCorta = `https://appcashcash.com/t/${slug}`;
+
+    // Si el link apunta a un producto puntual (?p=), el preview debe mostrar
+    // la foto y el titulo de ESE producto, no los genericos de la tienda.
+    let producto = null;
+    if (p) {
+      const rp = await fetch(
+        `${SUPABASE_URL}/rest/v1/galeria_items?id=eq.${encodeURIComponent(p)}&socio_id=eq.${encodeURIComponent(id)}&select=titulo,imagen,precio,precio_bs&limit=1`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const dp = await rp.json();
+      if (Array.isArray(dp) && dp.length > 0) producto = dp[0];
+    }
+
+    const titulo = producto
+      ? `${producto.titulo} — ${nombre}`
+      : `${nombre} — appcashcash`;
+    const desc = producto
+      ? [producto.precio ? `$${producto.precio}` : null, producto.precio_bs ? `Bs. ${producto.precio_bs}` : null, `Disponible en ${nombre}`]
+          .filter(Boolean).join(' · ')
+      : (descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en appcashcash');
+    const img      = (producto && producto.imagen) || imagen || 'https://appcashcash.com/og-default.png';
+    const urlCorta = p ? `https://appcashcash.com/t/${slug}?p=${encodeURIComponent(p)}` : `https://appcashcash.com/t/${slug}`;
     const urlDest  = p
       ? `https://appcashcash.com/admin/tienda.html?id=${id}&p=${encodeURIComponent(p)}`
       : `https://appcashcash.com/admin/tienda.html?id=${id}`;
@@ -51,7 +69,7 @@ module.exports = async function handler(req, res) {
 </head>
 <body>
   <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#1a8a7a">
-    Redirigiendo a <strong>${e(nombre)}</strong>…<br>
+    Redirigiendo a <strong>${e(producto ? producto.titulo : nombre)}</strong>…<br>
     <a href="${e(urlDest)}" style="color:#1a8a7a">Haz clic aquí si no redirige</a>
   </p>
   <script>window.location.replace(${JSON.stringify(urlDest)});</script>
