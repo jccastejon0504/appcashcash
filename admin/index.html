@@ -5125,14 +5125,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         // Si estamos en la sección, recargar directo
         cargarSolicitudes();
         _cuenta = _REFRESH_SEG;
-      } else {
-        // Si estamos en otra sección, mostrar badge en el nav
-        if (payload.eventType === 'INSERT') {
-          _solicitudesNuevas++;
-          _mostrarBadgeSol(_solicitudesNuevas);
-        }
       }
+      // El contador y la campana se actualizan siempre, sin importar la
+      // sección donde estemos (antes solo corría si NO se estaba en Solicitudes).
       if (payload.eventType === 'INSERT') {
+        _solicitudesNuevas++;
+        _mostrarBadgeSol(_solicitudesNuevas);
         _sonarNotif();
         _agitarCampana(payload.new);
       }
