@@ -3203,6 +3203,39 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (msg) { msg.textContent = '¡Guardado!'; msg.style.color = 'var(--green)'; setTimeout(() => msg.textContent = '', 2500); }
   }
 
+  // Borra todo lo que depende de una tienda ANTES de borrar su fila en
+  // socios_comerciales: sus productos (galeria_items), las imagenes de esos
+  // productos, las imagenes propias de la tienda (portada, logo, extras) y
+  // las claves de config_app que la referencian (lock_nombre_/lock_tel_).
+  // Sin esto, borrar una tienda deja huerfanos en la base y en Storage —
+  // asi se acumularon 51 tiendas / 119 productos / 72 claves huerfanas.
+  // `preservarUrls` evita borrar una imagen que otra fila (ej. la tienda
+  // activa, al fusionar duplicados vencidos) siga usando.
+  async function _limpiarDatosDeTienda(socioId, preservarUrls = new Set()) {
+    const PREFIX = `${SUPABASE_URL}/storage/v1/object/public/socios%20comerciales/`;
+    const rutas = [];
+    const agregarUrl = (u) => {
+      if (u && u.startsWith(PREFIX) && !preservarUrls.has(u)) rutas.push(decodeURIComponent(u.slice(PREFIX.length)));
+    };
+
+    const { data: socio } = await db.from('socios_comerciales').select('*').eq('id', socioId).single();
+    if (socio) {
+      ['imagen','imagen2','imagen3','imagen4','imagen5','imagen6','imagen7','imagen8','imagen9','imagen10','imagen11','imagen12','logo']
+        .forEach(campo => agregarUrl(socio[campo]));
+    }
+
+    const { data: productos } = await db.from('galeria_items').select('id,imagen,imagen2,imagen3').eq('socio_id', socioId);
+    (productos ?? []).forEach(p => { agregarUrl(p.imagen); agregarUrl(p.imagen2); agregarUrl(p.imagen3); });
+    if (productos?.length) await db.from('galeria_items').delete().eq('socio_id', socioId);
+
+    await db.from('config_app').delete().in('clave', [`lock_nombre_${socioId}`, `lock_tel_${socioId}`]);
+
+    const unicas = [...new Set(rutas)];
+    for (let i = 0; i < unicas.length; i += 100) {
+      await db.storage.from('socios comerciales').remove(unicas.slice(i, i + 100));
+    }
+  }
+
   async function eliminarSolicitud(id) {
     if (!confirm('¿Eliminar esta solicitud? También se eliminará la tienda de socios activos si existe.')) return;
     const { data: sol } = await db.from('solicitudes').select('telefono,whatsapp,nombre').eq('id', id).single();
@@ -3212,7 +3245,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         const { data: socios } = await db.from('socios_comerciales')
           .select('id,nombre').or(`telefono.ilike.%${tel}%,whatsapp.ilike.%${tel}%`);
         const mismo = socios?.find(s => s.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
-        if (mismo) await db.from('socios_comerciales').delete().eq('id', mismo.id);
+        if (mismo) {
+          await _limpiarDatosDeTienda(mismo.id);
+          await db.from('socios_comerciales').delete().eq('id', mismo.id);
+        }
       }
     }
     await db.from('solicitudes').delete().eq('id', id);
@@ -3460,7 +3496,15 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
                 }
               }
 
+              // URLs que quedaron en la fila activa tras el rescate — no
+              // borrarlas del storage aunque venian de un duplicado vencido.
+              const { data: activoActual } = await db.from('socios_comerciales').select('*').eq('id', socioId).single();
+              const urlsEnUso = new Set(
+                ['imagen','imagen2','imagen3','imagen4','imagen5','imagen6','imagen7','imagen8','imagen9','imagen10','imagen11','imagen12','logo']
+                  .map(c => activoActual?.[c]).filter(Boolean)
+              );
               for (const v of vencidos) {
+                await _limpiarDatosDeTienda(v.id, urlsEnUso);
                 await db.from('socios_comerciales').delete().eq('id', v.id);
               }
             }
@@ -3954,7 +3998,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   async function eliminarSocio(id, nombre) {
-    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción eliminará también su ficha en solicitudes y no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción eliminará también su ficha en solicitudes, su catálogo de productos y todas sus imágenes. No se puede deshacer.`)) return;
 
     // Obtener teléfono del socio para borrar solicitudes asociadas
     const { data: socio } = await db.from('socios_comerciales').select('telefono,nombre').eq('id', id).single();
@@ -3971,6 +4015,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
     await query;
 
+    await _limpiarDatosDeTienda(id);
     await db.from('socios_comerciales').delete().eq('id', id);
     cargarSocios();
   }
