@@ -118,6 +118,35 @@
       border-radius: 99px;
     }
 
+    /* ── Campana de notificaciones ────────────────────────── */
+    .notif-bell {
+      position: relative;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-size: 17px;
+      transition: all .15s;
+    }
+    .notif-bell:hover { border-color: var(--accent); background: #faf8ff; }
+    .notif-bell.notif-ring { animation: notif-shake .5s ease; }
+    @keyframes notif-shake {
+      0%, 100% { transform: rotate(0); }
+      20%, 60% { transform: rotate(-15deg); }
+      40%, 80% { transform: rotate(15deg); }
+    }
+    .notif-dot {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 17px; height: 17px; padding: 0 4px;
+      background: var(--red, #ef4444); color: #fff;
+      font-size: 10px; font-weight: 800; line-height: 17px; text-align: center;
+      border-radius: 99px; border: 2px solid #fff;
+      display: none;
+    }
+    .notif-dot.show { display: block; }
+
     .content { padding: 28px; flex: 1; }
 
     /* ── Secciones ────────────────────────────────────────── */
@@ -419,7 +448,10 @@
       <div class="topbar-title" id="topbar-title">Dashboard</div>
       <div class="topbar-sub"  id="topbar-sub">Resumen general</div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-left:auto">
+    <div style="display:flex;align-items:center;gap:12px;margin-left:auto" id="topbar-right">
+      <button type="button" class="notif-bell" id="notif-bell" title="Solicitudes pendientes" onclick="navTo('solicitudes')">
+        🔔<span class="notif-dot" id="notif-dot">0</span>
+      </button>
       <span style="font-size:12px;color:var(--muted);font-weight:600" id="admin-email"></span>
       <button onclick="logout()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
         🚪 Cerrar sesión
@@ -4869,6 +4901,60 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
     if (n > 0) { badge.textContent = n; badge.style.display = 'inline-block'; }
     else { badge.style.display = 'none'; }
+
+    // Campana del topbar: refleja el mismo contador.
+    const dot = document.getElementById('notif-dot');
+    if (dot) {
+      dot.textContent = n > 99 ? '99+' : String(n);
+      dot.classList.toggle('show', n > 0);
+    }
+  }
+
+  // Desbloquea el audio en el primer click/tecla (los navegadores bloquean
+  // sonido autónomo hasta que hay un gesto del usuario en la página).
+  let _audioCtx = null;
+  function _obtenerAudioCtx() {
+    if (!_audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) _audioCtx = new AC();
+    }
+    if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+    return _audioCtx;
+  }
+  ['click', 'keydown'].forEach(ev => document.addEventListener(ev, _obtenerAudioCtx, { once: true }));
+
+  function _sonarNotif() {
+    const ctx = _obtenerAudioCtx();
+    if (!ctx) return;
+    const tono = (freq, inicio, dur) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = freq;
+      const t0 = ctx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    };
+    tono(880, 0, 0.22);
+    tono(1175, 0.16, 0.22);
+  }
+
+  const _TIPO_NOTIF = {
+    destacado:     'Solicitud de destacado',
+    galeria_extra: 'Solicitud de paquete de galería',
+    renovacion:    'Solicitud de renovación',
+    registro_pro:  'Nueva solicitud de registro (Pro)',
+  };
+
+  function _agitarCampana(row) {
+    const bell = document.getElementById('notif-bell');
+    if (!bell) return;
+    bell.classList.remove('notif-ring');
+    void bell.offsetWidth; // reinicia la animación si ya estaba corriendo
+    bell.classList.add('notif-ring');
+    const etiqueta = _TIPO_NOTIF[row?.tipo] ?? 'Nueva solicitud de registro';
+    bell.title = `${etiqueta}: ${row?.nombre ?? ''}`.trim();
   }
 
   db.channel('solicitudes-realtime')
@@ -4883,6 +4969,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           _solicitudesNuevas++;
           _mostrarBadgeSol(_solicitudesNuevas);
         }
+      }
+      if (payload.eventType === 'INSERT') {
+        _sonarNotif();
+        _agitarCampana(payload.new);
       }
     })
     .subscribe();
