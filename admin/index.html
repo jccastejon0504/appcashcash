@@ -697,6 +697,78 @@
         </div>
       </div>
 
+      <!-- Carrito por tienda -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header" onclick="toggleBloque('an-carrito-tiendas-wrap','an-carrito-tiendas-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-carrito-tiendas-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Carrito — agregados — <span id="an-mes-carrito-label"></span></h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesCarrito(-1)">‹</button>
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesCarrito(1)" id="an-mes-carrito-next">›</button>
+          </div>
+        </div>
+        <div id="an-carrito-tiendas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Tienda</th><th>Producto más agregado</th><th style="text-align:center">Clicks carrito</th></tr>
+              </thead>
+              <tbody id="an-carrito-tiendas"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compras exitosas por tienda -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header" onclick="toggleBloque('an-compras-tiendas-wrap','an-compras-tiendas-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-compras-tiendas-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Compras exitosas — <span id="an-mes-compras-label"></span></h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesCompras(-1)">‹</button>
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesCompras(1)" id="an-mes-compras-next">›</button>
+          </div>
+        </div>
+        <div id="an-compras-tiendas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Tienda</th><th>Más comprado</th><th style="text-align:center">Total compras</th></tr>
+              </thead>
+              <tbody id="an-compras-tiendas"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Consultas al vendedor por tienda -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header" onclick="toggleBloque('an-consultas-tiendas-wrap','an-consultas-tiendas-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-consultas-tiendas-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Consultas al vendedor — <span id="an-mes-consultas-label"></span></h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesConsultas(-1)">‹</button>
+            <button class="btn btn-sm btn-outline" onclick="cambiarMesConsultas(1)" id="an-mes-consultas-next">›</button>
+          </div>
+        </div>
+        <div id="an-consultas-tiendas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Tienda</th><th>Más consultado</th><th style="text-align:center">Total consultas</th></tr>
+              </thead>
+              <tbody id="an-consultas-tiendas"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ MAPA ══════════════════════════════════════════════ -->
@@ -1950,7 +2022,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('topbar-sub').textContent   = s.sub;
     if (id === 'dashboard')   cargarDashboard();
     if (id === 'descargas')   cargarDescargas();
-    if (id === 'analytics')   { if (!_calRango) _initCalendario(); cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); }
+    if (id === 'analytics')   { if (!_calRango) _initCalendario(); cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); }
     if (id === 'mapa')        cargarMapa();
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'plan-pro')    cargarPlanPro();
@@ -4180,8 +4252,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   // Navegación por mes para las tablas de tiendas
   const _hoy = new Date();
-  let _mesTiendas  = { y: _hoy.getFullYear(), m: _hoy.getMonth() }; // 0-based
-  let _mesGaleria  = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
+  let _mesTiendas   = { y: _hoy.getFullYear(), m: _hoy.getMonth() }; // 0-based
+  let _mesGaleria   = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
+  let _mesCarrito   = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
+  let _mesCompras   = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
+  let _mesConsultas = { y: _hoy.getFullYear(), m: _hoy.getMonth() };
 
   const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -4207,6 +4282,27 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (_mesGaleria.m > 11) { _mesGaleria.m = 0; _mesGaleria.y++; }
     if (_mesGaleria.m < 0)  { _mesGaleria.m = 11; _mesGaleria.y--; }
     cargarTablaGaleria();
+  }
+
+  function cambiarMesCarrito(dir) {
+    _mesCarrito.m += dir;
+    if (_mesCarrito.m > 11) { _mesCarrito.m = 0; _mesCarrito.y++; }
+    if (_mesCarrito.m < 0)  { _mesCarrito.m = 11; _mesCarrito.y--; }
+    cargarTablaCarrito();
+  }
+
+  function cambiarMesCompras(dir) {
+    _mesCompras.m += dir;
+    if (_mesCompras.m > 11) { _mesCompras.m = 0; _mesCompras.y++; }
+    if (_mesCompras.m < 0)  { _mesCompras.m = 11; _mesCompras.y--; }
+    cargarTablaCompras();
+  }
+
+  function cambiarMesConsultas(dir) {
+    _mesConsultas.m += dir;
+    if (_mesConsultas.m > 11) { _mesConsultas.m = 0; _mesConsultas.y++; }
+    if (_mesConsultas.m < 0)  { _mesConsultas.m = 11; _mesConsultas.y--; }
+    cargarTablaConsultas();
   }
 
   async function cargarTablaTiendas() {
@@ -4296,6 +4392,69 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       : '<tr><td colspan="4" class="empty"><p>Sin datos este mes</p></td></tr>';
   }
 
+  // Tabla genérica "tienda + producto/detalle más frecuente + total" que
+  // comparten Carrito, Compras y Consultas al vendedor (mismo patrón que
+  // cargarTablaGaleria, solo cambia el `tipo` de eventos_analytics y los ids).
+  async function _cargarTablaPorTipo(tipo, mesRef, labelId, nextId, tbodyId) {
+    const label = document.getElementById(labelId);
+    const next  = document.getElementById(nextId);
+    label.textContent = `${MESES_ES[mesRef.m]} ${mesRef.y}`;
+    next.disabled = _esMesActual(mesRef);
+
+    const { desde, hasta } = _rangoMes(mesRef);
+    const { data } = await db.from('eventos_analytics')
+      .select('detalle, socio_id, tienda_nombre')
+      .eq('tipo', tipo)
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(5000);
+
+    const { data: fichas } = await db.from('eventos_analytics')
+      .select('socio_id, detalle')
+      .eq('tipo', 'ficha_tienda')
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(2000);
+    const nombreMap = {};
+    (fichas ?? []).forEach(e => { if (e.socio_id && e.detalle) nombreMap[e.socio_id] = e.detalle; });
+
+    const conteo = {};
+    (data ?? []).forEach(e => {
+      const key    = e.socio_id || '?';
+      const nombre = nombreMap[key] || e.tienda_nombre || key;
+      if (!conteo[key]) conteo[key] = { nombre, detalles: {} };
+      const det = e.detalle || '(sin detalle)';
+      conteo[key].detalles[det] = (conteo[key].detalles[det] || 0) + 1;
+    });
+    const filas = Object.values(conteo).map(t => {
+      const entries = Object.entries(t.detalles).sort((a,b) => b[1]-a[1]);
+      return { nombre: t.nombre, top: entries[0]?.[0] ?? '—', total: entries.reduce((s,[,n])=>s+n,0) };
+    }).sort((a,b) => b.total - a.total);
+
+    const tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = filas.length
+      ? filas.map((t,i) => `
+          <tr>
+            <td><b>#${i+1}</b></td>
+            <td><b>${t.nombre}</b></td>
+            <td style="color:var(--muted)">${t.top}</td>
+            <td style="text-align:center"><b>${t.total}</b></td>
+          </tr>`).join('')
+      : '<tr><td colspan="4" class="empty"><p>Sin datos este mes</p></td></tr>';
+  }
+
+  async function cargarTablaCarrito() {
+    await _cargarTablaPorTipo('carrito_agregar', _mesCarrito, 'an-mes-carrito-label', 'an-mes-carrito-next', 'an-carrito-tiendas');
+  }
+
+  async function cargarTablaCompras() {
+    await _cargarTablaPorTipo('compra_exitosa', _mesCompras, 'an-mes-compras-label', 'an-mes-compras-next', 'an-compras-tiendas');
+  }
+
+  async function cargarTablaConsultas() {
+    await _cargarTablaPorTipo('consulta_vendedor', _mesConsultas, 'an-mes-consultas-label', 'an-mes-consultas-next', 'an-consultas-tiendas');
+  }
+
   async function limpiarAnalytics() {
     if (!confirm('⚠️ ¿Eliminar TODOS los eventos de analytics?\nEsto no se puede deshacer.')) return;
     const { error } = await db.from('eventos_analytics').delete().neq('tipo', '__never__');
@@ -4304,6 +4463,9 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     cargarAnalytics();
     cargarTablaTiendas();
     cargarTablaGaleria();
+    cargarTablaCarrito();
+    cargarTablaCompras();
+    cargarTablaConsultas();
   }
 
   function _initCalendario() {
@@ -4826,7 +4988,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     const fn = {
       dashboard:   cargarDashboard,
       descargas:   cargarDescargas,
-      analytics:   () => { cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); },
+      analytics:   () => { cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); },
       mapa:        cargarMapa,
       ofertas:     cargarOfertas,
       solicitudes: cargarSolicitudes,
