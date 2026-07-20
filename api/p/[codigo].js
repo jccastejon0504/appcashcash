@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
     const titulo   = `${producto.titulo} — ${tienda.nombre}`;
     const desc     = [producto.precio ? `$${producto.precio}` : null, producto.precio_bs ? `Bs. ${producto.precio_bs}` : null, `Disponible en ${tienda.nombre}`]
       .filter(Boolean).join(' · ');
-    const img      = producto.imagen || 'https://appcashcash.com/og-default.png';
+    const img      = producto.imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = `https://appcashcash.com/p/${codigo}`;
     const urlDest  = `https://appcashcash.com/admin/tienda.html?id=${tienda.id}&p=${producto.id}`;
 

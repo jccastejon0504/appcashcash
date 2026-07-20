@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
       ? [producto.precio ? `$${producto.precio}` : null, producto.precio_bs ? `Bs. ${producto.precio_bs}` : null, `Disponible en ${nombre}`]
           .filter(Boolean).join(' · ')
       : (descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en appcashcash');
-    const img      = (producto && producto.imagen) || imagen || 'https://appcashcash.com/og-default.png';
+    const img      = (producto && producto.imagen) || imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = p ? `https://appcashcash.com/t/${slug}?p=${encodeURIComponent(p)}` : `https://appcashcash.com/t/${slug}`;
     const urlDest  = p
       ? `https://appcashcash.com/admin/tienda.html?id=${id}&p=${encodeURIComponent(p)}`
