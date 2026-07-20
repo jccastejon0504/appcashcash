@@ -4411,7 +4411,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       </div>`;
 
     // — Clicks por módulo —
-    const TABS_ORDEN = ['Cash','Comprar','Mercados','Mi Cartera','Mi Tienda'];
+    const TABS_ORDEN = ['Mi Tienda','Carrito','Cartera','Calculadora'];
     const maxTab = Math.max(...TABS_ORDEN.map(t => conteoTab[t]||0), 1);
     document.getElementById('an-modulos').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px">
