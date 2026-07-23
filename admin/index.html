@@ -218,6 +218,21 @@
 
     .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
 
+    /* ── Pestañas de filtro (junto a título) ─────────────────── */
+    .tab-filtro {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .tab-filtro:hover { border-color: var(--accent); color: var(--accent); }
+    .tab-filtro.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
     /* ── Badges ───────────────────────────────────────────── */
     .badge {
       display: inline-flex;
@@ -1555,7 +1570,15 @@
     <div class="section" id="section-solicitudes">
       <div class="card">
         <div class="card-header">
-          <h2>Solicitudes de membresía</h2>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <h2>Solicitudes de membresía</h2>
+            <div id="tabs-filtro-solicitudes" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="tab-filtro" data-filtro="" onclick="setFiltroSolicitudes('')">Todas</button>
+              <button type="button" class="tab-filtro active" data-filtro="pendiente" onclick="setFiltroSolicitudes('pendiente')">Pendientes</button>
+              <button type="button" class="tab-filtro" data-filtro="aprobado" onclick="setFiltroSolicitudes('aprobado')">Aprobadas</button>
+              <button type="button" class="tab-filtro" data-filtro="rechazado" onclick="setFiltroSolicitudes('rechazado')">Rechazadas</button>
+            </div>
+          </div>
           <div style="display:flex;gap:8px;align-items:center">
             <!-- Buscador con autocompletado -->
             <div style="position:relative">
@@ -1569,12 +1592,6 @@
               <!-- Sugerencias autocompletado -->
               <div id="sug-solicitudes" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px #0002;z-index:200;overflow:hidden;max-height:220px;overflow-y:auto"></div>
             </div>
-            <select id="filtro-solicitudes" style="width:auto;padding:6px 10px;font-size:12px">
-              <option value="">Todas</option>
-              <option value="pendiente">Pendientes</option>
-              <option value="aprobado">Aprobadas</option>
-              <option value="rechazado">Rechazadas</option>
-            </select>
             <button class="btn btn-outline btn-sm" onclick="cargarSolicitudes()">Actualizar</button>
           </div>
         </div>
@@ -2693,9 +2710,18 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   let _catsSol      = [];
   let _ciudadesSol  = [];
+  let _filtroSolicitudesActual = 'pendiente';
+
+  function setFiltroSolicitudes(valor) {
+    _filtroSolicitudesActual = valor;
+    document.querySelectorAll('#tabs-filtro-solicitudes .tab-filtro').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filtro === valor);
+    });
+    cargarSolicitudes();
+  }
 
   async function cargarSolicitudes() {
-    const filtro = document.getElementById('filtro-solicitudes').value;
+    const filtro = _filtroSolicitudesActual;
     let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado').order('created_at', { ascending: false });
     if (filtro) q = q.eq('estado', filtro);
 
@@ -3525,8 +3551,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       _procesandoEstado.delete(id);
     }
   }
-
-  document.getElementById('filtro-solicitudes').addEventListener('change', cargarSolicitudes);
 
   // ── Buscador solicitudes ──────────────────────────────────────────────────
 
