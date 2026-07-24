@@ -333,6 +333,25 @@
       text-align: center; font-size: 11px; color: var(--muted2);
     }
 
+    /* ── VARIANTES (talla / color) ─────────────────── */
+    .modal-variante-wrap { margin-top: 14px; }
+    .modal-variante-label {
+      font-size: 11px; font-weight: 800; color: var(--muted2);
+      text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+    }
+    .modal-variante-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .modal-talla-chip {
+      font-size: 12px; font-weight: 800; color: var(--text);
+      background: var(--card); border: 1.5px solid var(--border);
+      padding: 4px 10px; border-radius: 999px;
+    }
+    .modal-color-item { display: flex; align-items: center; gap: 5px; }
+    .modal-color-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1px solid var(--border); flex-shrink: 0;
+    }
+    .modal-color-label { font-size: 12px; color: var(--muted); }
+
     /* ── BTN INFO TOPBAR ────────────────────────── */
     .btn-info {
       margin-left: auto; border: none; cursor: pointer;
@@ -621,6 +640,14 @@
     <div class="modal-body">
       <div class="modal-nombre"  id="m-nombre"></div>
       <div class="modal-precios" id="m-precios"></div>
+      <div id="m-tallas-wrap" class="modal-variante-wrap" style="display:none">
+        <div class="modal-variante-label">Talla</div>
+        <div class="modal-variante-row" id="m-tallas"></div>
+      </div>
+      <div id="m-colores-wrap" class="modal-variante-wrap" style="display:none">
+        <div class="modal-variante-label">Color</div>
+        <div class="modal-variante-row" id="m-colores"></div>
+      </div>
       <div id="m-desc-wrap" style="display:none">
         <div class="modal-sep"></div>
         <div class="modal-desc" id="m-desc"></div>
@@ -665,6 +692,38 @@
   let _promo     = null;
   let _metodos   = [];
   let _tasas     = { usd: null, eur: null, usdt: null };
+
+  // Misma paleta (keys/labels/hex) que COLORES_DISPONIBLES en cashcashApp-2
+  // (src/features/tienda/models/tienda.ts) — mantener sincronizadas si se agregan colores ahí.
+  const COLORES_MAP = {
+    negro:    { label: 'Negro',    hex: '#111827' },
+    blanco:   { label: 'Blanco',   hex: '#f9fafb' },
+    gris:     { label: 'Gris',     hex: '#9ca3af' },
+    rojo:     { label: 'Rojo',     hex: '#ef4444' },
+    vinotinto:{ label: 'Vinotinto',hex: '#7f1d1d' },
+    rosado:   { label: 'Rosado',   hex: '#ec4899' },
+    fucsia:   { label: 'Fucsia',   hex: '#d946ef' },
+    coral:    { label: 'Coral',    hex: '#fb7185' },
+    naranja:  { label: 'Naranja',  hex: '#f97316' },
+    amarillo: { label: 'Amarillo', hex: '#eab308' },
+    mostaza:  { label: 'Mostaza',  hex: '#ca8a04' },
+    verde:    { label: 'Verde',    hex: '#22c55e' },
+    oliva:    { label: 'Oliva',    hex: '#556b2f' },
+    turquesa: { label: 'Turquesa', hex: '#2dd4bf' },
+    celeste:  { label: 'Celeste',  hex: '#7dd3fc' },
+    azul:     { label: 'Azul',     hex: '#3b82f6' },
+    morado:   { label: 'Morado',   hex: '#a855f7' },
+    lila:     { label: 'Lila',     hex: '#c4b5fd' },
+    beige:    { label: 'Beige',    hex: '#d6c7a1' },
+    marron:   { label: 'Marrón',   hex: '#78350f' },
+    dorado:   { label: 'Dorado',   hex: '#d4af37' },
+    plateado: { label: 'Plateado', hex: '#c0c0c0' },
+  };
+
+  // Escapa texto de comerciantes (ej. talla/color "Otro..." de texto libre) antes de meterlo en innerHTML.
+  function escHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
 
   /* ── Promociones / métodos de pago (mismo modelo que la app nativa) ── */
 
@@ -956,6 +1015,29 @@
 
     // Precios
     document.getElementById('m-precios').innerHTML = precioBloqueHtml(item, 'modal');
+
+    // Talla
+    const tallasWrap = document.getElementById('m-tallas-wrap');
+    if (item.tallas && item.tallas.length) {
+      document.getElementById('m-tallas').innerHTML = item.tallas
+        .map(t => `<span class="modal-talla-chip">${escHtml(t)}</span>`).join('');
+      tallasWrap.style.display = 'block';
+    } else { tallasWrap.style.display = 'none'; }
+
+    // Color
+    const coloresWrap = document.getElementById('m-colores-wrap');
+    if (item.colores && item.colores.length) {
+      document.getElementById('m-colores').innerHTML = item.colores.map(key => {
+        const c = COLORES_MAP[key];
+        const hex   = c ? c.hex   : '#e5e7eb';
+        const label = c ? c.label : key;
+        return `<span class="modal-color-item">
+          <span class="modal-color-dot" style="background:${hex}"></span>
+          <span class="modal-color-label">${escHtml(label)}</span>
+        </span>`;
+      }).join('');
+      coloresWrap.style.display = 'block';
+    } else { coloresWrap.style.display = 'none'; }
 
     // Descripción
     const dw = document.getElementById('m-desc-wrap');
