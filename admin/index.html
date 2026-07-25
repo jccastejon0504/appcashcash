@@ -3256,6 +3256,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     await db.from('config_app').delete().in('clave', [`lock_nombre_${socioId}`, `lock_tel_${socioId}`]);
 
+    // Config de tienda de la app nativa (metodos de pago, categorias del
+    // catalogo, promociones y ventas) — el admin no las tocaba porque estas
+    // tablas se agregaron despues de este helper, dejando filas huerfanas.
+    await db.from('metodos_pago_tienda').delete().eq('tienda_id', socioId);
+    await db.from('categorias_tienda').delete().eq('tienda_id', socioId);
+    await db.from('promociones_tienda').delete().eq('tienda_id', socioId);
+    await db.from('pedidos').delete().eq('tienda_id', socioId);
+
     const unicas = [...new Set(rutas)];
     for (let i = 0; i < unicas.length; i += 100) {
       await db.storage.from('socios comerciales').remove(unicas.slice(i, i + 100));
@@ -4022,7 +4030,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   }
 
   async function eliminarSocio(id, nombre) {
-    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción eliminará también su ficha en solicitudes, su catálogo de productos y todas sus imágenes. No se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar la tienda "${nombre}"? Esta acción eliminará también su ficha en solicitudes, su catálogo de productos, imágenes, métodos de pago, categorías, promociones y ventas registradas. No se puede deshacer.`)) return;
 
     // Obtener teléfono del socio para borrar solicitudes asociadas
     const { data: socio } = await db.from('socios_comerciales').select('telefono,nombre').eq('id', id).single();
