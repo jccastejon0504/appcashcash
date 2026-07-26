@@ -417,6 +417,9 @@
     <div class="nav-item" data-section="mapa">
       <span class="icon">🗺️</span> Mapa de Tiendas
     </div>
+    <div class="nav-item" data-section="reporte-ingresos">
+      <span class="icon">📊</span> Reporte y Ingresos
+    </div>
 
     <div class="nav-section">Socios</div>
     <div class="nav-item" data-section="ofertas">
@@ -430,6 +433,9 @@
     </div>
     <div class="nav-item" data-section="socios">
       <span class="icon">🏪</span> Socios Activos
+    </div>
+    <div class="nav-item" data-section="paquete-destacado">
+      <span class="icon">🎁</span> Paquete y Destacado
     </div>
 
     <div class="nav-section">Configuración</div>
@@ -1327,8 +1333,13 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ══ PAQUETE Y DESTACADO ═══════════════════════════ -->
+    <div class="section" id="section-paquete-destacado">
+
       <!-- ── Galería Extra ─────────────────────────────────── -->
-      <div style="margin-top:32px">
+      <div>
         <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">📦 Paquetes de Galería Extra</h2>
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Permite a los clientes comprar espacios adicionales de catálogo más allá de su plan.</p>
 
@@ -1447,8 +1458,13 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ══ REPORTE Y INGRESOS ════════════════════════════ -->
+    <div class="section" id="section-reporte-ingresos">
+
       <!-- ── Reportes de Ingresos ─────────────────────────── -->
-      <div style="margin-top:32px">
+      <div>
         <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">📊 Reporte de Ingresos</h2>
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Ingresos aprobados por concepto según el período seleccionado.</p>
 
@@ -1972,12 +1988,14 @@
   const SECCIONES = {
     dashboard:    { title: 'Dashboard',                sub: 'Resumen general' },
     mapa:         { title: 'Mapa de Tiendas',         sub: 'Ubicación geográfica de los socios activos' },
+    'reporte-ingresos': { title: 'Reporte y Ingresos', sub: 'Ingresos aprobados por concepto según el período' },
     descargas:    { title: 'Descargas de la App',      sub: 'Contador de instalaciones por plataforma' },
     analytics:    { title: 'Analytics',               sub: 'Actividad de usuarios en la app' },
     ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
     'plan-pro':   { title: 'Plan Pro',                 sub: 'Configura el contenido de la pantalla Tienda Pro en la app' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
+    'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
     publicidad:   { title: 'Publicidad',               sub: 'Cintillo en la ficha y popup flotante en la pantalla de inicio' },
@@ -2041,10 +2059,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'descargas')   cargarDescargas();
     if (id === 'analytics')   { if (!_calRango) _initCalendario(); cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); }
     if (id === 'mapa')        cargarMapa();
+    if (id === 'reporte-ingresos') selPeriodo(repPeriodo);
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'plan-pro')    cargarPlanPro();
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'socios')      cargarSocios();
+    if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
     if (id === 'publicidad')  cargarPublicidad();
@@ -2303,9 +2323,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarOfertas() {
     cargarReglas();
-    await cargarGaleriaExtra();
-    await cargarDestacados();
-    selPeriodo(repPeriodo);
     // Cargar config_app (visibilidad + precios base + texto promo + días de gracia)
     const { data: configs } = await db.from('config_app').select('clave,valor')
       .in('clave', ['plan_gratis_visible','plan_basico_visible','plan_pro_visible',
@@ -3348,7 +3365,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (estado === 'aprobado') {
       const { data: sol } = await db.from('solicitudes').select('*').eq('id', id).single();
       if (sol && sol.plan === 'galeria_extra') {
-        alert('Esta solicitud es de galería extra. Apruébala desde la sección "Paquetes de Galería Extra" en Ofertas de Planes.');
+        alert('Esta solicitud es de galería extra. Apruébala desde la sección "Paquete y Destacado".');
         return;
       }
       if (sol) {
@@ -5125,9 +5142,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       descargas:   cargarDescargas,
       analytics:   () => { cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); },
       mapa:        cargarMapa,
+      'reporte-ingresos': () => selPeriodo(repPeriodo),
       ofertas:     cargarOfertas,
       solicitudes: cargarSolicitudes,
       socios:      cargarSocios,
+      'paquete-destacado': () => { cargarGaleriaExtra(); cargarDestacados(); },
       ubicaciones: cargarEstados,
       metodos:     cargarMetodos,
       terminos:    cargarTerminos,
