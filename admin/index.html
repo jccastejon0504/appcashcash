@@ -2720,9 +2720,16 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     cargarSolicitudes();
   }
 
-  async function cargarSolicitudes() {
+  const SOLICITUDES_PAGE_SIZE = 40;
+  let _solicitudesOffset = 0;
+  let _solicitudesHayMas = true;
+
+  async function cargarSolicitudes(append = false) {
+    if (!append) { _solicitudesOffset = 0; _solicitudesHayMas = true; }
     const filtro = _filtroSolicitudesActual;
-    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado').order('created_at', { ascending: false });
+    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado')
+      .order('created_at', { ascending: false })
+      .range(_solicitudesOffset, _solicitudesOffset + SOLICITUDES_PAGE_SIZE - 1);
     if (filtro) q = q.eq('estado', filtro);
 
     const [{ data, error }, { data: cats }, { data: ciu }] = await Promise.all([
@@ -2735,9 +2742,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     const lista = document.getElementById('lista-solicitudes');
     if (error) { lista.innerHTML = `<p style="color:red;padding:20px;text-align:center">Error: ${error.message}</p>`; return; }
-    if (!data?.length) { lista.innerHTML = '<p class="empty" style="text-align:center;padding:20px;color:var(--muted)">Sin solicitudes</p>'; return; }
+    if (!append && !data?.length) { lista.innerHTML = '<p class="empty" style="text-align:center;padding:20px;color:var(--muted)">Sin solicitudes</p>'; return; }
 
-    lista.innerHTML = data.map(s => {
+    _solicitudesOffset += data?.length ?? 0;
+    _solicitudesHayMas = (data?.length ?? 0) === SOLICITUDES_PAGE_SIZE;
+
+    const tarjetas = (data ?? []).map(s => {
       const estado       = s.estado ?? 'pendiente';
       const colorBorde   = estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
       const uid          = s.id.replace(/-/g,'').slice(0,8);
@@ -2900,14 +2910,26 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       </div>`;
     }).join('');
 
-    // Limpiar buscador al recargar
-    const inputBusq = document.getElementById('buscar-solicitudes');
-    if (inputBusq) inputBusq.value = '';
-    const btnLimpiar = document.getElementById('btn-limpiar-busq-sol');
-    if (btnLimpiar) btnLimpiar.style.display = 'none';
+    document.getElementById('btn-cargar-mas-solicitudes')?.remove();
+    if (append) lista.insertAdjacentHTML('beforeend', tarjetas);
+    else lista.innerHTML = tarjetas;
+    if (_solicitudesHayMas) {
+      lista.insertAdjacentHTML('beforeend', `
+        <div id="btn-cargar-mas-solicitudes" style="text-align:center;padding:8px">
+          <button class="btn btn-outline btn-sm" onclick="cargarSolicitudes(true)">Cargar más</button>
+        </div>`);
+    }
 
-    // Cargar estados de bloqueo para solicitudes aprobadas
-    const aprobadas = data.filter(s => s.estado === 'aprobado');
+    if (!append) {
+      // Limpiar buscador al recargar (no al paginar, para no perder la búsqueda activa)
+      const inputBusq = document.getElementById('buscar-solicitudes');
+      if (inputBusq) inputBusq.value = '';
+      const btnLimpiar = document.getElementById('btn-limpiar-busq-sol');
+      if (btnLimpiar) btnLimpiar.style.display = 'none';
+    }
+
+    // Cargar estados de bloqueo para solicitudes aprobadas (solo del lote recién traído)
+    const aprobadas = (data ?? []).filter(s => s.estado === 'aprobado');
     if (aprobadas.length) cargarBloqueosBulk(aprobadas);
   }
 
@@ -3916,19 +3938,41 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   // ── Socios activos ────────────────────────────────────────────────────────
 
-  async function cargarSocios() {
-    await resetearVencidos(false); // auto-desactiva vencidos silenciosamente
-    const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true').order('nombre');
-    const tbody = document.getElementById('tabla-socios');
-    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; return; }
+  const SOCIOS_PAGE_SIZE = 50;
+  let _sociosOffset = 0;
+  let _sociosHayMas = true;
+  let _sociosTelCount = {}; // conteo de tiendas por teléfono, precalculado aparte (ver abajo) para no depender de tener TODOS los socios cargados en el DOM
 
+  async function cargarSociosTelCount() {
+    // Columnas livianas nada más (no select *): esto es aparte de la tabla paginada,
+    // solo para poder mostrar el badge "cliente con varias tiendas" sin cargar todo.
+    const { data } = await db.from('socios_comerciales').select('telefono,whatsapp')
+      .or('activo.is.null,activo.eq.true').limit(5000);
     const telCount = {};
-    data.forEach(s => {
+    (data ?? []).forEach(s => {
       const tel = (s.telefono || s.whatsapp || '').replace(/\D/g, '');
       if (tel) telCount[tel] = (telCount[tel] || 0) + 1;
     });
+    _sociosTelCount = telCount;
+  }
 
-    tbody.innerHTML = data.map(s => {
+  async function cargarSocios(append = false) {
+    if (!append) {
+      await resetearVencidos(false); // auto-desactiva vencidos silenciosamente
+      _sociosOffset = 0;
+      _sociosHayMas = true;
+      await cargarSociosTelCount();
+    }
+    const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true')
+      .order('nombre').range(_sociosOffset, _sociosOffset + SOCIOS_PAGE_SIZE - 1);
+    const tbody = document.getElementById('tabla-socios');
+    if (!append && !data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; _sociosHayMas = false; renderBtnCargarMasSocios(); return; }
+
+    _sociosOffset += data?.length ?? 0;
+    _sociosHayMas = (data?.length ?? 0) === SOCIOS_PAGE_SIZE;
+
+    const telCount = _sociosTelCount;
+    const filas = (data ?? []).map(s => {
       const hoy = new Date();
       const venc = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
       const dias = venc ? Math.ceil((venc - hoy) / 86400000) : null;
@@ -3965,6 +4009,20 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           </td>
         </tr>`;
     }).join('');
+
+    if (append) tbody.insertAdjacentHTML('beforeend', filas);
+    else tbody.innerHTML = filas;
+    renderBtnCargarMasSocios();
+  }
+
+  function renderBtnCargarMasSocios() {
+    document.getElementById('btn-cargar-mas-socios')?.remove();
+    if (!_sociosHayMas) return;
+    const tbody = document.getElementById('tabla-socios');
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr id="btn-cargar-mas-socios"><td colspan="10" style="text-align:center;padding:12px">
+        <button class="btn btn-outline btn-sm" onclick="cargarSocios(true)">Cargar más</button>
+      </td></tr>`);
   }
 
   function abrirModalSocio(s) {
