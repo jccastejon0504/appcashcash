@@ -407,6 +407,9 @@
     <div class="nav-item active" data-section="dashboard">
       <span class="icon">📊</span> Dashboard
     </div>
+    <div class="nav-item" data-section="reporte-ingresos">
+      <span class="icon">📊</span> Reporte y Ingresos
+    </div>
     <div class="nav-item" data-section="descargas">
       <span class="icon">📱</span> Descargas
     </div>
@@ -417,13 +420,13 @@
     <div class="nav-item" data-section="mapa">
       <span class="icon">🗺️</span> Mapa de Tiendas
     </div>
-    <div class="nav-item" data-section="reporte-ingresos">
-      <span class="icon">📊</span> Reporte y Ingresos
-    </div>
 
     <div class="nav-section">Socios</div>
     <div class="nav-item" data-section="ofertas">
       <span class="icon">🏷️</span> Ofertas de Planes
+    </div>
+    <div class="nav-item" data-section="paquete-destacado">
+      <span class="icon">🎁</span> Paquete y Destacado
     </div>
     <div class="nav-item" data-section="plan-pro">
       <span class="icon">🚀</span> Plan Pro
@@ -433,9 +436,6 @@
     </div>
     <div class="nav-item" data-section="socios">
       <span class="icon">🏪</span> Socios Activos
-    </div>
-    <div class="nav-item" data-section="paquete-destacado">
-      <span class="icon">🎁</span> Paquete y Destacado
     </div>
 
     <div class="nav-section">Configuración</div>
@@ -1509,6 +1509,11 @@
             <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PLAN BÁSICO</div>
             <div id="rep-destacados" style="font-size:22px;font-weight:900;color:#a855f7">$0.00</div>
             <div id="rep-destacados-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
+          </div>
+          <div class="card" style="flex:1;min-width:160px;padding:18px 20px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">PAQUETES Y DESTACADOS</div>
+            <div id="rep-paquetes" style="font-size:22px;font-weight:900;color:#10b981">$0.00</div>
+            <div id="rep-paquetes-count" style="font-size:11px;color:var(--muted);margin-top:2px">0 pagos</div>
           </div>
         </div>
 
@@ -5670,30 +5675,34 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     // Medio = mismo campo plan='pro' pero comprado por el flujo normal (o su
     // renovación); Básico = plan='basico'. Ver project_appcashcash_tipo_fields:
     // sol.tipo='registro_pro' es el único marcador confiable de Tienda Pro real.
-    let totPro    = 0, cntPro    = 0;
-    let totMedio  = 0, cntMedio  = 0;
-    let totBasico = 0, cntBasico = 0;
-    let totOtros  = 0, cntOtros  = 0; // gratis, galería extra, destacado — no tienen bloque propio
+    let totPro      = 0, cntPro      = 0;
+    let totMedio    = 0, cntMedio    = 0;
+    let totBasico   = 0, cntBasico   = 0;
+    let totPaquetes = 0, cntPaquetes = 0; // galería extra + destacado
+    let totOtros    = 0, cntOtros    = 0; // gratis y demás — no tienen bloque propio
 
     filas.forEach(s => {
       const m = parseFloat(s.monto) || 0;
-      if (s.tipo === 'registro_pro')      { totPro    += m; cntPro++;    }
-      else if (s.plan === 'pro')          { totMedio  += m; cntMedio++;  }
-      else if (s.plan === 'basico')       { totBasico += m; cntBasico++; }
-      else                                { totOtros  += m; cntOtros++;  }
+      if (s.tipo === 'registro_pro')                            { totPro      += m; cntPro++;      }
+      else if (s.plan === 'pro')                                 { totMedio    += m; cntMedio++;    }
+      else if (s.plan === 'basico')                              { totBasico   += m; cntBasico++;   }
+      else if (s.plan === 'galeria_extra' || s.plan === 'destacado') { totPaquetes += m; cntPaquetes++; }
+      else                                                        { totOtros    += m; cntOtros++;    }
     });
 
-    const total = totPro + totMedio + totBasico + totOtros;
+    const total = totPro + totMedio + totBasico + totPaquetes + totOtros;
     const fmt   = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     document.getElementById('rep-total').textContent          = fmt(total);
-    document.getElementById('rep-total-count').textContent    = (cntPro + cntMedio + cntBasico + cntOtros) + ' pagos';
+    document.getElementById('rep-total-count').textContent    = (cntPro + cntMedio + cntBasico + cntPaquetes + cntOtros) + ' pagos';
     document.getElementById('rep-planes').textContent         = fmt(totPro);
     document.getElementById('rep-planes-count').textContent   = cntPro + ' pagos';
     document.getElementById('rep-galeria').textContent        = fmt(totMedio);
     document.getElementById('rep-galeria-count').textContent  = cntMedio + ' pagos';
     document.getElementById('rep-destacados').textContent     = fmt(totBasico);
     document.getElementById('rep-destacados-count').textContent = cntBasico + ' pagos';
+    document.getElementById('rep-paquetes').textContent       = fmt(totPaquetes);
+    document.getElementById('rep-paquetes-count').textContent = cntPaquetes + ' pagos';
 
     if (!filas.length) {
       body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Sin ingresos en este período.</div>';
