@@ -30,19 +30,36 @@ module.exports = async function handler(req, res) {
     let producto = null;
     if (p) {
       const rp = await fetch(
-        `${SUPABASE_URL}/rest/v1/galeria_items?id=eq.${encodeURIComponent(p)}&socio_id=eq.${encodeURIComponent(id)}&select=titulo,imagen,precio,precio_bs&limit=1`,
+        `${SUPABASE_URL}/rest/v1/galeria_items?id=eq.${encodeURIComponent(p)}&socio_id=eq.${encodeURIComponent(id)}&select=titulo,imagen,precio,precio_bs,categoria_id&limit=1`,
         { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
       );
       const dp = await rp.json();
       if (Array.isArray(dp) && dp.length > 0) producto = dp[0];
     }
 
+    let promo = null;
+    if (producto) {
+      const rpr = await fetch(
+        `${SUPABASE_URL}/rest/v1/promociones_tienda?tienda_id=eq.${encodeURIComponent(id)}&select=*`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const dpr = await rpr.json();
+      promo = Array.isArray(dpr) && dpr.length > 0 ? dpr[0] : null;
+    }
+    const descPct = producto ? descuentoProductoPct(producto, promo) : 0;
+    const precioDesc = descPct > 0 ? precioConDescuento(producto.precio, descPct) : null;
+
     const titulo = producto
       ? `${producto.titulo} — ${nombre}`
       : `${nombre} — appcashcash`;
     const desc = producto
-      ? [producto.precio ? `$${producto.precio}` : null, producto.precio_bs ? `Bs. ${producto.precio_bs}` : null, `Disponible en ${nombre}`]
-          .filter(Boolean).join(' · ')
+      ? [
+          producto.precio
+            ? (precioDesc != null ? `$${precioDesc} (antes $${producto.precio}, -${descPct}%)` : `$${producto.precio}`)
+            : null,
+          producto.precio_bs ? `Bs. ${producto.precio_bs}${precioDesc != null ? ' (no aplica oferta)' : ''}` : null,
+          `Disponible en ${nombre}`,
+        ].filter(Boolean).join(' · ')
       : (descripcion ? descripcion.slice(0, 120) : 'Descubre esta tienda en appcashcash');
     const img      = (producto && producto.imagen) || imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = p ? `https://appcashcash.com/t/${slug}?p=${encodeURIComponent(p)}` : `https://appcashcash.com/t/${slug}`;
@@ -75,9 +92,9 @@ module.exports = async function handler(req, res) {
   <meta name="twitter:image"       content="${e(img)}">
 </head>
 <body>
-  <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#1a8a7a">
+  <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#FB8C50">
     Redirigiendo a <strong>${e(producto ? producto.titulo : nombre)}</strong>…<br>
-    <a href="${e(urlDest)}" style="color:#1a8a7a">Haz clic aquí si no redirige</a>
+    <a href="${e(urlDest)}" style="color:#FB8C50">Haz clic aquí si no redirige</a>
   </p>
   <script>window.location.replace(${JSON.stringify(urlDest)});</script>
 </body>
@@ -92,9 +109,39 @@ function e(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Misma logica que descuentoProductoPct/precioConDescuento en admin/tienda.html,
+// api/p/[codigo].js y src/features/tienda/models/promociones.ts de la app
+// nativa — mantener sincronizadas si cambia la regla de promociones.
+function descuentoProductoPct(item, promo, metodo) {
+  if (!promo) return 0;
+  const esBs = metodo === 'pago_movil' || metodo === 'transferencia';
+  if (promo.tipo_activo === 'todos') {
+    if (esBs) return 0;
+    return promo.descuento_todos_pct || 0;
+  }
+  if (promo.tipo_activo === 'categoria' && item.categoria_id) {
+    const d = (promo.descuentos_categoria || []).find(d => d.categoria_id === item.categoria_id && d.activo);
+    if (!d) return 0;
+    const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
+    if (metodo) {
+      const clave = esBs ? 'bs' : metodo;
+      return metodosActivos.includes(clave) ? (d.pct || 0) : 0;
+    }
+    return metodosActivos.length > 0 ? (d.pct || 0) : 0;
+  }
+  return 0;
+}
+
+function precioConDescuento(precio, pct) {
+  const p = parseFloat(precio);
+  if (isNaN(p)) return null;
+  if (pct <= 0) return p;
+  return +(p * (1 - pct / 100)).toFixed(2);
+}
+
 function paginaError() {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>appcashcash</title>
-  <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f5}.logo{font-size:28px;font-weight:900;color:#1a8a7a}p{color:#555}</style>
+  <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f5}.logo{font-size:28px;font-weight:900;color:#FB8C50}p{color:#555}</style>
   </head><body><div class="logo">appcashcash</div><p>Esta tienda no está disponible.</p>
-  <a href="https://appcashcash.com" style="color:#1a8a7a">Ir al inicio</a></body></html>`;
+  <a href="https://appcashcash.com" style="color:#FB8C50">Ir al inicio</a></body></html>`;
 }
