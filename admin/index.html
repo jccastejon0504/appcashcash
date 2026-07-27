@@ -14,8 +14,8 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent:  #6c3fc5;
-      --accent2: #5930a8;
+      --accent:  #FB8C50;
+      --accent2: #D97540;
       --bg:      #f0f2f5;
       --card:    #ffffff;
       --border:  #e2e8f0;
@@ -37,7 +37,7 @@
     /* ── Sidebar ─────────────────────────────────────────── */
     .sidebar {
       width: var(--sidebar);
-      background: #1e1040;
+      background: #3D1F0A;
       display: flex;
       flex-direction: column;
       position: fixed;
@@ -77,7 +77,7 @@
       user-select: none;
     }
     .nav-item:hover { background: #ffffff0d; color: #fff; }
-    .nav-item.active { background: #6c3fc522; color: #a78bfa; border-left-color: #a78bfa; }
+    .nav-item.active { background: #FB8C5022; color: #FFC9A0; border-left-color: #FFC9A0; }
     .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
 
     .sidebar-footer {
@@ -130,7 +130,7 @@
       font-size: 17px;
       transition: all .15s;
     }
-    .notif-bell:hover { border-color: var(--accent); background: #faf8ff; }
+    .notif-bell:hover { border-color: var(--accent); background: #fff3ea; }
     .notif-bell.notif-ring { animation: notif-shake .5s ease; }
     @keyframes notif-shake {
       0%, 100% { transform: rotate(0); }
@@ -245,7 +245,7 @@
     }
     .badge-green  { background: #dcfce7; color: var(--green); }
     .badge-gray   { background: #f1f5f9; color: var(--muted); }
-    .badge-purple { background: #ede9fe; color: var(--accent); }
+    .badge-purple { background: #ffe4d1; color: var(--accent); }
     .badge-red    { background: #fee2e2; color: var(--red); }
     .badge-gold   { background: #FFD700; color: #5c4b43; }
     .badge-orange { background: #f59e0b; color: #fff; }
@@ -280,7 +280,7 @@
       border: 2px solid var(--border);
       border-radius: 12px;
       padding: 16px;
-      background: #faf8ff;
+      background: #fff3ea;
       position: relative;
       margin-bottom: 16px;
     }
@@ -303,12 +303,12 @@
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
-      background: #f8f5ff; padding: 10px 14px;
+      background: #fff3ea; padding: 10px 14px;
       font-size: 11px; font-weight: 700; color: var(--accent);
       text-align: left; white-space: nowrap;
     }
     td { padding: 10px 14px; border-top: 1px solid var(--border); vertical-align: middle; }
-    tr:hover td { background: #faf8ff; }
+    tr:hover td { background: #fff3ea; }
 
     /* ── Alert / Msg ──────────────────────────────────────── */
     .msg {
@@ -350,9 +350,9 @@
 
     /* ── Pulse animation (mapa) ──────────────────────────── */
     @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(108,63,197,.6); }
-      70%  { box-shadow: 0 0 0 10px rgba(108,63,197,0); }
-      100% { box-shadow: 0 0 0 0 rgba(108,63,197,0); }
+      0%   { box-shadow: 0 0 0 0 rgba(251,140,80,.6); }
+      70%  { box-shadow: 0 0 0 10px rgba(251,140,80,0); }
+      100% { box-shadow: 0 0 0 0 rgba(251,140,80,0); }
     }
 
     /* ── Galería Extra ───────────────────────────────────── */
@@ -384,7 +384,7 @@
     /* ── Flatpickr personalizado ──────────────────────────── */
     .flatpickr-calendar { font-family: inherit; box-shadow: 0 8px 30px rgba(0,0,0,.12); border-radius: 14px; border: 1px solid var(--border); }
     .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: var(--accent); border-color: var(--accent); }
-    .flatpickr-day.inRange { background: #ede9fe; border-color: #ede9fe; color: var(--accent); }
+    .flatpickr-day.inRange { background: #ffe4d1; border-color: #ffe4d1; color: var(--accent); }
     .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover { background: var(--accent2); border-color: var(--accent2); }
     .flatpickr-months .flatpickr-month { background: var(--accent); border-radius: 14px 14px 0 0; }
     .flatpickr-current-month, .flatpickr-monthDropdown-months, .flatpickr-month .flatpickr-prev-month, .flatpickr-month .flatpickr-next-month { color: #fff !important; fill: #fff !important; }
@@ -1348,7 +1348,7 @@
           <div class="card">
             <div class="card-header"><h2>Configuración</h2></div>
             <div class="card-body">
-              <div style="border:2px solid var(--border);border-radius:12px;padding:16px;background:#faf8ff;margin-bottom:16px">
+              <div style="border:2px solid var(--border);border-radius:12px;padding:16px;background:#fff3ea;margin-bottom:16px">
                 <p id="gal-preview" style="font-size:20px;font-weight:800;color:var(--text)">+4 espacios por $5 por paquete</p>
               </div>
               <form onsubmit="event.preventDefault();guardarConfigGal()" style="display:flex;flex-direction:column;gap:14px">
@@ -1392,7 +1392,7 @@
           <div style="padding:16px">
             <div id="gal-solicitudes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Sin solicitudes aún.</div>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <div class="gal-sol-row" style="background:#f8f5ff;font-weight:700;color:var(--accent);font-size:12px">
+              <div class="gal-sol-row" style="background:#fff3ea;font-weight:700;color:var(--accent);font-size:12px">
                 <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Estado</span><span>Acciones</span>
               </div>
               <div id="gal-solicitudes-body"><p class="loading">Cargando…</p></div>
@@ -2816,10 +2816,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             ${s.descripcion ? `<div style="grid-column:1/-1;background:#f8fafc;border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:6px 10px;font-size:12px;color:#334155"><b>ℹ️ Descripción:</b> ${s.descripcion}</div>` : ''}
             ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
             ${(s.latitud && s.longitud) ? `
-              <div style="grid-column:1/-1;background:#f5f3ff;border:1.5px solid #6c3fc5;border-radius:8px;padding:6px 10px">
-                <div style="font-size:10px;font-weight:700;color:#6c3fc5;margin-bottom:3px">📡 COORDENADAS</div>
-                <div style="font-size:12px;font-weight:700;color:#1e1040">${toDMS(s.latitud, true)}&nbsp;&nbsp;${toDMS(s.longitud, false)}</div>
-                <div style="font-size:10px;color:#7c3aed;font-family:monospace;margin-top:2px">${s.latitud.toFixed(6)}, ${s.longitud.toFixed(6)}</div>
+              <div style="grid-column:1/-1;background:#fff3ea;border:1.5px solid #FB8C50;border-radius:8px;padding:6px 10px">
+                <div style="font-size:10px;font-weight:700;color:#FB8C50;margin-bottom:3px">📡 COORDENADAS</div>
+                <div style="font-size:12px;font-weight:700;color:#3D1F0A">${toDMS(s.latitud, true)}&nbsp;&nbsp;${toDMS(s.longitud, false)}</div>
+                <div style="font-size:10px;color:#D97540;font-family:monospace;margin-top:2px">${s.latitud.toFixed(6)}, ${s.longitud.toFixed(6)}</div>
               </div>` : ''}
             ${estado === 'aprobado' ? `
             <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
@@ -2842,7 +2842,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             </div>` : ''}
             <div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button class="btn btn-sm btn-outline" onclick="toggleEditSol('${uid}')">✏️ Editar datos</button>
-              ${estado === 'aprobado' ? `<button class="btn btn-sm btn-outline" style="color:#7c3aed;border-color:#7c3aed" onclick="sincronizarSocio('${s.id}','${uid}')">⚙ Sincronizar → Socios Activos</button><span id="msg-sinc-${uid}" style="font-size:12px"></span>` : ''}
+              ${estado === 'aprobado' ? `<button class="btn btn-sm btn-outline" style="color:#D97540;border-color:#D97540" onclick="sincronizarSocio('${s.id}','${uid}')">⚙ Sincronizar → Socios Activos</button><span id="msg-sinc-${uid}" style="font-size:12px"></span>` : ''}
             </div>
           </div>
           <!-- Editar datos solicitud -->
@@ -4740,7 +4740,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:72px;font-size:11px;font-weight:700;color:var(--muted);text-align:right">${t}</div>
               <div style="flex:1;background:var(--bg);border-radius:99px;height:18px;overflow:hidden">
-                <div style="height:100%;width:${Math.round(n/maxTab*100)}%;background:#7c3aed;border-radius:99px;transition:width .4s;min-width:${n?'4px':'0'}"></div>
+                <div style="height:100%;width:${Math.round(n/maxTab*100)}%;background:#D97540;border-radius:99px;transition:width .4s;min-width:${n?'4px':'0'}"></div>
               </div>
               <div style="width:32px;font-size:12px;font-weight:800;color:var(--text);text-align:right">${n}</div>
             </div>`;
@@ -4803,7 +4803,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         iconSize: [36, 36], iconAnchor: [18, 36],
       })
     }).addTo(_mapaL)
-      .bindPopup(`<div style="font-family:system-ui;font-size:12px"><b>📍 Ubicación buscada</b><br><span style="font-family:monospace">${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</span><br><span style="color:#6c3fc5">${toDMS(coords.lat,true)}  ${toDMS(coords.lng,false)}</span></div>`)
+      .bindPopup(`<div style="font-family:system-ui;font-size:12px"><b>📍 Ubicación buscada</b><br><span style="font-family:monospace">${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</span><br><span style="color:#FB8C50">${toDMS(coords.lat,true)}  ${toDMS(coords.lng,false)}</span></div>`)
       .openPopup();
   }
 
@@ -4823,50 +4823,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
     }
     return null;
-  }
-
-  async function geocodificarEnPopup(pid) {
-    const input = document.getElementById(`geo-input-${pid}`);
-    const btn   = document.getElementById(`btn-geo-${pid}`);
-    const query = (input?.value ?? '').trim();
-    if (!query) return;
-
-    if (btn) { btn.textContent = '…'; btn.disabled = true; }
-
-    // Detectar si es un link de Google Maps
-    let coords = null;
-    if (query.includes('google.com/maps') || query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
-      coords = extraerCoordsGoogleMaps(query);
-      if (!coords) {
-        if (btn) { btn.textContent = '⚠'; btn.disabled = false; btn.title = 'Link corto no soportado. Abre Google Maps → comparte → copia el link largo'; }
-        return;
-      }
-    } else {
-      // Buscar por texto en Nominatim
-      coords = await geocodificar(query);
-      if (!coords && !query.toLowerCase().includes('venezuela')) {
-        coords = await geocodificar(query + ', Venezuela');
-      }
-    }
-
-    if (!coords) {
-      if (btn) { btn.textContent = '⚠'; btn.disabled = false; btn.title = 'No encontrada. Prueba con un link de Google Maps'; }
-      return;
-    }
-
-    // Rellenar inputs y mover pin
-    const latInput = document.getElementById(`pin-lat-${pid}`);
-    const lngInput = document.getElementById(`pin-lng-${pid}`);
-    if (latInput) latInput.value = coords.lat.toFixed(6);
-    if (lngInput) lngInput.value = coords.lng.toFixed(6);
-
-    const ref = window._mapaMarkersMap?.[pid];
-    if (ref) {
-      ref.marker.setLatLng([coords.lat, coords.lng]);
-      _mapaL.setView([coords.lat, coords.lng], 17, { animate: true });
-    }
-
-    if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.background = '#16a34a'; btn.title = 'Ubicada — revisa y guarda'; }
   }
 
   function cambiarCapa() {
@@ -4893,19 +4849,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('mapa-modo-bar').style.display = 'none';
     document.getElementById('mapa-container').style.cursor = '';
   }
-
-  function moverPin(pid, socioId) {
-    const lat = parseFloat(document.getElementById(`pin-lat-${pid}`)?.value);
-    const lng = parseFloat(document.getElementById(`pin-lng-${pid}`)?.value);
-    if (isNaN(lat) || isNaN(lng)) { alert('Coordenadas inválidas.'); return; }
-    const ref = window._mapaMarkersMap?.[pid];
-    if (!ref) return;
-    ref.marker.setLatLng([lat, lng]);
-    ref.actualizarPopup(lat, lng);
-    ref.marker.openPopup();
-    _mapaL.setView([lat, lng], Math.max(_mapaL.getZoom(), 15), { animate: true });
-  }
-
 
   async function guardarUbicacionSocio(id, lat, lng) {
     const btn = document.getElementById(`btn-guardar-${id}`);
@@ -5048,7 +4991,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <div style="font-family:system-ui;min-width:240px;max-width:260px">
 
             <!-- Encabezado -->
-            <div style="background:#1e1040;border-radius:10px 10px 0 0;padding:10px 12px;margin:-1px -1px 0 -1px">
+            <div style="background:#3D1F0A;border-radius:10px 10px 0 0;padding:10px 12px;margin:-1px -1px 0 -1px">
               <div style="font-weight:800;font-size:14px;color:#fff;margin-bottom:2px">${s.nombre}</div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font-size:10px;background:${esDest ? '#f59e0b' : vencida ? '#dc2626' : '#16a34a'};color:#fff;padding:1px 7px;border-radius:20px;font-weight:700">${planLabel}</span>
@@ -5062,11 +5005,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
               ${s.ciudad    ? `<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🏙 ${s.ciudad}</div>` : '<div style="margin-bottom:8px"></div>'}
 
               <!-- Coordenadas -->
-              <div style="background:#f5f3ff;border:1.5px solid #6c3fc5;border-radius:8px;padding:8px 10px;margin-bottom:10px;text-align:center">
-                <div style="font-size:9px;font-weight:800;color:#6c3fc5;letter-spacing:1px;margin-bottom:4px">📡 COORDENADAS</div>
-                <div style="font-size:12px;font-weight:700;color:#1e1040">${toDMS(lat,true)}</div>
-                <div style="font-size:12px;font-weight:700;color:#1e1040;margin-bottom:4px">${toDMS(lng,false)}</div>
-                <div style="border-top:1px solid #ddd6fe;padding-top:4px;font-size:10px;color:#7c3aed;font-family:monospace">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+              <div style="background:#fff3ea;border:1.5px solid #FB8C50;border-radius:8px;padding:8px 10px;margin-bottom:10px;text-align:center">
+                <div style="font-size:9px;font-weight:800;color:#FB8C50;letter-spacing:1px;margin-bottom:4px">📡 COORDENADAS</div>
+                <div style="font-size:12px;font-weight:700;color:#3D1F0A">${toDMS(lat,true)}</div>
+                <div style="font-size:12px;font-weight:700;color:#3D1F0A;margin-bottom:4px">${toDMS(lng,false)}</div>
+                <div style="border-top:1px solid #ffe4d1;padding-top:4px;font-size:10px;color:#D97540;font-family:monospace">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
               </div>
 
               <!-- Inputs ocultos -->
@@ -5075,11 +5018,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
               <!-- Botones -->
               <button onclick="activarModoClic('${pid}','${s.id}','${s.nombre.replace(/'/g, '')}')"
-                style="width:100%;padding:8px;background:#1e1040;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px">
+                style="width:100%;padding:8px;background:#3D1F0A;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px">
                 🎯 Colocar pin exacto
               </button>
               <button id="btn-guardar-${s.id}" onclick="guardarUbicacionSocio('${s.id}', parseFloat(document.getElementById('pin-lat-${pid}').value), parseFloat(document.getElementById('pin-lng-${pid}').value))"
-                style="width:100%;padding:8px;background:${guardado ? '#16a34a' : '#6c3fc5'};color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+                style="width:100%;padding:8px;background:${guardado ? '#16a34a' : '#FB8C50'};color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
                 ${guardado ? '✓ Guardado' : '💾 Guardar ubicación'}
               </button>
             </div>
