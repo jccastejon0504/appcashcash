@@ -1080,12 +1080,18 @@
     if (_waGlobal) {
       const descPctWa   = descuentoProductoPct(item, _promo);
       const precioWa    = descPctWa > 0 ? precioConDescuento(item.precio, descPctWa) : item.precio;
+      const pctBsWa     = Math.max(metodoBsGlobalPct(), descuentoProductoPct(item, _promo, 'pago_movil'));
+      const precioBsWa  = bsDesdeUsd(item.precio, item.precio_bs, pctBsWa);
       // Con oferta activa: precio real tachado (sintaxis ~texto~ de WhatsApp) +
       // precio de promo + %, para que quede clara la oferta en el mensaje.
       const precioTxt = descPctWa > 0 && item.precio
         ? ` ~$${item.precio}~ *$${precioWa}* (-${descPctWa}% OFERTA)`
         : (precioWa ? ` ($${precioWa})` : '');
-      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}`);
+      const bsMostradoWa = precioBsWa ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
+      const bsTxt = bsMostradoWa != null
+        ? `\nBs. ${bsMostradoWa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${descPctWa > 0 && pctBsWa <= 0 ? ' (no aplica oferta)' : ''}`
+        : '';
+      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}${bsTxt}`);
       document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
       waWrap.style.display = 'flex';
     } else { waWrap.style.display = 'none'; }
