@@ -1080,7 +1080,12 @@
     if (_waGlobal) {
       const descPctWa   = descuentoProductoPct(item, _promo);
       const precioWa    = descPctWa > 0 ? precioConDescuento(item.precio, descPctWa) : item.precio;
-      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioWa ? ' ($'+precioWa+')' : ''}`);
+      // Con oferta activa: precio real tachado (sintaxis ~texto~ de WhatsApp) +
+      // precio de promo + %, para que quede clara la oferta en el mensaje.
+      const precioTxt = descPctWa > 0 && item.precio
+        ? ` ~$${item.precio}~ *$${precioWa}* (-${descPctWa}% OFERTA)`
+        : (precioWa ? ` ($${precioWa})` : '');
+      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}`);
       document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
       waWrap.style.display = 'flex';
     } else { waWrap.style.display = 'none'; }
