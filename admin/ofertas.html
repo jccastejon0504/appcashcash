@@ -16,13 +16,13 @@
     }
 
     header {
-      background: #6c3fc5;
+      background: #FB8C50;
       color: #fff;
       padding: 18px 32px;
       display: flex;
       align-items: center;
       gap: 12px;
-      box-shadow: 0 2px 10px rgba(108,63,197,.3);
+      box-shadow: 0 2px 10px rgba(251,140,80,.3);
     }
     header h1 { font-size: 20px; font-weight: 800; }
     header span { font-size: 13px; opacity: .75; margin-top: 2px; }
@@ -72,13 +72,13 @@
     /* Vista previa estilo screenshot */
     .preview-box {
       margin: 18px 22px;
-      border: 2px solid #e8e0f8;
+      border: 2px solid #ffd9b8;
       border-radius: 14px;
       padding: 18px 16px;
-      background: #faf8ff;
+      background: #fff3ea;
       position: relative;
     }
-    .preview-box.activo { border-color: #6c3fc5; background: #f5f0ff; }
+    .preview-box.activo { border-color: #FB8C50; background: #fff3ea; }
 
     .preview-desc { font-size: 12px; color: #777; margin-bottom: 12px; }
 
@@ -86,7 +86,7 @@
       position: absolute;
       top: -10px;
       right: 14px;
-      background: #6c3fc5;
+      background: #FB8C50;
       color: #fff;
       font-size: 12px;
       font-weight: 800;
@@ -102,7 +102,7 @@
     .preview-precio-oferta {
       font-size: 28px;
       font-weight: 900;
-      color: #6c3fc5;
+      color: #FB8C50;
       line-height: 1.1;
     }
     .preview-precio-oferta sup { font-size: 14px; }
@@ -139,7 +139,7 @@
       outline: none;
       transition: border-color .2s;
     }
-    input:focus, textarea:focus { border-color: #6c3fc5; }
+    input:focus, textarea:focus { border-color: #FB8C50; }
     textarea { resize: vertical; min-height: 60px; }
 
     .toggle-row {
@@ -177,11 +177,11 @@
       border-radius: 50%;
       transition: .3s;
     }
-    input:checked + .slider { background: #6c3fc5; }
+    input:checked + .slider { background: #FB8C50; }
     input:checked + .slider:before { transform: translateX(20px); }
 
     .btn-guardar {
-      background: #6c3fc5;
+      background: #FB8C50;
       color: #fff;
       font-size: 14px;
       font-weight: 800;
@@ -191,8 +191,8 @@
       cursor: pointer;
       transition: background .2s;
     }
-    .btn-guardar:hover { background: #5930a8; }
-    .btn-guardar:disabled { background: #c4b5e8; cursor: not-allowed; }
+    .btn-guardar:hover { background: #D97540; }
+    .btn-guardar:disabled { background: #f0c9a8; cursor: not-allowed; }
 
     .btn-borrar {
       background: transparent;
@@ -242,16 +242,16 @@
       border-radius: 10px;
     }
     .historial-header {
-      background: #f8f5ff;
+      background: #fff3ea;
       font-weight: 700;
-      color: #6c3fc5;
+      color: #FB8C50;
     }
     .historial-row {
       background: #fff;
       box-shadow: 0 1px 4px rgba(0,0,0,.06);
       font-size: 13px;
     }
-    .historial-row:hover { background: #faf8ff; }
+    .historial-row:hover { background: #fff3ea; }
     .hist-acciones {
       display: flex;
       gap: 6px;
@@ -356,7 +356,7 @@
 
       <!-- Stats card -->
       <div class="plan-card" style="padding:22px">
-        <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;color:#6c3fc5">Cómo funciona</h3>
+        <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;color:#FB8C50">Cómo funciona</h3>
         <ul style="font-size:13px;color:#555;line-height:1.9;padding-left:18px">
           <li>El cliente llega al límite de su catálogo</li>
           <li>Aparece el botón <b>"Comprar más espacios"</b> en la app</li>
@@ -371,7 +371,7 @@
     <h3 style="font-size:14px;font-weight:800;color:#555;margin-bottom:12px">Solicitudes de galería extra</h3>
     <div id="gal-solicitudes-empty" style="color:#aaa;font-size:13px;padding:20px 0">Sin solicitudes aún.</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <div class="gal-sol-row" style="background:#f8f5ff;font-weight:700;color:#6c3fc5;font-size:12px">
+      <div class="gal-sol-row" style="background:#fff3ea;font-weight:700;color:#FB8C50;font-size:12px">
         <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Estado</span><span>Acciones</span>
       </div>
       <div id="gal-solicitudes-body"></div>
