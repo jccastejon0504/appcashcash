@@ -706,6 +706,35 @@
   let _metodos   = [];
   let _tasas     = { usd: null, eur: null, usdt: null };
 
+  // Mismos helpers de link que src/features/tienda/services/tiendaService.ts
+  // en la app nativa — el link en el texto del mensaje es lo unico que hace
+  // que WhatsApp muestre una vista previa con imagen (wa.me no soporta
+  // adjuntar imagenes directamente, solo texto).
+  function urlTienda(s) {
+    return `https://www.appcashcash.com/t/${s.slug || s.id}`;
+  }
+  function urlProducto(s, productoId) {
+    return `https://www.appcashcash.com/t/${s.slug || s.id}?p=${productoId}`;
+  }
+  const ALFABETO_CODIGO = '23456789abcdefghjkmnpqrstuvwxyz';
+  function generarCodigo(largo = 7) {
+    let codigo = '';
+    for (let i = 0; i < largo; i++) codigo += ALFABETO_CODIGO[Math.floor(Math.random() * ALFABETO_CODIGO.length)];
+    return codigo;
+  }
+  async function asegurarCodigoProducto(productoId, codigoActual) {
+    if (codigoActual) return codigoActual;
+    for (let intento = 0; intento < 5; intento++) {
+      const candidato = generarCodigo();
+      const { data, error } = await db.from('galeria_items').update({ codigo: candidato }).eq('id', productoId).select('codigo').single();
+      if (!error && data && data.codigo) return data.codigo;
+    }
+    return null;
+  }
+  function urlProductoCorto(codigo) {
+    return `https://appcashcash.com/p/${codigo}`;
+  }
+
   // Misma paleta (keys/labels/hex) que COLORES_DISPONIBLES en cashcashApp-2
   // (src/features/tienda/models/tienda.ts) — mantener sincronizadas si se agregan colores ahí.
   const COLORES_MAP = {
@@ -978,7 +1007,7 @@
     // Botones contacto
     const btns = document.getElementById('btns-contacto');
     let hayContacto = false;
-    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
+    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`; hayContacto = true; }
     if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
@@ -1024,7 +1053,7 @@
     }
   }
 
-  function abrirProducto(item) {
+  async function abrirProducto(item) {
     const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
 
     // Imagen principal
@@ -1093,7 +1122,11 @@
       const bsTxt = bsMostradoWa != null
         ? `\nBs. ${bsMostradoWa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${descPctWa > 0 && pctBsWa <= 0 ? ' (no aplica oferta)' : ''}`
         : '';
-      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}${bsTxt}`);
+      // El link va al final del mensaje: es lo unico que hace que WhatsApp
+      // muestre una vista previa con la foto del producto al enviarlo.
+      const codigoWa = await asegurarCodigoProducto(item.id, item.codigo);
+      const enlaceWa = codigoWa ? urlProductoCorto(codigoWa) : urlProducto(_socioData, item.id);
+      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}${bsTxt}\n${enlaceWa}`);
       document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
       waWrap.style.display = 'flex';
     } else { waWrap.style.display = 'none'; }
@@ -1168,7 +1201,7 @@
     const hayContacto = s.whatsapp || s.telefono || s.web;
     if (hayContacto) {
       let btnsHtml = '';
-      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`;
+      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
       if (s.telefono) btnsHtml += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
       if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`;
       html += `<div class="info-sec">
