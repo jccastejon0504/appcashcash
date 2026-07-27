@@ -238,6 +238,8 @@
       font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 500;
     }
     .prod-no-aplica { font-size: 10px; color: var(--muted2); font-style: italic; }
+    .prod-stock { font-size: 10px; color: var(--muted2); margin-top: 2px; }
+    .prod-agotado { font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 2px; }
     .prod-chips { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
     .prod-chip {
       font-size: 9px; font-weight: 800; color: var(--muted);
@@ -308,6 +310,8 @@
     }
     .modal-precio-bs { font-size: 14px; color: var(--muted); margin-top: 2px; }
     .modal-no-aplica { font-size: 12px; color: var(--muted2); font-style: italic; }
+    .modal-stock { font-size: 12px; color: var(--muted2); margin-top: 4px; }
+    .modal-agotado { font-size: 13px; font-weight: 800; color: #ef4444; margin-top: 4px; }
     .modal-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
     .modal-chip {
       font-size: 11px; font-weight: 800; color: var(--muted);
@@ -820,9 +824,11 @@
 
     const cls = tam === 'modal'
       ? { precio: 'modal-precio', tachado: 'modal-precio-tachado', badge: 'modal-oferta-badge',
-          bs: 'modal-precio-bs', noAplica: 'modal-no-aplica', chips: 'modal-chips', chip: 'modal-chip' }
+          bs: 'modal-precio-bs', noAplica: 'modal-no-aplica', chips: 'modal-chips', chip: 'modal-chip',
+          stock: 'modal-stock', agotado: 'modal-agotado' }
       : { precio: 'prod-precio', tachado: 'prod-precio-tachado', badge: 'prod-oferta-badge',
-          bs: 'prod-precio-bs', noAplica: 'prod-no-aplica', chips: 'prod-chips', chip: 'prod-chip' };
+          bs: 'prod-precio-bs', noAplica: 'prod-no-aplica', chips: 'prod-chips', chip: 'prod-chip',
+          stock: 'prod-stock', agotado: 'prod-agotado' };
 
     const descPct    = descuentoProductoPct(item, _promo);
     const precioDesc = descPct > 0 ? precioConDescuento(item.precio, descPct) : null;
@@ -864,6 +870,14 @@
     }
     if (chips.length) {
       html += `<div class="${cls.chips}">${chips.map(c => `<span class="${cls.chip}">${c}</span>`).join('')}</div>`;
+    }
+
+    // Stock: "agotado" (cargado y en 0) o cantidad restante si aplica control de inventario.
+    // null/undefined = sin control de stock, no se muestra nada (comportamiento de siempre).
+    if (item.stock != null && item.stock <= 0) {
+      html += `<div class="${cls.agotado}">Agotado</div>`;
+    } else if (item.stock != null && item.stock > 0) {
+      html += `<div class="${cls.stock}">Quedan ${item.stock} disponible${item.stock === 1 ? '' : 's'}</div>`;
     }
     return html;
   }
@@ -957,10 +971,13 @@
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`; hayContacto = true; }
     if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
 
-    // Galería
-    if (galeria?.length) {
+    // Galería — los agotados (stock cargado y en 0) no se borran de la base,
+    // solo se ocultan de la grilla (igual que en la app nativa). Si el link
+    // trae ?p= a un producto agotado igual se puede abrir directo (más abajo).
+    const disponibles = (galeria ?? []).filter(item => item.stock == null || item.stock > 0);
+    if (disponibles.length) {
       const grid = document.getElementById('galeria-grid');
-      galeria.forEach(item => {
+      disponibles.forEach(item => {
         const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
         const div = document.createElement('div');
         div.className = 'prod-card';
