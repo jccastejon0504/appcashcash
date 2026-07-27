@@ -217,6 +217,13 @@
       font-size: 10px; font-weight: 700;
       padding: 2px 7px; border-radius: 10px;
     }
+    .prod-oferta-overlay {
+      position: absolute; top: 8px; left: 8px; z-index: 2;
+      display: flex; align-items: center; gap: 3px;
+      background: #ef4444; color: #fff;
+      font-size: 11px; font-weight: 800;
+      padding: 3px 8px; border-radius: 10px;
+    }
     .prod-info { padding: 10px 12px 14px; }
     .prod-nombre {
       font-size: 13px; font-weight: 700; color: var(--text);
@@ -840,7 +847,10 @@
 
     let html = `<div class="${cls.precio}">$${precioDesc ?? item.precio}`;
     if (precioDesc != null) {
-      html += `<span class="${cls.tachado}">$${item.precio}</span><span class="${cls.badge}">-${descPct}%</span>`;
+      html += `<span class="${cls.tachado}">$${item.precio}</span>`;
+      // En la grilla el "-X%" va superpuesto sobre la foto (ver prod-oferta-overlay
+      // en el prod-img-wrap), no repetido aquí. En el modal sí va inline junto al precio.
+      if (tam === 'modal') html += `<span class="${cls.badge}">-${descPct}%</span>`;
     }
     html += `</div>`;
 
@@ -979,6 +989,7 @@
       const grid = document.getElementById('galeria-grid');
       disponibles.forEach(item => {
         const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
+        const descPctGrid = descuentoProductoPct(item, _promo);
         const div = document.createElement('div');
         div.className = 'prod-card';
         div.onclick = () => abrirProducto(item);
@@ -987,6 +998,7 @@
             ${item.imagen
               ? `<img class="prod-img" src="${item.imagen}" alt="${item.titulo ?? ''}" loading="lazy" />`
               : `<div class="prod-placeholder">📦</div>`}
+            ${descPctGrid > 0 ? `<div class="prod-oferta-overlay">🏷️ -${descPctGrid}%</div>` : ''}
             ${imgs.length > 1 ? `<div class="prod-badge-imgs">+${imgs.length} fotos</div>` : ''}
           </div>
           <div class="prod-info">
