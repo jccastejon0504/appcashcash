@@ -1585,6 +1585,31 @@
         </div>
       </div>
 
+      <!-- Límites de Galería / Categorías / Productos (Plan Pro fijo) -->
+      <div class="card" style="max-width:480px">
+        <div class="card-header"><h2>Galería / Categoría / Producto</h2></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Galería</label>
+              <input type="number" id="pro-galeria-slots" min="0" max="50" step="1" placeholder="20" />
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <input type="number" id="pro-categorias-max" min="0" max="50" step="1" placeholder="10" />
+            </div>
+            <div class="form-group">
+              <label>Producto</label>
+              <input type="number" id="pro-productos-max" min="0" max="50" step="1" placeholder="20" />
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+            <button class="btn btn-primary" onclick="guardarLimitesPro()">Guardar cambios</button>
+            <span class="msg" id="msg-limites-pro"></span>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ SOLICITUDES ═════════════════════════════════════ -->
@@ -2578,12 +2603,40 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function cargarPlanPro() {
     const { data } = await db.from('config_app').select('clave,valor')
-      .in('clave', ['pro_precio_mensual', 'pro_precio_anual', 'pro_mensual_activo', 'pro_anual_activo']);
+      .in('clave', ['pro_precio_mensual', 'pro_precio_anual', 'pro_mensual_activo', 'pro_anual_activo',
+                    'pro_galeria_slots', 'pro_categorias_max', 'pro_productos_max']);
     const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
     if (map.pro_precio_mensual) document.getElementById('pro-precio-mensual').value = map.pro_precio_mensual;
     if (map.pro_precio_anual)   document.getElementById('pro-precio-anual').value   = map.pro_precio_anual;
     document.getElementById('pro-mensual-activo').checked = map.pro_mensual_activo !== 'false';
     document.getElementById('pro-anual-activo').checked   = map.pro_anual_activo   !== 'false';
+    document.getElementById('pro-galeria-slots').value  = map.pro_galeria_slots  ?? '20';
+    document.getElementById('pro-categorias-max').value = map.pro_categorias_max ?? '10';
+    document.getElementById('pro-productos-max').value  = map.pro_productos_max  ?? '20';
+  }
+
+  async function guardarLimitesPro() {
+    const msg = document.getElementById('msg-limites-pro');
+    const claves = [
+      ['pro_galeria_slots',  document.getElementById('pro-galeria-slots').value],
+      ['pro_categorias_max', document.getElementById('pro-categorias-max').value],
+      ['pro_productos_max',  document.getElementById('pro-productos-max').value],
+    ];
+    for (const [, v] of claves) {
+      if (!v || isNaN(parseInt(v)) || parseInt(v) < 0) {
+        msg.textContent = 'Ingresa valores numéricos válidos.'; msg.className = 'msg err'; return;
+      }
+    }
+    try {
+      for (const [clave, valor] of claves) {
+        const { error } = await db.from('config_app').upsert({ clave, valor }, { onConflict: 'clave' });
+        if (error) throw new Error(`${clave}: ${error.message}`);
+      }
+      msg.textContent = '¡Guardado!'; msg.className = 'msg ok';
+      setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 3000);
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message; msg.className = 'msg err';
+    }
   }
 
   async function guardarPrecioPro() {
