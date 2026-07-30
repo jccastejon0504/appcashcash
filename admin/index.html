@@ -423,7 +423,7 @@
 
     <div class="nav-section">Socios</div>
     <div class="nav-item" data-section="ofertas">
-      <span class="icon">🏷️</span> Ofertas de Planes
+      <span class="icon">🏷️</span> Ofertas y Planes
     </div>
     <div class="nav-item" data-section="paquete-destacado">
       <span class="icon">🎁</span> Paquete y Destacado
@@ -1586,7 +1586,7 @@
       </div>
 
       <!-- Límites de Galería / Categorías / Productos (Plan Pro fijo) -->
-      <div class="card" style="max-width:480px">
+      <div class="card" style="max-width:480px;margin-top:24px">
         <div class="card-header"><h2>Galería / Categoría / Producto</h2></div>
         <div class="card-body">
           <div class="form-grid">
@@ -1651,8 +1651,25 @@
     <div class="section" id="section-socios">
       <div class="card">
         <div class="card-header">
-          <h2>Socios Activos</h2>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <h2>Socios Activos</h2>
+            <div id="tabs-filtro-socios" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="tab-filtro" data-filtro="" onclick="setFiltroSociosEstado('')">Todos</button>
+              <button type="button" class="tab-filtro active" data-filtro="activo" onclick="setFiltroSociosEstado('activo')">Activos</button>
+              <button type="button" class="tab-filtro" data-filtro="inactivo" onclick="setFiltroSociosEstado('inactivo')">Inactivos</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="filtro-socios-categoria" onchange="setFiltroSociosCategoria(this.value)" style="height:30px;font-size:12px;padding:0 8px">
+              <option value="">Todas las categorías</option>
+            </select>
+            <div style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:6px;padding:5px 10px;background:var(--bg);font-size:12px;height:30px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="filtro-socios-telefono" type="text" placeholder="Buscar por teléfono…"
+                style="border:none;outline:none;background:transparent;font-size:12px;width:150px;color:var(--text)"
+                oninput="onInputFiltroSociosTelefono()" autocomplete="off" />
+              <button id="btn-limpiar-filtro-socios-tel" onclick="limpiarFiltroSociosTelefono()" style="display:none;border:none;background:none;cursor:pointer;padding:0;line-height:1;color:var(--muted);font-size:13px">✕</button>
+            </div>
             <span id="msg-geocod" style="font-size:12px;color:var(--muted)"></span>
             <button class="btn btn-outline btn-sm" onclick="geocodificarSocios()" id="btn-geocod" title="Asignar coordenadas a tiendas que solo tienen dirección">📡 Geocodificar</button>
             <button class="btn btn-outline btn-sm" onclick="cargarSocios()">Actualizar</button>
@@ -2021,7 +2038,7 @@
     'reporte-ingresos': { title: 'Reporte y Ingresos', sub: 'Ingresos aprobados por concepto según el período' },
     descargas:    { title: 'Descargas de la App',      sub: 'Contador de instalaciones por plataforma' },
     analytics:    { title: 'Analytics',               sub: 'Actividad de usuarios en la app' },
-    ofertas:      { title: 'Ofertas de Planes',        sub: 'Gestiona las promociones de membresía' },
+    ofertas:      { title: 'Ofertas y Planes',          sub: 'Gestiona las promociones de membresía' },
     'plan-pro':   { title: 'Plan Pro',                 sub: 'Configura el contenido de la pantalla Tienda Pro en la app' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
@@ -4018,6 +4035,55 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   let _sociosHayMas = true;
   let _sociosTelCount = {}; // conteo de tiendas por teléfono, precalculado aparte (ver abajo) para no depender de tener TODOS los socios cargados en el DOM
 
+  // Filtros de la tabla — Estado por defecto en 'activo' para preservar el
+  // comportamiento previo (la tabla solo mostraba socios activos).
+  let _filtroSociosEstado    = 'activo'; // '' (todos) | 'activo' | 'inactivo'
+  let _filtroSociosCategoria = '';       // subcategoria_id o ''
+  let _filtroSociosTelefono  = '';
+  let _timerFiltroSociosTel  = null;
+  let _categoriasFiltroSocios = null;    // null = aún no cargadas
+
+  function setFiltroSociosEstado(valor) {
+    _filtroSociosEstado = valor;
+    document.querySelectorAll('#tabs-filtro-socios .tab-filtro').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filtro === valor);
+    });
+    cargarSocios();
+  }
+
+  function setFiltroSociosCategoria(valor) {
+    _filtroSociosCategoria = valor;
+    cargarSocios();
+  }
+
+  function onInputFiltroSociosTelefono() {
+    const valor = document.getElementById('filtro-socios-telefono').value.trim();
+    document.getElementById('btn-limpiar-filtro-socios-tel').style.display = valor ? 'inline' : 'none';
+    clearTimeout(_timerFiltroSociosTel);
+    _timerFiltroSociosTel = setTimeout(() => {
+      _filtroSociosTelefono = valor;
+      cargarSocios();
+    }, 350);
+  }
+
+  function limpiarFiltroSociosTelefono() {
+    document.getElementById('filtro-socios-telefono').value = '';
+    document.getElementById('btn-limpiar-filtro-socios-tel').style.display = 'none';
+    clearTimeout(_timerFiltroSociosTel);
+    _filtroSociosTelefono = '';
+    cargarSocios();
+  }
+
+  async function cargarCategoriasFiltroSocios() {
+    if (_categoriasFiltroSocios) return; // ya cargadas, no repetir ni resetear la selección
+    const { data } = await db.from('subcategorias').select('id,nombre').is('categoria_id', null).order('nombre');
+    _categoriasFiltroSocios = data ?? [];
+    const sel = document.getElementById('filtro-socios-categoria');
+    if (sel) {
+      sel.insertAdjacentHTML('beforeend', _categoriasFiltroSocios.map(c => `<option value="${c.id}">${c.nombre}</option>`).join(''));
+    }
+  }
+
   async function cargarSociosTelCount() {
     // Columnas livianas nada más (no select *): esto es aparte de la tabla paginada,
     // solo para poder mostrar el badge "cliente con varias tiendas" sin cargar todo.
@@ -4036,10 +4102,18 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       await resetearVencidos(false); // auto-desactiva vencidos silenciosamente
       _sociosOffset = 0;
       _sociosHayMas = true;
-      await cargarSociosTelCount();
+      await Promise.all([cargarSociosTelCount(), cargarCategoriasFiltroSocios()]);
     }
-    const { data } = await db.from('socios_comerciales').select('*').or('activo.is.null,activo.eq.true')
-      .order('nombre').range(_sociosOffset, _sociosOffset + SOCIOS_PAGE_SIZE - 1);
+    let q = db.from('socios_comerciales').select('*');
+    if (_filtroSociosEstado === 'activo') q = q.or('activo.is.null,activo.eq.true');
+    else if (_filtroSociosEstado === 'inactivo') q = q.eq('activo', false);
+    // '' (Todos): sin filtro de estado
+    if (_filtroSociosCategoria) q = q.eq('subcategoria_id', _filtroSociosCategoria);
+    if (_filtroSociosTelefono) {
+      const t = _filtroSociosTelefono.replace(/'/g, "''");
+      q = q.or(`telefono.ilike.%${t}%,whatsapp.ilike.%${t}%`);
+    }
+    const { data } = await q.order('nombre').range(_sociosOffset, _sociosOffset + SOCIOS_PAGE_SIZE - 1);
     const tbody = document.getElementById('tabla-socios');
     if (!append && !data?.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty"><p>Sin socios</p></td></tr>'; _sociosHayMas = false; renderBtnCargarMasSocios(); return; }
 
@@ -5227,6 +5301,24 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }
   }
 
+  // Mismo tipo de circulo que "Solicitudes", pero solo para solicitudes de
+  // plan galeria_extra/destacado (las que se gestionan en "Paquete y Destacado").
+  let _paquetesNuevos = 0;
+
+  function _mostrarBadgePaquetes(n) {
+    let badge = document.getElementById('badge-paquetes');
+    if (!badge) {
+      const navItem = document.querySelector('.nav-item[data-section="paquete-destacado"]');
+      if (!navItem) return;
+      badge = document.createElement('span');
+      badge.id = 'badge-paquetes';
+      badge.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:6px;min-width:18px;text-align:center;display:inline-block';
+      navItem.appendChild(badge);
+    }
+    if (n > 0) { badge.textContent = n; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }
+
   // Desbloquea el audio en el primer click/tecla (los navegadores bloquean
   // sonido autónomo hasta que hay un gesto del usuario en la página).
   let _audioCtx = null;
@@ -5288,6 +5380,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         _mostrarBadgeSol(_solicitudesNuevas);
         _sonarNotif();
         _agitarCampana(payload.new);
+
+        // Solicitudes de galeria_extra/destacado se gestionan aparte, en
+        // "Paquete y Destacado" — llevan su propio circulo de contador.
+        if (payload.new?.plan === 'galeria_extra' || payload.new?.plan === 'destacado') {
+          _paquetesNuevos++;
+          _mostrarBadgePaquetes(_paquetesNuevos);
+          if (_seccionActual === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
+        }
       }
     })
     .subscribe();
@@ -5304,6 +5404,10 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'solicitudes') {
       _solicitudesNuevas = 0;
       _mostrarBadgeSol(0);
+    }
+    if (id === 'paquete-destacado') {
+      _paquetesNuevos = 0;
+      _mostrarBadgePaquetes(0);
     }
   };
 
@@ -5422,7 +5526,23 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         btnRej.addEventListener('click', () => rechazarGaleriaExtra(sol.id, btnRej));
         acc.appendChild(btnApr); acc.appendChild(btnRej);
       }
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑 Eliminar';
+      btnDel.style.cssText = 'background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca';
+      btnDel.addEventListener('click', () => eliminarSolicitudPaquete(sol.id, sol.nombre, 'galeria', btnDel));
+      acc.appendChild(btnDel);
     });
+  }
+
+  async function eliminarSolicitudPaquete(id, nombre, tipo, btn) {
+    const etiqueta = tipo === 'galeria' ? 'galería extra' : 'destacado';
+    if (!confirm(`¿Eliminar la solicitud de ${etiqueta} de "${nombre}"? Esto solo borra el registro de la solicitud (no la tienda). No se puede deshacer.`)) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    const { error } = await db.from('solicitudes').delete().eq('id', id);
+    if (error) { mostrarToast('Error: ' + error.message, 'err'); if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; } return; }
+    mostrarToast('Solicitud eliminada.', 'ok');
+    if (tipo === 'galeria') await cargarGaleriaExtra();
+    else await cargarDestacados();
   }
 
   async function aprobarGaleriaExtra(sol, btn) {
@@ -5556,6 +5676,11 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         btnRej.addEventListener('click', () => rechazarDestacado(sol.id, btnRej));
         acc.appendChild(btnRej);
       }
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑 Eliminar';
+      btnDel.style.cssText = 'background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca';
+      btnDel.addEventListener('click', () => eliminarSolicitudPaquete(sol.id, sol.nombre, 'destacado', btnDel));
+      acc.appendChild(btnDel);
     });
   }
 
