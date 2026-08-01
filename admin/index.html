@@ -2837,7 +2837,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   async function cargarSolicitudes(append = false) {
     if (!append) { _solicitudesOffset = 0; _solicitudesHayMas = true; }
     const filtro = _filtroSolicitudesActual;
-    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado')
+    let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado').neq('plan', 'cambio_datos')
       .order('created_at', { ascending: false })
       .range(_solicitudesOffset, _solicitudesOffset + SOLICITUDES_PAGE_SIZE - 1);
     if (filtro) q = q.eq('estado', filtro);
