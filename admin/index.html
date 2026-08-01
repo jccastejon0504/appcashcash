@@ -434,6 +434,9 @@
     <div class="nav-item" data-section="solicitudes">
       <span class="icon">📋</span> Solicitudes
     </div>
+    <div class="nav-item" data-section="cambio-datos">
+      <span class="icon">✏️</span> Corrección de Datos
+    </div>
     <div class="nav-item" data-section="socios">
       <span class="icon">🏪</span> Socios Activos
     </div>
@@ -1647,6 +1650,19 @@
       </div>
     </div>
 
+    <!-- ══ CORRECCIÓN DE DATOS ═══════════════════════════════ -->
+    <div class="section" id="section-cambio-datos">
+      <div class="card">
+        <div class="card-header">
+          <h2>✏️ Solicitudes de corrección de nombre/teléfono</h2>
+          <button class="btn btn-outline btn-sm" onclick="cargarCambioDatos()">Actualizar</button>
+        </div>
+        <div id="lista-cambio-datos" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <p class="loading">Cargando…</p>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ SOCIOS ACTIVOS ══════════════════════════════════ -->
     <div class="section" id="section-socios">
       <div class="card">
@@ -2041,6 +2057,7 @@
     ofertas:      { title: 'Ofertas y Planes',          sub: 'Gestiona las promociones de membresía' },
     'plan-pro':   { title: 'Plan Pro',                 sub: 'Configura el contenido de la pantalla Tienda Pro en la app' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
+    'cambio-datos': { title: 'Corrección de Datos',    sub: 'Solicitudes de cambio de nombre o teléfono de tiendas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
     'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
@@ -2110,6 +2127,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'plan-pro')    cargarPlanPro();
     if (id === 'solicitudes') cargarSolicitudes();
+    if (id === 'cambio-datos') cargarCambioDatos();
     if (id === 'socios')      cargarSocios();
     if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
@@ -5220,6 +5238,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       'reporte-ingresos': () => selPeriodo(repPeriodo),
       ofertas:     cargarOfertas,
       solicitudes: cargarSolicitudes,
+      'cambio-datos': cargarCambioDatos,
       socios:      cargarSocios,
       'paquete-destacado': () => { cargarGaleriaExtra(); cargarDestacados(); },
       ubicaciones: cargarEstados,
@@ -5319,6 +5338,24 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     else { badge.style.display = 'none'; }
   }
 
+  // Mismo tipo de circulo, pero solo para solicitudes de corrección de
+  // nombre/teléfono (tipo='cambio_datos'), gestionadas en su propio módulo.
+  let _cambioDatosNuevos = 0;
+
+  function _mostrarBadgeCambioDatos(n) {
+    let badge = document.getElementById('badge-cambio-datos');
+    if (!badge) {
+      const navItem = document.querySelector('.nav-item[data-section="cambio-datos"]');
+      if (!navItem) return;
+      badge = document.createElement('span');
+      badge.id = 'badge-cambio-datos';
+      badge.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:6px;min-width:18px;text-align:center;display:inline-block';
+      navItem.appendChild(badge);
+    }
+    if (n > 0) { badge.textContent = n; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }
+
   // Desbloquea el audio en el primer click/tecla (los navegadores bloquean
   // sonido autónomo hasta que hay un gesto del usuario en la página).
   let _audioCtx = null;
@@ -5354,6 +5391,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     galeria_extra: 'Solicitud de paquete de galería',
     renovacion:    'Solicitud de renovación',
     registro_pro:  'Nueva solicitud de registro (Pro)',
+    cambio_datos:  'Solicitud de corrección de datos',
   };
 
   function _agitarCampana(row) {
@@ -5388,6 +5426,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           _mostrarBadgePaquetes(_paquetesNuevos);
           if (_seccionActual === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
         }
+
+        // Solicitudes de corrección de nombre/teléfono se gestionan aparte,
+        // en "Corrección de Datos" — llevan su propio circulo de contador.
+        if (payload.new?.tipo === 'cambio_datos') {
+          _cambioDatosNuevos++;
+          _mostrarBadgeCambioDatos(_cambioDatosNuevos);
+          if (_seccionActual === 'cambio-datos') cargarCambioDatos();
+        }
       }
     })
     .subscribe();
@@ -5409,7 +5455,139 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       _paquetesNuevos = 0;
       _mostrarBadgePaquetes(0);
     }
+    if (id === 'cambio-datos') {
+      _cambioDatosNuevos = 0;
+      _mostrarBadgeCambioDatos(0);
+    }
   };
+
+  // ═══════════════════════════════════════════════════════
+  // MÓDULO: CORRECCIÓN DE DATOS (nombre/teléfono)
+  // ═══════════════════════════════════════════════════════
+  //
+  // El cliente, desde "Editar mi tienda" en la app, puede pedir que se
+  // corrija el nombre o teléfono de su tienda (ej: error de tipeo al
+  // registrarse) sin aplicar el cambio directo — queda como solicitudes.tipo
+  // = 'cambio_datos', ligada a la tienda via socio_id. Aprobar aquí actualiza
+  // socios_comerciales Y sincroniza el nombre/telefono en TODAS las
+  // solicitudes históricas de esa tienda (evita el bug de "tienda fantasma"
+  // en el límite de tiendas por typos entre solicitudes y socios_comerciales).
+
+  var cambioDatosData = [];
+
+  async function cargarCambioDatos() {
+    const cont = document.getElementById('lista-cambio-datos');
+    try {
+      const { data: sols, error } = await db.from('solicitudes')
+        .select('id,nombre,telefono,whatsapp,notas,estado,created_at,socio_id')
+        .eq('tipo', 'cambio_datos')
+        .order('created_at', { ascending: false });
+      if (error) { cont.innerHTML = `<div style="color:red;padding:12px">Error: ${error.message}</div>`; return; }
+
+      const socioIds = [...new Set((sols ?? []).map(s => s.socio_id).filter(Boolean))];
+      let socios = {};
+      if (socioIds.length) {
+        const { data: ss } = await db.from('socios_comerciales').select('id,nombre,telefono,whatsapp').in('id', socioIds);
+        socios = Object.fromEntries((ss ?? []).map(s => [s.id, s]));
+      }
+      cambioDatosData = (sols ?? []).map(s => ({ ...s, _actual: socios[s.socio_id] ?? null }));
+      renderCambioDatos();
+    } catch(e) {
+      cont.innerHTML = `<div style="color:red;padding:12px">Error JS: ${e.message}</div>`;
+    }
+  }
+
+  function renderCambioDatos() {
+    const cont = document.getElementById('lista-cambio-datos');
+    if (!cambioDatosData.length) {
+      cont.innerHTML = '<p class="empty" style="padding:20px 0">Sin solicitudes de corrección de datos.</p>';
+      return;
+    }
+    cont.innerHTML = '';
+    cambioDatosData.forEach(sol => {
+      const actual = sol._actual;
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px';
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px;color:var(--muted)">${fmtFecha(sol.created_at)}</div>
+          <span class="${sol.estado === 'pendiente' ? 'badge-pendiente' : sol.estado === 'aprobado' ? 'badge badge-green' : 'badge badge-gray'}">${sol.estado}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:#f8f9fb;border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Dato actual</div>
+            <div style="font-size:13px;font-weight:700">${actual?.nombre ?? '—'}</div>
+            <div style="font-size:12px;color:var(--muted)">${actual?.telefono || actual?.whatsapp || '—'}</div>
+          </div>
+          <div style="background:#fff3ea;border-radius:8px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:4px">Propuesto</div>
+            <div style="font-size:13px;font-weight:700">${sol.nombre ?? '—'}</div>
+            <div style="font-size:12px;color:var(--muted)">${sol.telefono || sol.whatsapp || '—'}</div>
+          </div>
+        </div>
+        ${sol.notas ? `<div style="font-size:12px;color:var(--muted)"><b>Motivo:</b> ${sol.notas}</div>` : ''}
+        ${!actual ? `<div style="font-size:12px;color:var(--red)">⚠ No se encontró la tienda vinculada (socio_id ausente o eliminado).</div>` : ''}
+        <div class="gal-sol-acciones" id="cd-acc-${sol.id}" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      `;
+      cont.appendChild(row);
+
+      const acc = document.getElementById(`cd-acc-${sol.id}`);
+      if (sol.estado === 'pendiente') {
+        const btnApr = document.createElement('button');
+        btnApr.className = 'btn-accion btn-toggle-activo'; btnApr.textContent = 'Aprobar';
+        btnApr.disabled = !actual;
+        btnApr.addEventListener('click', () => aprobarCambioDatos(sol, btnApr));
+        const btnRej = document.createElement('button');
+        btnRej.className = 'btn-accion btn-eliminar-hist'; btnRej.textContent = 'Rechazar';
+        btnRej.addEventListener('click', () => rechazarCambioDatos(sol.id, btnRej));
+        acc.appendChild(btnApr); acc.appendChild(btnRej);
+      }
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑 Eliminar';
+      btnDel.style.cssText = 'background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca';
+      btnDel.addEventListener('click', () => eliminarCambioDatos(sol.id, sol.nombre, btnDel));
+      acc.appendChild(btnDel);
+    });
+  }
+
+  async function aprobarCambioDatos(sol, btn) {
+    if (!sol.socio_id) { mostrarToast('Esta solicitud no está vinculada a ninguna tienda.', 'err'); return; }
+    btn.disabled = true; btn.textContent = '…';
+    const nombreNuevo = sol.nombre?.trim();
+    const telNuevo    = sol.telefono?.trim() || null;
+
+    const { error: errSocio } = await db.from('socios_comerciales')
+      .update({ nombre: nombreNuevo, telefono: telNuevo, whatsapp: sol.whatsapp?.trim() || telNuevo })
+      .eq('id', sol.socio_id);
+    if (errSocio) { mostrarToast('Error: ' + errSocio.message, 'err'); btn.disabled = false; btn.textContent = 'Aprobar'; return; }
+
+    // Sincroniza TODAS las solicitudes históricas de esta tienda (no solo
+    // esta), asi ninguna queda con el nombre/typo original.
+    await db.from('solicitudes').update({ nombre: nombreNuevo, telefono: telNuevo }).eq('socio_id', sol.socio_id);
+    await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
+
+    mostrarToast(`✓ Datos actualizados para "${nombreNuevo}".`, 'ok');
+    await cargarCambioDatos();
+  }
+
+  async function rechazarCambioDatos(id, btn) {
+    const motivo = prompt('Motivo del rechazo (opcional — se mostrará al comerciante):') ?? null;
+    btn.disabled = true; btn.textContent = '…';
+    const payload = { estado: 'rechazado' };
+    if (motivo && motivo.trim()) payload.notas = motivo.trim();
+    await db.from('solicitudes').update(payload).eq('id', id);
+    mostrarToast('Solicitud rechazada.', 'ok');
+    await cargarCambioDatos();
+  }
+
+  async function eliminarCambioDatos(id, nombre, btn) {
+    if (!confirm(`¿Eliminar esta solicitud de corrección de datos de "${nombre}"? No se puede deshacer.`)) return;
+    btn.disabled = true; btn.textContent = '…';
+    const { error } = await db.from('solicitudes').delete().eq('id', id);
+    if (error) { mostrarToast('Error: ' + error.message, 'err'); btn.disabled = false; btn.textContent = '🗑 Eliminar'; return; }
+    mostrarToast('Solicitud eliminada.', 'ok');
+    await cargarCambioDatos();
+  }
 
   // ═══════════════════════════════════════════════════════
   // MÓDULO: GALERÍA EXTRA
