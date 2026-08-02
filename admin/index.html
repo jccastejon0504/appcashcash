@@ -3187,6 +3187,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         fecha_vencimiento: sol.fecha_vencimiento, plan: sol.plan, activo: true,
         ciudad: sol.ciudad, direccion: sol.direccion, descripcion: sol.descripcion,
         web: sol.redes, subcategoria_id: sol.subcategoria_id,
+        email: sol.email ?? null,
       }).eq('id', socioId);
       await db.from('solicitudes').update({ socio_id: socioId }).eq('id', solId);
       if (msg) { msg.textContent = '✓ Actualizado en Socios Activos.'; msg.style.color = 'var(--green)'; }
@@ -3205,6 +3206,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         latitud:  sol.latitud  ?? null,
         longitud: sol.longitud ?? null,
         slug: slugNuevo,
+        email: sol.email ?? null,
         activo: true,
       }).select('id').single();
       if (error) { if (msg) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; } return; }
@@ -3532,6 +3534,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
               web: sol.redes, ciudad: sol.ciudad,
               direccion: sol.direccion, descripcion: sol.descripcion,
               subcategoria_id: sol.subcategoria_id,
+              email: sol.email ?? null,
             });
           }
           const { error: errUpd } = await db.from('socios_comerciales').update(updateData).eq('id', socioId);
@@ -3561,6 +3564,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             imagen12:          sol.imagen12,
             fecha_vencimiento: fechaVenc,
             subcategoria_id:   sol.subcategoria_id,
+            email:             sol.email ?? null,
             activo:            true,
           }).select('id').single();
           if (errIns) { alert('Error al crear socio: ' + errIns.message); return; }
