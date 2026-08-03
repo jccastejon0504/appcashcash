@@ -5778,7 +5778,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     try {
       const { data: sols, error } = await db.from('solicitudes')
-        .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id')
+        .select('id,nombre,telefono,whatsapp,descripcion,monto,metodo_pago,referencia,comprobante,estado,created_at,socio_id,fecha_aprobacion')
         .eq('plan', 'destacado')
         .order('created_at', { ascending: false });
       if (error) {
@@ -5844,11 +5844,16 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       if (sol.estado === 'aprobado') {
         const hasta = destacadosVigenciaMap[sol.socio_id];
         const dias = hasta ? Math.ceil((new Date(hasta) - new Date()) / 86400000) : null;
-        vigenciaHtml = dias == null
-          ? ''
-          : dias > 0
-            ? `<br><span class="badge badge-green" style="margin-top:4px;display:inline-block">⏳ ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}</span>`
-            : `<br><span class="badge badge-gray" style="margin-top:4px;display:inline-block">Vencido</span>`;
+        // Solicitudes aprobadas antes de este cambio no tienen fecha_aprobacion
+        // guardada (se agregó recién) -- se muestra "—" en vez de omitir la
+        // línea, igual que el resto del admin hace con fechas ausentes.
+        const lineas = [`<span style="font-size:11px;color:var(--muted)">Activado: ${sol.fecha_aprobacion ? fmtFecha(sol.fecha_aprobacion) : '—'}</span>`];
+        if (dias != null) {
+          lineas.push(dias > 0
+            ? `<span class="badge badge-green" style="display:inline-block">⏳ ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}</span>`
+            : `<span class="badge badge-gray" style="display:inline-block">Vencido</span>`);
+        }
+        vigenciaHtml = lineas.length ? '<br>' + lineas.join('<br>') : '';
       }
       const row = document.createElement('div');
       row.className = 'gal-sol-row';
@@ -5918,7 +5923,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     // (la condición de vigencia en toda la app es un OR entre ambos campos).
     const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha }).eq('id', sol.socio_id);
     if (error) { mostrarToast('Error: ' + error.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
-    await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
+    await db.from('solicitudes').update({ estado: 'aprobado', fecha_aprobacion: new Date().toISOString() }).eq('id', sol.id);
     mostrarToast(`✓ Destacado hasta ${nuevaFecha} asignado a "${sol.nombre}".`, 'ok');
     await cargarDestacados();
   }
