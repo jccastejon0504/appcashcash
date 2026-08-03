@@ -4151,6 +4151,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         ? `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-gray">Sin fecha</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`
         : dias > 0 ? `<span class="badge badge-green">${dias}d</span>`
         : `<div style="display:flex;align-items:center;gap:4px"><span class="badge badge-red">Vencido</span><button class="btn btn-sm btn-outline" style="padding:2px 7px;font-size:11px" onclick="asignarFechaRapida('${s.id}','${s.nombre?.replace(/'/g,'')}')">📅</button></div>`;
+      // "Destacado" vigente = flag manual permanente O fecha de destacado_hasta
+      // sin vencer (mismo OR que usa toda la app, no solo el booleano crudo).
+      const destHasta = s.destacado_hasta ? new Date(s.destacado_hasta) : null;
+      const destDias  = destHasta ? Math.ceil((destHasta - hoy) / 86400000) : null;
+      const destVigente = s.destacado === true || (destDias != null && destDias > 0);
+      const destCell = !destVigente ? '—'
+        : destDias != null ? `⭐ <span class="badge badge-green">${destDias}d</span>`
+        : '⭐';
       const telNorm    = (s.telefono || s.whatsapp || '').replace(/\D/g, '');
       const nTiendas   = telNorm ? telCount[telNorm] : 0;
       const multiBadge = nTiendas > 1
@@ -4171,7 +4179,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <td>${s.redes ?? '—'}</td>
           <td>${s.ciudad ?? '—'}</td>
           <td>${s.direccion ?? '—'}</td>
-          <td>${s.destacado ? '⭐' : '—'}</td>
+          <td>${destCell}</td>
           <td>${vencBadge}</td>
           <td><span class="badge ${s.activo !== false ? 'badge-green' : 'badge-gray'}">${s.activo !== false ? 'Activo' : 'Inactivo'}</span></td>
           <td style="display:flex;gap:6px">
@@ -5109,7 +5117,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       }
 
       const vencida = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) < hoy : false;
-      const esDest  = s.destacado;
+      const esDest  = s.destacado === true || (!!s.destacado_hasta && new Date(s.destacado_hasta) > hoy);
       const color   = vencida ? '#dc2626' : esDest ? '#f59e0b' : '#16a34a';
       const border  = vencida ? '#991b1b' : esDest ? '#b45309' : '#15803d';
 
@@ -5756,6 +5764,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
   // ── Destacados ────────────────────────────────────────────────────────────
 
   var solicitudesDestacadosData = [];
+  var destacadosVigenciaMap = {};
 
   async function cargarDestacados() {
     try {
@@ -5778,6 +5787,18 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         return;
       }
       solicitudesDestacadosData = sols ?? [];
+
+      // Vigencia real de cada tienda (una tienda puede tener varias
+      // solicitudes acumuladas, así que los "días restantes" salen del
+      // destacado_hasta actual del socio, no de la solicitud individual).
+      const socioIds = [...new Set(solicitudesDestacadosData.filter(s => s.socio_id).map(s => s.socio_id))];
+      if (socioIds.length) {
+        const { data: socios } = await db.from('socios_comerciales').select('id,destacado_hasta').in('id', socioIds);
+        destacadosVigenciaMap = Object.fromEntries((socios ?? []).map(s => [s.id, s.destacado_hasta]));
+      } else {
+        destacadosVigenciaMap = {};
+      }
+
       renderSolicitudesDestacados();
     } catch(e) {
       console.error('[destacados] error query:', e);
@@ -5819,6 +5840,16 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (!solicitudesDestacadosData.length) { empty.style.display = 'block'; return; }
     empty.style.display = 'none';
     solicitudesDestacadosData.forEach(sol => {
+      let vigenciaHtml = '';
+      if (sol.estado === 'aprobado') {
+        const hasta = destacadosVigenciaMap[sol.socio_id];
+        const dias = hasta ? Math.ceil((new Date(hasta) - new Date()) / 86400000) : null;
+        vigenciaHtml = dias == null
+          ? ''
+          : dias > 0
+            ? `<br><span class="badge badge-green" style="margin-top:4px;display:inline-block">⏳ ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}</span>`
+            : `<br><span class="badge badge-gray" style="margin-top:4px;display:inline-block">Vencido</span>`;
+      }
       const row = document.createElement('div');
       row.className = 'gal-sol-row';
       row.innerHTML = `
@@ -5826,7 +5857,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
           <b>${sol.nombre}</b><br>
           <span style="font-size:12px;color:var(--muted)">${sol.telefono || sol.whatsapp || ''}</span>
         </div>
-        <div>${sol.descripcion ?? '—'}</div>
+        <div>${sol.descripcion ?? '—'}${vigenciaHtml}</div>
         <div><b>$${Number(sol.monto||0).toFixed(2)}</b></div>
         <div>${sol.referencia ?? '—'}</div>
         <div>
@@ -5880,7 +5911,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     base.setDate(base.getDate() + dias);
     const nuevaFecha = base.toISOString().split('T')[0];
 
-    const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha, destacado: true }).eq('id', sol.socio_id);
+    // Ojo: no se toca "destacado" (booleano) aquí -- ese campo es el toggle
+    // manual/permanente de "Editar tienda" (edit-socio-destacado), separado
+    // del destacado pago por días. Si esta aprobación también lo pusiera en
+    // true, la tienda quedaría destacada para siempre sin importar la fecha
+    // (la condición de vigencia en toda la app es un OR entre ambos campos).
+    const { error } = await db.from('socios_comerciales').update({ destacado_hasta: nuevaFecha }).eq('id', sol.socio_id);
     if (error) { mostrarToast('Error: ' + error.message, 'err'); btn.disabled=false; btn.textContent='Aprobar'; return; }
     await db.from('solicitudes').update({ estado: 'aprobado' }).eq('id', sol.id);
     mostrarToast(`✓ Destacado hasta ${nuevaFecha} asignado a "${sol.nombre}".`, 'ok');
