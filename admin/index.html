@@ -2859,12 +2859,14 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     const tarjetas = (data ?? []).map(s => {
       const estado       = s.estado ?? 'pendiente';
-      // Una solicitud aprobada cuya membresía ya venció (mismo calculo que
-      // badgeMembresiaHTML) se resalta con el mismo rojo que "vencida", en
-      // vez de seguir mostrando el verde de "aprobado" para siempre.
+      // Una solicitud aprobada cuya membresía ya está en "0 días restantes"
+      // o vencida (mismo cálculo por día que badgeMembresiaHTML, no por hora
+      // exacta) se resalta con el mismo color que esa etiqueta usa, en vez
+      // de seguir mostrando el verde de "aprobado" para siempre.
       const diasRestBorde = estado === 'aprobado' ? calcDiasRestantes(s.fecha_vencimiento) : null;
-      const vencidaBorde  = diasRestBorde !== null && diasRestBorde < 0;
-      const colorBorde   = vencidaBorde ? '#ef4444' : estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
+      const colorBorde   = (diasRestBorde !== null && diasRestBorde <= 0)
+        ? (diasRestBorde < 0 ? '#ef4444' : '#f59e0b')
+        : estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
       const uid          = s.id.replace(/-/g,'').slice(0,8);
       const catNombre    = _catsSol.find(c => c.id === s.subcategoria_id)?.nombre ?? null;
       const catActual    = s.subcategoria_id ?? '';
