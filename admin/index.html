@@ -425,14 +425,14 @@
     <div class="nav-item" data-section="cambio-datos">
       <span class="icon">✏️</span> Corrección de Datos
     </div>
+    <div class="nav-item" data-section="plan-pro">
+      <span class="icon">🚀</span> Plan Pro
+    </div>
     <div class="nav-item" data-section="ofertas">
       <span class="icon">🏷️</span> Ofertas y Planes
     </div>
     <div class="nav-item" data-section="paquete-destacado">
       <span class="icon">🎁</span> Paquete y Destacado
-    </div>
-    <div class="nav-item" data-section="plan-pro">
-      <span class="icon">🚀</span> Plan Pro
     </div>
     <div class="nav-item" data-section="solicitudes">
       <span class="icon">📋</span> Solicitudes
@@ -2859,7 +2859,12 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
     const tarjetas = (data ?? []).map(s => {
       const estado       = s.estado ?? 'pendiente';
-      const colorBorde   = estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
+      // Una solicitud aprobada cuya membresía ya venció (mismo calculo que
+      // badgeMembresiaHTML) se resalta con el mismo rojo que "vencida", en
+      // vez de seguir mostrando el verde de "aprobado" para siempre.
+      const diasRestBorde = estado === 'aprobado' ? calcDiasRestantes(s.fecha_vencimiento) : null;
+      const vencidaBorde  = diasRestBorde !== null && diasRestBorde < 0;
+      const colorBorde   = vencidaBorde ? '#ef4444' : estado === 'aprobado' ? 'var(--green)' : estado === 'rechazado' ? '#ef4444' : 'var(--border)';
       const uid          = s.id.replace(/-/g,'').slice(0,8);
       const catNombre    = _catsSol.find(c => c.id === s.subcategoria_id)?.nombre ?? null;
       const catActual    = s.subcategoria_id ?? '';
