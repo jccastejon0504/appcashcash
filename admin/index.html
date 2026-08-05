@@ -5867,7 +5867,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         <div>${sol.referencia ?? '—'}</div>
         <div>
           <span class="${sol.estado === 'pendiente' ? 'badge-pendiente' : sol.estado === 'aprobado' ? 'badge badge-green' : 'badge badge-gray'}">
-            ${sol.estado}
+            ${sol.estado === 'aprobado' ? 'Solicitud aprobada' : sol.estado}
           </span>
         </div>
         <div class="gal-sol-acciones" id="dest-acc-${sol.id}"></div>
