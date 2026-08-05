@@ -1452,8 +1452,8 @@
           <div style="padding:16px">
             <div id="dest-solicitudes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Sin solicitudes aún.</div>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <div class="gal-sol-row" style="background:#fdf4ff;font-weight:700;color:#a855f7;font-size:12px">
-                <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Estado</span><span>Acciones</span>
+              <div class="gal-sol-row" style="background:#fdf4ff;font-weight:700;color:#a855f7;font-size:12px;grid-template-columns:2fr 1.7fr 1fr 1.3fr 1.3fr 1fr 1.8fr">
+                <span>Tienda</span><span>Descripción</span><span>Monto</span><span>Referencia</span><span>Fecha de inicio</span><span>Estado</span><span>Acciones</span>
               </div>
               <div id="dest-solicitudes-body"><p class="loading">Cargando…</p></div>
             </div>
@@ -5844,19 +5844,15 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       if (sol.estado === 'aprobado') {
         const hasta = destacadosVigenciaMap[sol.socio_id];
         const dias = hasta ? Math.ceil((new Date(hasta) - new Date()) / 86400000) : null;
-        // Solicitudes aprobadas antes de este cambio no tienen fecha_aprobacion
-        // guardada (se agregó recién) -- se muestra "—" en vez de omitir la
-        // línea, igual que el resto del admin hace con fechas ausentes.
-        const lineas = [`<span style="font-size:11px;color:var(--muted)">Activado: ${sol.fecha_aprobacion ? fmtFecha(sol.fecha_aprobacion) : '—'}</span>`];
         if (dias != null) {
-          lineas.push(dias > 0
+          vigenciaHtml = '<br>' + (dias > 0
             ? `<span class="badge badge-green" style="display:inline-block">⏳ ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}</span>`
             : `<span class="badge badge-gray" style="display:inline-block">Vencido</span>`);
         }
-        vigenciaHtml = lineas.length ? '<br>' + lineas.join('<br>') : '';
       }
       const row = document.createElement('div');
       row.className = 'gal-sol-row';
+      row.style.gridTemplateColumns = '2fr 1.7fr 1fr 1.3fr 1.3fr 1fr 1.8fr';
       row.innerHTML = `
         <div>
           <b>${sol.nombre}</b><br>
@@ -5865,6 +5861,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         <div>${sol.descripcion ?? '—'}${vigenciaHtml}</div>
         <div><b>$${Number(sol.monto||0).toFixed(2)}</b></div>
         <div>${sol.referencia ?? '—'}</div>
+        <div style="font-size:12px">${sol.fecha_aprobacion ? fmtFecha(sol.fecha_aprobacion) : '—'}</div>
         <div>
           <span class="${sol.estado === 'pendiente' ? 'badge-pendiente' : sol.estado === 'aprobado' ? 'badge badge-green' : 'badge badge-gray'}">
             ${sol.estado === 'aprobado' ? 'Solicitud aprobada' : sol.estado}
