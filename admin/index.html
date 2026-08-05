@@ -5717,7 +5717,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         acc.appendChild(btnApr); acc.appendChild(btnRej);
       }
       const btnDel = document.createElement('button');
-      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑 Eliminar';
+      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑';
       btnDel.style.cssText = 'background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca';
       btnDel.addEventListener('click', () => eliminarSolicitudPaquete(sol.id, sol.nombre, 'galeria', btnDel));
       acc.appendChild(btnDel);
@@ -5729,7 +5729,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (!confirm(`¿Eliminar la solicitud de ${etiqueta} de "${nombre}"? Esto solo borra el registro de la solicitud (no la tienda). No se puede deshacer.`)) return;
     if (btn) { btn.disabled = true; btn.textContent = '…'; }
     const { error } = await db.from('solicitudes').delete().eq('id', id);
-    if (error) { mostrarToast('Error: ' + error.message, 'err'); if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; } return; }
+    if (error) { mostrarToast('Error: ' + error.message, 'err'); if (btn) { btn.disabled = false; btn.textContent = '🗑'; } return; }
     mostrarToast('Solicitud eliminada.', 'ok');
     if (tipo === 'galeria') await cargarGaleriaExtra();
     else await cargarDestacados();
@@ -5892,7 +5892,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
         acc.appendChild(btnRej);
       }
       const btnDel = document.createElement('button');
-      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑 Eliminar';
+      btnDel.className = 'btn-accion'; btnDel.textContent = '🗑';
       btnDel.style.cssText = 'background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca';
       btnDel.addEventListener('click', () => eliminarSolicitudPaquete(sol.id, sol.nombre, 'destacado', btnDel));
       acc.appendChild(btnDel);
