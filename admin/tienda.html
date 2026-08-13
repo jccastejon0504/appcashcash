@@ -523,6 +523,34 @@
     .banner-btn-android { background: linear-gradient(135deg, var(--accent), var(--accent-l)); color: #fff; }
     .banner-btn-ios     { background: #111827; color: #fff; }
 
+    /* ── POPUP "PRÓXIMAMENTE" ──────────────────────── */
+    .app-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .app-overlay.open { display: flex; }
+    .app-sheet {
+      background: #fff; border-radius: 24px;
+      width: 100%; max-width: 340px;
+      padding: 28px 24px 24px; text-align: center;
+      animation: slideUp .25s ease;
+    }
+    .app-sheet-icon {
+      width: 64px; height: 64px; border-radius: 16px; margin: 0 auto 16px;
+      overflow: hidden; background: linear-gradient(135deg, #3D1F0A, var(--accent));
+    }
+    .app-sheet-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .app-sheet-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+    .app-sheet-text { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+    .app-sheet-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-l)); color: #fff;
+      border: none; border-radius: 10px; padding: 11px 24px;
+      font-size: 13px; font-weight: 800; cursor: pointer; width: 100%;
+    }
+
     /* ── ESTADO ─────────────────────────────────── */
     .estado {
       min-height: 50vh; display: flex; flex-direction: column;
@@ -699,8 +727,18 @@
     <div class="banner-t2">Tasa BCV · Calculadora · Directorio completo</div>
   </div>
   <div class="banner-btns">
-    <a href="https://play.google.com/store/apps/details?id=com.cashcach" target="_blank" class="banner-btn banner-btn-android">▶ Android</a>
-    <a href="https://apps.apple.com/app/cashcach" target="_blank" class="banner-btn banner-btn-ios"> iOS</a>
+    <a href="#" onclick="abrirAppPopup(event)" class="banner-btn banner-btn-android">▶ Android</a>
+    <a href="#" onclick="abrirAppPopup(event)" class="banner-btn banner-btn-ios"> iOS</a>
+  </div>
+</div>
+
+<!-- Popup "Próximamente" -->
+<div class="app-overlay" id="app-overlay" onclick="cerrarAppOverlay(event)">
+  <div class="app-sheet">
+    <div class="app-sheet-icon"><img src="icon.png" alt="CashCash" /></div>
+    <div class="app-sheet-title">¡La app ya viene en camino!</div>
+    <div class="app-sheet-text">Muy pronto vas a poder descargarla y comprar o vender directo desde tu celular, más rápido y fácil. Te avisamos apenas esté lista.</div>
+    <button class="app-sheet-btn" onclick="cerrarAppPopup()">Entendido</button>
   </div>
 </div>
 
@@ -1170,6 +1208,19 @@
 
   function cerrarOverlay(e) {
     if (e.target === document.getElementById('overlay')) cerrarModal();
+  }
+
+  function abrirAppPopup(e) {
+    if (e) e.preventDefault();
+    document.getElementById('app-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function cerrarAppPopup() {
+    document.getElementById('app-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function cerrarAppOverlay(e) {
+    if (e.target === document.getElementById('app-overlay')) cerrarAppPopup();
   }
 
   function abrirInfo() {
