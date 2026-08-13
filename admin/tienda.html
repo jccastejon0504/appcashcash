@@ -907,7 +907,7 @@
     const bsMostrado = precioBs ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
     if (bsMostrado != null) {
       html += `<div class="${cls.bs}">Bs. ${bsMostrado.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      if (precioDesc != null && pctBs <= 0) html += ` &nbsp;<span class="${cls.noAplica}">No aplica oferta</span>`;
+      if (precioDesc != null && pctBs <= 0) html += ` &nbsp;<span class="${cls.noAplica}">No aplica oferta${tam === 'modal' ? ' (Bs)' : ''}</span>`;
       html += `</div>`;
     }
 
