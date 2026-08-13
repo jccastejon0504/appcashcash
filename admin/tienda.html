@@ -784,8 +784,18 @@
   // al menos un método esté habilitado. Pago Móvil y Transferencia se tratan
   // como un solo método "bs".
   function descuentoProductoPct(item, promo, metodo) {
-    if (!promo) return 0;
     const esBs = metodo === 'pago_movil' || metodo === 'transferencia';
+    // Oferta puntual de este producto (Agregar fotos catálogo, app nativa):
+    // gana siempre sobre la promo general de la tienda ("todos"/"categoría").
+    if (item.oferta_activa && item.oferta_pct) {
+      const metodosActivos = item.oferta_metodos || [];
+      if (metodo) {
+        const clave = esBs ? 'bs' : metodo;
+        return metodosActivos.includes(clave) ? item.oferta_pct : 0;
+      }
+      return metodosActivos.length > 0 ? item.oferta_pct : 0;
+    }
+    if (!promo) return 0;
     if (promo.tipo_activo === 'todos') {
       if (esBs) return 0;
       return promo.descuento_todos_pct || 0;

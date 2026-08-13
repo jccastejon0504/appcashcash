@@ -24,7 +24,48 @@ type ItemGaleria = {
   precio: string | null;
   precio_bs: string | null;
   descripcion: string | null;
+  categoria_id?: string | null;
+  oferta_activa?: boolean | null;
+  oferta_pct?: number | null;
+  oferta_metodos?: string[] | null;
 };
+
+type PromoProducto = {
+  tipo_activo: 'ninguno' | 'todos' | 'categoria';
+  descuento_todos_pct: number;
+  descuentos_categoria: { categoria_id: string; pct: number; activo: boolean; metodos?: string[] }[];
+};
+
+// % de descuento que le toca a un producto según la oferta puntual del
+// producto (si tiene una propia, siempre gana) o la promo general de la
+// tienda ("todos los productos" / "por categoría"). Espejo de
+// descuentoProductoPct en la app nativa (models/promociones.ts), versión
+// genérica sin filtrar por método de pago (acá no hay checkout en la app,
+// solo se usa para el tag "-X%" y el precio tachado).
+function descuentoProductoPct(
+  item: { categoria_id?: string | null; oferta_activa?: boolean | null; oferta_pct?: number | null; oferta_metodos?: string[] | null },
+  promo: PromoProducto | null | undefined,
+): number {
+  if (item.oferta_activa && item.oferta_pct && (item.oferta_metodos ?? []).length > 0) {
+    return item.oferta_pct;
+  }
+  if (!promo) return 0;
+  if (promo.tipo_activo === 'todos') return promo.descuento_todos_pct || 0;
+  if (promo.tipo_activo === 'categoria' && item.categoria_id) {
+    const d = promo.descuentos_categoria.find(d => d.categoria_id === item.categoria_id && d.activo);
+    if (!d) return 0;
+    const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
+    return metodosActivos.length > 0 ? (d.pct || 0) : 0;
+  }
+  return 0;
+}
+
+function precioConDescuento(precio: string | null | undefined, pct: number): number | null {
+  const p = parseFloat(precio ?? '');
+  if (isNaN(p)) return null;
+  if (pct <= 0) return p;
+  return +(p * (1 - pct / 100)).toFixed(2);
+}
 
 function urlTienda(s: { id: string; slug?: string | null }): string {
   return s.slug
@@ -56,6 +97,7 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
   const [imagenAmpliada,      setImagenAmpliada]      = useState<string | null>(null);
   const [modalInfoTienda,     setModalInfoTienda]     = useState(false);
   const [galeriaItems,        setGaleriaItems]        = useState<ItemGaleria[]>([]);
+  const [promoProducto,       setPromoProducto]       = useState<PromoProducto | null>(null);
   const [productoModal,       setProductoModal]       = useState<{ item: ItemGaleria; whatsapp: string | null } | null>(null);
   const [paginaProducto,      setPaginaProducto]      = useState(0);
   const [infoProductoVisible, setInfoProductoVisible] = useState(false);
@@ -70,6 +112,8 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
   useEffect(() => {
     supabase.from('galeria_items').select('*').eq('socio_id', s.id).order('orden')
       .then(({ data }) => setGaleriaItems((data ?? []) as ItemGaleria[]));
+    supabase.from('promociones_tienda').select('*').eq('tienda_id', s.id).maybeSingle()
+      .then(({ data }) => setPromoProducto(data as PromoProducto | null));
   }, [s.id]);
 
   // Gestos: visor imagen ampliada
@@ -256,17 +300,27 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                 <View>
                   <Text style={[styles.modalSeccionLabel, { color: Colors.textMuted, paddingHorizontal: 4, marginBottom: 8 }]}>Catálogo</Text>
                   <View style={styles.galeriaGrid}>
-                    {galeriaItems.map(item => (
+                    {galeriaItems.map(item => {
+                      const descPct = descuentoProductoPct(item, promoProducto);
+                      const precioDesc = descPct > 0 ? precioConDescuento(item.precio, descPct) : null;
+                      return (
                       <TouchableOpacity key={item.id}
                         onPress={() => { setProductoModal({ item, whatsapp: s.whatsapp ?? null }); registrarEvento('galeria_producto', item.titulo ?? undefined, s.id, s.nombre); }}
                         activeOpacity={0.85}
                         style={[styles.galeriaImgGrande, { borderColor: Colors.border }]}>
                         <Image source={{ uri: item.imagen }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        {precioDesc != null && (
+                          <View style={styles.ofertaBadge}>
+                            <Ionicons name="pricetag" size={10} color="#fff" />
+                            <Text style={styles.ofertaBadgeText}>-{descPct}%</Text>
+                          </View>
+                        )}
                         {(item.titulo || item.precio || item.precio_bs) && (
                           <View style={styles.galeriaOverlay}>
                             {(item.precio || item.precio_bs) && (
-                              <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                                {item.precio && <Text style={styles.galeriaOverlayPrecio}>${item.precio}</Text>}
+                              <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                {item.precio && precioDesc != null && <Text style={styles.galeriaOverlayPrecioTachado}>${item.precio}</Text>}
+                                {item.precio && <Text style={styles.galeriaOverlayPrecio}>${precioDesc ?? item.precio}</Text>}
                                 {item.precio_bs && <Text style={styles.galeriaOverlayBs}>Bs.{item.precio_bs}</Text>}
                               </View>
                             )}
@@ -274,7 +328,8 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                           </View>
                         )}
                       </TouchableOpacity>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
               )}
@@ -347,6 +402,8 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
       {productoModal && (() => {
         const { item, whatsapp } = productoModal;
         const imagenes = [item.imagen, item.imagen2, item.imagen3].filter(Boolean) as string[];
+        const descPctProducto = descuentoProductoPct(item, promoProducto);
+        const precioDescProducto = descPctProducto > 0 ? precioConDescuento(item.precio, descPctProducto) : null;
         return (
           <Modal visible transparent animationType="slide" onRequestClose={() => { setProductoModal(null); setPaginaProducto(0); }}>
             <View style={{ flex: 1, backgroundColor: '#000000BB', justifyContent: 'flex-end' }}>
@@ -416,9 +473,18 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                     </View>
                   ) : null}
 
+                  {precioDescProducto != null && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={styles.ofertaBadgeInline}>
+                        <Ionicons name="pricetag" size={11} color="#fff" />
+                        <Text style={styles.ofertaBadgeInlineText}>-{descPctProducto}% OFERTA</Text>
+                      </View>
+                      {item.precio ? <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, textDecorationLine: 'line-through' }}>${item.precio}</Text> : null}
+                    </View>
+                  )}
                   {(item.precio || item.precio_bs) ? (
                     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                      {item.precio ? <Text style={[styles.productoPrecio, { color: Colors.accent }]}>${item.precio}</Text> : null}
+                      {item.precio ? <Text style={[styles.productoPrecio, { color: Colors.accent }]}>${precioDescProducto ?? item.precio}</Text> : null}
                       {item.precio_bs ? <Text style={[styles.productoPrecioBs, { color: Colors.textMuted }]}>Bs. {item.precio_bs}</Text> : null}
                     </View>
                   ) : null}
@@ -522,8 +588,21 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     backgroundColor: '#000000AA', paddingHorizontal: 6, paddingVertical: 5,
   },
   galeriaOverlayPrecio: { color: '#FFD700', fontSize: 11, fontWeight: '800' },
+  galeriaOverlayPrecioTachado: { color: '#ffffff99', fontSize: 10, fontWeight: '600', textDecorationLine: 'line-through' },
   galeriaOverlayBs:     { color: '#ffffffBB', fontSize: 10, fontWeight: '600' },
   galeriaOverlayTitulo: { color: '#ffffffCC', fontSize: 10, fontWeight: '500', marginTop: 1 },
+  ofertaBadge: {
+    position: 'absolute', top: 6, left: 6, zIndex: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#e53935', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6,
+  },
+  ofertaBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  ofertaBadgeInline: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#e53935', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  ofertaBadgeInlineText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
 
   productoBox: {
     borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', maxHeight: '95%',
