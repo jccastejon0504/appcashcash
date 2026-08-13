@@ -1070,7 +1070,7 @@
     let hayContacto = false;
     if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
-    if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`; hayContacto = true; }
+    if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Redes</a>`; hayContacto = true; }
     if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
 
     // Galería — los agotados (stock cargado y en 0) no se borran de la base,
@@ -1277,7 +1277,7 @@
       let btnsHtml = '';
       if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
       if (s.telefono) btnsHtml += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
-      if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`;
+      if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Redes</a>`;
       html += `<div class="info-sec">
         <div class="info-sec-head"><div class="info-sec-dot"></div><div class="info-sec-label">Contactar</div></div>
         <div class="info-sec-body"><div class="info-sheet-btns">${btnsHtml}</div></div>
