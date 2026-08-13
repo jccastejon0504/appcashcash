@@ -15,6 +15,8 @@ import { registrarEvento } from '@/services/analytics';
 import * as Location from 'expo-location';
 import FichaTiendaModal from '@/components/FichaTiendaModal';
 
+const cashea_badge = require('../assets/images/cashea-badge.png');
+
 function urlTienda(s: { id: string; slug?: string | null }): string {
   return s.slug
     ? `https://appcashcash.com/t/${s.slug}`
@@ -27,6 +29,13 @@ export default function SociosScreen() {
   const router = useRouter();
 
   const [socios,           setSocios]           = useState<SocioComercial[]>([]);
+  // Ancho del badge "OFERTA" (auto-ajustado a su texto) medido en vivo, para
+  // que el badge de Cashea (una imagen) siempre calce con el mismo ancho.
+  const [ofertaBadgeWidth, setOfertaBadgeWidth] = useState(44);
+  const medirOfertaBadge = (e: { nativeEvent: { layout: { width: number } } }) => {
+    const w = Math.round(e.nativeEvent.layout.width);
+    setOfertaBadgeWidth(prev => (prev === w ? prev : w));
+  };
   const [cargando,         setCargando]         = useState(true);
   const [refrescando,      setRefrescando]      = useState(false);
   const [shuffleSeed,      setShuffleSeed]      = useState(() => Math.random());
@@ -131,7 +140,7 @@ export default function SociosScreen() {
     setError(null);
     const { data, error: err } = await supabase
       .from('socios_comerciales')
-      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,destacado_hasta,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud,slug')
+      .select('id,nombre,ciudad,direccion,descripcion,telefono,whatsapp,web,imagen,imagen2,imagen3,imagen4,imagen5,imagen6,destacado,destacado_hasta,etiqueta_oferta,etiqueta_cashea,subcategoria_id,activo,fecha_vencimiento,orden,created_at,latitud,longitud,slug')
       .or('activo.is.null,activo.eq.true')
       .or(`fecha_vencimiento.is.null,fecha_vencimiento.gt.${new Date().toISOString()}`)
       .order('orden', { ascending: true });
@@ -525,9 +534,23 @@ export default function SociosScreen() {
           <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
         </View>
       )}
-      {esDestVigente(s) && (
-        <View style={[styles.badgeDestacado, { backgroundColor: '#FFD700' }]}>
-          <Ionicons name="star" size={10} color="#fff" />
+      {(esDestVigente(s) || s.etiqueta_oferta || s.etiqueta_cashea) && (
+        <View style={styles.badgesEsquina}>
+          {esDestVigente(s) && (
+            <View style={[styles.badgeDestacado, { position: 'relative', top: 0, left: 0, backgroundColor: '#FFD700' }]}>
+              <Ionicons name="star" size={10} color="#fff" />
+            </View>
+          )}
+          {s.etiqueta_oferta && (
+            <View style={styles.badgeOferta} onLayout={medirOfertaBadge}>
+              <Text style={styles.badgeOfertaText}>OFERTA</Text>
+            </View>
+          )}
+          {s.etiqueta_cashea && (
+            <View style={[styles.badgeCashea, { width: ofertaBadgeWidth }]}>
+              <Image source={cashea_badge} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </View>
+          )}
         </View>
       )}
       <TouchableOpacity
@@ -1455,13 +1478,17 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   },
   cardDestacadoBtnText:  { fontSize: 11, fontWeight: '700' },
 
-  // Badge destacado
+  // Badges esquina: destacado (estrella) + OFERTA + Cashea, apilados
+  badgesEsquina: { position: 'absolute', top: 8, left: 8, gap: 4 },
   badgeDestacado: {
     position: 'absolute', top: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99,
   },
   badgeDestacadoText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  badgeOferta:    { backgroundColor: '#e53935', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  badgeOfertaText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  badgeCashea:    { height: 16, borderRadius: 6, overflow: 'hidden' },
 
   // Grilla 2 columnas
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },

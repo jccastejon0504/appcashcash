@@ -13,6 +13,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase, SocioComercial } from '@/services/supabase';
 import { registrarEvento } from '@/services/analytics';
 
+const cashea_badge = require('../assets/images/cashea-badge.png');
+
 type ItemGaleria = {
   id: string;
   imagen: string;
@@ -44,6 +46,13 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
   const { height: altPantalla } = useWindowDimensions();
   const ANCHO = Dimensions.get('window').width;
 
+  // Ancho del badge "OFERTA" (auto-ajustado a su texto) medido en vivo, para
+  // que el badge de Cashea (una imagen) siempre calce con el mismo ancho.
+  const [ofertaBadgeWidth, setOfertaBadgeWidth] = useState(44);
+  const medirOfertaBadge = (e: { nativeEvent: { layout: { width: number } } }) => {
+    const w = Math.round(e.nativeEvent.layout.width);
+    setOfertaBadgeWidth(prev => (prev === w ? prev : w));
+  };
   const [imagenAmpliada,      setImagenAmpliada]      = useState<string | null>(null);
   const [modalInfoTienda,     setModalInfoTienda]     = useState(false);
   const [galeriaItems,        setGaleriaItems]        = useState<ItemGaleria[]>([]);
@@ -186,11 +195,25 @@ export default function FichaTiendaModal({ socio: s, subcatNombre, onClose, favo
                   <Ionicons name="information-circle-outline" size={18} color="#fff" />
                 </TouchableOpacity>
               ) : null}
-              {/* Ciudad badge arriba derecha */}
-              {s.ciudad ? (
-                <View style={styles.modalHeroCiudad}>
-                  <Ionicons name="location-outline" size={11} color="#ffffffCC" />
-                  <Text style={styles.modalHeroTagText}>{s.ciudad}</Text>
+              {/* Ciudad + etiquetas OFERTA/Cashea arriba derecha */}
+              {(s.ciudad || s.etiqueta_oferta || s.etiqueta_cashea) ? (
+                <View style={styles.modalHeroEsquinaDerecha}>
+                  {s.ciudad ? (
+                    <View style={styles.modalHeroCiudad}>
+                      <Ionicons name="location-outline" size={11} color="#ffffffCC" />
+                      <Text style={styles.modalHeroTagText}>{s.ciudad}</Text>
+                    </View>
+                  ) : null}
+                  {s.etiqueta_oferta && (
+                    <View style={styles.modalHeroBadgeOferta} onLayout={medirOfertaBadge}>
+                      <Text style={styles.modalHeroBadgeOfertaText}>OFERTA</Text>
+                    </View>
+                  )}
+                  {s.etiqueta_cashea && (
+                    <View style={[styles.modalHeroBadgeCashea, { width: ofertaBadgeWidth }]}>
+                      <Image source={cashea_badge} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    </View>
+                  )}
                 </View>
               ) : null}
               {/* Botones de contacto sobremonados en borde inferior */}
@@ -456,13 +479,19 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
   modalHero:    { width: '100%', height: 260, position: 'relative', marginBottom: 24 },
   modalHeroImg: { width: '100%', height: '100%' },
 
-  modalHeroCiudad: {
+  modalHeroEsquinaDerecha: {
     position: 'absolute', top: 6, right: Spacing.md,
+    alignItems: 'flex-end', gap: 4,
+  },
+  modalHeroCiudad: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#00000055', borderRadius: 20,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   modalHeroTagText: { fontSize: 11, color: '#ffffffDD', fontWeight: '600' },
+  modalHeroBadgeOferta:     { backgroundColor: '#e53935', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  modalHeroBadgeOfertaText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  modalHeroBadgeCashea:     { height: 16, borderRadius: 6, overflow: 'hidden' },
   modalHeroTag: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start',

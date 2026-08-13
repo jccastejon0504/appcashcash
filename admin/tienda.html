@@ -99,6 +99,15 @@
       background: rgba(245,158,11,.85);
       border-color: rgba(245,158,11,.5);
     }
+    .hero-tag-oferta {
+      background: rgba(229,57,53,.9);
+      border-color: rgba(229,57,53,.6);
+    }
+    .hero-tag-cashea {
+      display: flex; align-items: center;
+      height: 24px; border-radius: 6px; overflow: hidden;
+    }
+    .hero-tag-cashea img { height: 100%; width: auto; display: block; }
 
     /* ── LAYOUT ─────────────────────────────────── */
     .layout {
@@ -1001,6 +1010,8 @@
         <div class="hero-tags">
           ${s.destacado ? `<span class="hero-tag hero-tag-dest">⭐ Destacada</span>` : ''}
           ${s.ciudad    ? `<span class="hero-tag">📍 ${s.ciudad}</span>` : ''}
+          ${s.etiqueta_oferta ? `<span class="hero-tag hero-tag-oferta">🏷️ OFERTA</span>` : ''}
+          ${s.etiqueta_cashea ? `<span class="hero-tag-cashea"><img src="cashea-badge.png" alt="Cashea" /></span>` : ''}
         </div>
       </div>`;
 

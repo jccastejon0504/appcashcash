@@ -15,6 +15,8 @@ import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import FichaTiendaModal from '@/components/FichaTiendaModal';
 
+const cashea_badge = require('../assets/images/cashea-badge.png');
+
 const HOY = () => new Date();
 function esDestacadoVigente(c: SocioComercial): boolean {
   return c.destacado === true || (!!c.destacado_hasta && new Date(c.destacado_hasta) > HOY());
@@ -53,6 +55,13 @@ export default function DirectorioScreen() {
   const [todosComercios,  setTodosComercios]  = useState<SocioComercial[]>([]);
   const [subcatActiva,    setSubcatActiva]    = useState<Subcategoria | null>(null);
   const [cargando,        setCargando]        = useState(true);
+  // Ancho del badge "OFERTA" (auto-ajustado a su texto) medido en vivo, para
+  // que el badge de Cashea (una imagen) siempre calce con el mismo ancho.
+  const [ofertaBadgeWidth, setOfertaBadgeWidth] = useState(44);
+  const medirOfertaBadge = (e: { nativeEvent: { layout: { width: number } } }) => {
+    const w = Math.round(e.nativeEvent.layout.width);
+    setOfertaBadgeWidth(prev => (prev === w ? prev : w));
+  };
   const [refrescando,     setRefrescando]     = useState(false);
   const [error,           setError]           = useState<string | null>(null);
   const [busqueda,        setBusqueda]        = useState('');
@@ -303,9 +312,23 @@ export default function DirectorioScreen() {
           <Ionicons name="storefront-outline" size={28} color={Colors.accent} />
         </View>
       )}
-      {(c.destacado || (c.destacado_hasta && new Date(c.destacado_hasta) > new Date())) && (
-        <View style={[styles.badge, { backgroundColor: '#f59e0b' }]}>
-          <Ionicons name="star" size={10} color="#fff" />
+      {((c.destacado || (c.destacado_hasta && new Date(c.destacado_hasta) > new Date())) || c.etiqueta_oferta || c.etiqueta_cashea) && (
+        <View style={styles.badgesEsquina}>
+          {(c.destacado || (c.destacado_hasta && new Date(c.destacado_hasta) > new Date())) && (
+            <View style={[styles.badge, { position: 'relative', top: 0, left: 0, backgroundColor: '#f59e0b' }]}>
+              <Ionicons name="star" size={10} color="#fff" />
+            </View>
+          )}
+          {c.etiqueta_oferta && (
+            <View style={styles.badgeOferta} onLayout={medirOfertaBadge}>
+              <Text style={styles.badgeOfertaText}>OFERTA</Text>
+            </View>
+          )}
+          {c.etiqueta_cashea && (
+            <View style={[styles.badgeCashea, { width: ofertaBadgeWidth }]}>
+              <Image source={cashea_badge} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </View>
+          )}
         </View>
       )}
       <View style={styles.miniCardBody}>
@@ -822,6 +845,10 @@ function makeStyles(Colors: ReturnType<typeof useTheme>['colors']) { return Styl
     position: 'absolute', top: 6, left: 6,
     borderRadius: 20, padding: 3,
   },
+  badgesEsquina:  { position: 'absolute', top: 6, left: 6, gap: 4 },
+  badgeOferta:    { backgroundColor: '#e53935', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  badgeOfertaText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  badgeCashea:    { height: 16, borderRadius: 6, overflow: 'hidden' },
 
   modalOverlay: {
     flex: 1, backgroundColor: '#00000055',
