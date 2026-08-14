@@ -22,7 +22,6 @@
       --text:     #111827;
       --muted:    #6b7280;
       --muted2:   #9ca3af;
-      --green:    #059669;
       --wa:       #25D366;
       --r:        16px;
     }
@@ -168,14 +167,6 @@
       font-size: 13px; color: var(--text);
     }
     .info-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-    .info-label { font-size: 10px; color: var(--muted2); font-weight: 600; margin-bottom: 1px; }
-    .info-val { font-size: 13px; color: var(--text); font-weight: 500; }
-
-    /* ── DESCRIPCIÓN ────────────────────────────── */
-    .desc-text {
-      font-size: 14px; color: #374151; line-height: 1.7;
-    }
 
     /* ── MAIN ───────────────────────────────────── */
     .main { display: flex; flex-direction: column; gap: 16px; }
@@ -493,8 +484,6 @@
     }
     .info-row-icon.purple { background: #ede9fe; }
     .info-row-icon.blue   { background: #dbeafe; }
-    .info-row-icon.red    { background: #fee2e2; }
-    .info-row-icon.green  { background: #d1fae5; }
     .info-row-txt { display: flex; flex-direction: column; gap: 2px; justify-content: center; }
     .info-sheet-lbl { font-size: 10px; color: var(--muted2); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
     .info-sheet-val { font-size: 14px; color: var(--text); font-weight: 600; line-height: 1.4; }
@@ -650,12 +639,6 @@
       animation: spin .7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── EMPTY STATE ────────────────────────────── */
-    .empty-galeria {
-      text-align: center; padding: 40px 20px;
-      color: var(--muted2); font-size: 14px;
-    }
 
     /* scrollbar mínima */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
