@@ -190,6 +190,18 @@
       flex: 1; height: 2px;
       background: linear-gradient(to right, var(--border), transparent);
     }
+    .btn-cat-filtro {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid var(--border); background: #fff; cursor: pointer;
+      border-radius: 20px; padding: 6px 12px; flex-shrink: 0;
+      font-size: 12px; font-weight: 700; color: var(--text);
+    }
+    .btn-cat-filtro svg { width: 14px; height: 14px; fill: var(--muted); flex-shrink: 0; }
+    .btn-cat-filtro.activo {
+      background: linear-gradient(135deg, var(--accent), var(--accent-l));
+      border-color: transparent; color: #fff;
+    }
+    .btn-cat-filtro.activo svg { fill: #fff; }
 
     /* ── GALERÍA ────────────────────────────────── */
     .galeria-grid {
@@ -556,6 +568,40 @@
       font-size: 13px; font-weight: 800; cursor: pointer; width: 100%;
     }
 
+    /* ── POPUP FILTRO DE CATEGORÍAS ─────────────────── */
+    .cat-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      z-index: 510;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .cat-overlay.open { display: flex; }
+    .cat-sheet {
+      background: #fff; border-radius: 24px;
+      width: 100%; max-width: 360px; max-height: 80vh;
+      padding: 22px 20px 20px;
+      display: flex; flex-direction: column;
+      animation: slideUp .25s ease;
+    }
+    .cat-sheet-title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+    .cat-sheet-search {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-size: 13px; margin-bottom: 10px; outline: none;
+      font-family: inherit;
+    }
+    .cat-sheet-search:focus { border-color: var(--accent); }
+    .cat-sheet-list { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .cat-sheet-item {
+      text-align: left; border: none; background: none; width: 100%;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer;
+      font-size: 14px; font-weight: 600; color: var(--text);
+    }
+    .cat-sheet-item:hover { background: var(--bg); }
+    .cat-sheet-item.on {
+      background: linear-gradient(135deg, var(--accent), var(--accent-l)); color: #fff;
+    }
+
     /* ── ESTADO ─────────────────────────────────── */
     .estado {
       min-height: 50vh; display: flex; flex-direction: column;
@@ -665,6 +711,10 @@
       <div class="sec-titulo">
         🛍 Productos
         <div class="sec-titulo-line"></div>
+        <button class="btn-cat-filtro" id="btn-cat-filtro" onclick="abrirCategoriasPopup()" style="display:none" title="Filtrar por categoría">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+          <span id="btn-cat-filtro-label">Categoría</span>
+        </button>
       </div>
       <div class="galeria-grid" id="galeria-grid"></div>
     </main>
@@ -752,6 +802,15 @@
   </div>
 </div>
 
+<!-- Popup Filtro de Categorías (tiendas PRO) -->
+<div class="cat-overlay" id="cat-overlay" onclick="cerrarCatOverlay(event)">
+  <div class="cat-sheet">
+    <div class="cat-sheet-title">Filtrar por categoría</div>
+    <input type="text" class="cat-sheet-search" id="cat-search" placeholder="Buscar categoría" oninput="filtrarListaCategorias(this.value)" />
+    <div class="cat-sheet-list" id="cat-sheet-list"></div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
@@ -763,6 +822,9 @@
   let _promo     = null;
   let _metodos   = [];
   let _tasas     = { usd: null, eur: null, usdt: null };
+  let _categoriasPro    = [];
+  let _catFiltro        = null;
+  let _galeriaDisponible = [];
 
   // Mismos helpers de link que src/features/tienda/services/tiendaService.ts
   // en la app nativa — el link en el texto del mensaje es lo unico que hace
@@ -1041,17 +1103,19 @@
       s = DEMO.s;
       galeria = DEMO.galeria;
     } else {
-      const [r1, r2, r3, r4, tasas] = await Promise.all([
+      const [r1, r2, r3, r4, r5, tasas] = await Promise.all([
         db.from('socios_comerciales').select('*').eq('id', id).single(),
         db.from('galeria_items').select('*').eq('socio_id', id).order('orden'),
         db.from('promociones_tienda').select('*').eq('tienda_id', id).maybeSingle(),
         db.from('metodos_pago_tienda').select('tipo, oferta_activa, oferta_pct').eq('tienda_id', id).eq('activo', true),
+        db.from('categorias_tienda').select('id, nombre').eq('tienda_id', id).order('orden'),
         obtenerTasas(),
       ]);
       s = r1.data;
       galeria = r2.data;
       _promo = r3.data;
       _metodos = r4.data ?? [];
+      _categoriasPro = r5.data ?? [];
       _tasas = tasas;
     }
 
@@ -1061,6 +1125,9 @@
     _socioData = s;
     document.getElementById('btn-info').style.display = 'flex';
     document.getElementById('btn-share').style.display = 'flex';
+    if (s.tipo === 'pro' && _categoriasPro.length > 0) {
+      document.getElementById('btn-cat-filtro').style.display = 'flex';
+    }
 
     // Meta OG
     document.title = `${s.nombre} · CashCach`;
@@ -1103,29 +1170,9 @@
     // Galería — los agotados (stock cargado y en 0) no se borran de la base,
     // solo se ocultan de la grilla (igual que en la app nativa). Si el link
     // trae ?p= a un producto agotado igual se puede abrir directo (más abajo).
-    const disponibles = (galeria ?? []).filter(item => item.stock == null || item.stock > 0);
-    if (disponibles.length) {
-      const grid = document.getElementById('galeria-grid');
-      disponibles.forEach(item => {
-        const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
-        const descPctGrid = descuentoProductoPct(item, _promo);
-        const div = document.createElement('div');
-        div.className = 'prod-card';
-        div.onclick = () => abrirProducto(item);
-        div.innerHTML = `
-          <div class="prod-img-wrap">
-            ${item.imagen
-              ? `<img class="prod-img" src="${item.imagen}" alt="${item.titulo ?? ''}" loading="lazy" />`
-              : `<div class="prod-placeholder">📦</div>`}
-            ${descPctGrid > 0 ? `<div class="prod-oferta-overlay">🏷️ -${descPctGrid}%</div>` : ''}
-            ${imgs.length > 1 ? `<div class="prod-badge-imgs">+${imgs.length} fotos</div>` : ''}
-          </div>
-          <div class="prod-info">
-            ${item.titulo ? `<div class="prod-nombre">${item.titulo}</div>` : ''}
-            ${precioBloqueHtml(item)}
-          </div>`;
-        grid.appendChild(div);
-      });
+    _galeriaDisponible = (galeria ?? []).filter(item => item.stock == null || item.stock > 0);
+    if (_galeriaDisponible.length) {
+      renderGaleriaGrid();
       document.getElementById('main-galeria').style.display = 'block';
     }
 
@@ -1139,6 +1186,67 @@
       const item = galeria.find(g => g.id === productoId);
       if (item) abrirProducto(item);
     }
+  }
+
+  function renderGaleriaGrid() {
+    const grid = document.getElementById('galeria-grid');
+    grid.innerHTML = '';
+    const items = _catFiltro
+      ? _galeriaDisponible.filter(item => item.categoria_id === _catFiltro)
+      : _galeriaDisponible;
+    items.forEach(item => {
+      const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
+      const descPctGrid = descuentoProductoPct(item, _promo);
+      const div = document.createElement('div');
+      div.className = 'prod-card';
+      div.onclick = () => abrirProducto(item);
+      div.innerHTML = `
+        <div class="prod-img-wrap">
+          ${item.imagen
+            ? `<img class="prod-img" src="${item.imagen}" alt="${item.titulo ?? ''}" loading="lazy" />`
+            : `<div class="prod-placeholder">📦</div>`}
+          ${descPctGrid > 0 ? `<div class="prod-oferta-overlay">🏷️ -${descPctGrid}%</div>` : ''}
+          ${imgs.length > 1 ? `<div class="prod-badge-imgs">+${imgs.length} fotos</div>` : ''}
+        </div>
+        <div class="prod-info">
+          ${item.titulo ? `<div class="prod-nombre">${item.titulo}</div>` : ''}
+          ${precioBloqueHtml(item)}
+        </div>`;
+      grid.appendChild(div);
+    });
+  }
+
+  /* ── FILTRO DE CATEGORÍAS (tiendas PRO) ─────── */
+  function abrirCategoriasPopup() {
+    document.getElementById('cat-search').value = '';
+    renderListaCategorias('');
+    document.getElementById('cat-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function cerrarCategoriasPopup() {
+    document.getElementById('cat-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function cerrarCatOverlay(e) {
+    if (e.target === document.getElementById('cat-overlay')) cerrarCategoriasPopup();
+  }
+  function filtrarListaCategorias(v) { renderListaCategorias(v); }
+  function renderListaCategorias(filtroTexto) {
+    const q = (filtroTexto || '').toLowerCase();
+    const items = [{ id: null, nombre: 'Todas' }, ..._categoriasPro]
+      .filter(c => c.nombre.toLowerCase().includes(q));
+    document.getElementById('cat-sheet-list').innerHTML = items.map(c => `
+      <button class="cat-sheet-item${_catFiltro === c.id ? ' on' : ''}"
+        onclick="seleccionarCategoria(${c.id ? `'${c.id}'` : 'null'})">${escHtml(c.nombre)}</button>
+    `).join('');
+  }
+  function seleccionarCategoria(id) {
+    _catFiltro = id;
+    cerrarCategoriasPopup();
+    const cat = _categoriasPro.find(c => c.id === id);
+    document.getElementById('btn-cat-filtro-label').textContent = cat ? cat.nombre : 'Categoría';
+    document.getElementById('btn-cat-filtro').classList.toggle('activo', !!id);
+    renderGaleriaGrid();
   }
 
   async function abrirProducto(item) {
