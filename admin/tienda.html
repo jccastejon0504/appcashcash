@@ -1362,9 +1362,7 @@
     const s = _socioData;
     if (!s) return;
     document.getElementById('is-nombre').textContent = s.nombre;
-    document.getElementById('is-icon').innerHTML = s.logo
-      ? `<img src="${s.logo}" alt="${s.nombre}" />`
-      : '🏪';
+    document.getElementById('is-icon').innerHTML = `<img src="${s.logo || 'icon.png'}" alt="${s.nombre}" />`;
 
     let html = '';
 
