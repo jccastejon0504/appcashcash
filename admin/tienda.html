@@ -87,11 +87,14 @@
     }
     .hero-nombre {
       font-size: 28px; font-weight: 900; color: #fff;
-      line-height: 1.2; margin-bottom: 8px;
+      line-height: 1.2;
       text-shadow: 0 2px 12px rgba(0,0,0,.4);
     }
     @media (min-width: 600px) { .hero-nombre { font-size: 36px; } }
-    .hero-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .hero-badges-top {
+      position: absolute; top: 12px; right: 16px; z-index: 2;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    }
     .hero-tag {
       display: flex; align-items: center; gap: 5px;
       background: rgba(255,255,255,.18);
@@ -99,10 +102,6 @@
       border: 1px solid rgba(255,255,255,.25);
       border-radius: 6px; height: 24px; padding: 0 12px;
       font-size: 12px; color: #fff; font-weight: 600;
-    }
-    .hero-tag-dest {
-      background: rgba(245,158,11,.85);
-      border-color: rgba(245,158,11,.5);
     }
     .hero-tag-oferta {
       background: rgba(229,57,53,.9);
@@ -1149,14 +1148,14 @@
         ? `<img class="hero-img hero-img-btn" src="${s.imagen}" alt="${s.nombre}" onclick="abrirHeroImg()" />`
         : `<div class="hero-placeholder">🏪</div>`}
       <div class="hero-grad"></div>
+      ${(s.ciudad || s.etiqueta_oferta || s.etiqueta_cashea) ? `
+      <div class="hero-badges-top">
+        ${s.ciudad    ? `<span class="hero-tag">📍 ${s.ciudad}</span>` : ''}
+        ${s.etiqueta_oferta ? `<span class="hero-tag hero-tag-oferta">🏷️ OFERTA</span>` : ''}
+        ${s.etiqueta_cashea ? `<span class="hero-tag-cashea"><img src="cashea-badge.png" alt="Cashea" /></span>` : ''}
+      </div>` : ''}
       <div class="hero-content">
         <div class="hero-nombre">${s.nombre}</div>
-        <div class="hero-tags">
-          ${s.destacado ? `<span class="hero-tag hero-tag-dest">⭐ Destacada</span>` : ''}
-          ${s.ciudad    ? `<span class="hero-tag">📍 ${s.ciudad}</span>` : ''}
-          ${s.etiqueta_oferta ? `<span class="hero-tag hero-tag-oferta">🏷️ OFERTA</span>` : ''}
-          ${s.etiqueta_cashea ? `<span class="hero-tag-cashea"><img src="cashea-badge.png" alt="Cashea" /></span>` : ''}
-        </div>
       </div>`;
 
     // Botones contacto
