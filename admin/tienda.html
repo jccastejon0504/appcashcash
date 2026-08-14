@@ -622,10 +622,10 @@
       cursor: pointer; color: var(--muted2); font-size: 18px; line-height: 1; padding: 4px;
     }
     .cashea-sheet-icon {
-      width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
+      width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 16px;
       background: #fdff00; display: flex; align-items: center; justify-content: center;
-      font-size: 28px;
     }
+    .cashea-sheet-icon svg { width: 32px; height: 32px; fill: #000; }
     .cashea-sheet-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
     .cashea-sheet-text { font-size: 13px; color: #000; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
     .cashea-sheet-btn {
@@ -847,7 +847,9 @@
 <div class="cashea-overlay" id="cashea-overlay" onclick="cerrarCasheaOverlay(event)">
   <div class="cashea-sheet">
     <button class="cashea-sheet-close" onclick="cerrarCasheaPopup()">✕</button>
-    <div class="cashea-sheet-icon">ℹ️</div>
+    <div class="cashea-sheet-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    </div>
     <div class="cashea-sheet-title">Comprar con Cashea</div>
     <div class="cashea-sheet-text" id="cashea-sheet-text"></div>
     <button class="cashea-sheet-btn" onclick="preguntarVendedorCashea()">Preguntar al vendedor</button>
