@@ -159,6 +159,7 @@
     .btn-wa  { background: linear-gradient(135deg, var(--accent), var(--accent-l)); }
     .btn-tel { background: linear-gradient(135deg, var(--accent), var(--accent-l)); }
     .btn-web { background: linear-gradient(135deg, var(--accent), var(--accent-l)); }
+    .btn-cashea { background: #fdff00; color: #000; }
 
     /* ── INFO ROWS ──────────────────────────────── */
     .info-row {
@@ -601,6 +602,38 @@
       background: linear-gradient(135deg, var(--accent), var(--accent-l)); color: #fff;
     }
 
+    /* ── POPUP COMPRAR CON CASHEA ───────────────────── */
+    .cashea-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      z-index: 520;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .cashea-overlay.open { display: flex; }
+    .cashea-sheet {
+      background: #fff; border-radius: 24px;
+      width: 100%; max-width: 340px;
+      padding: 28px 24px 24px; text-align: center; position: relative;
+      animation: slideUp .25s ease;
+    }
+    .cashea-sheet-close {
+      position: absolute; top: 14px; right: 14px; border: none; background: none;
+      cursor: pointer; color: var(--muted2); font-size: 18px; line-height: 1; padding: 4px;
+    }
+    .cashea-sheet-icon {
+      width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
+      background: #fdff00; display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    .cashea-sheet-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+    .cashea-sheet-text { font-size: 13px; color: #000; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
+    .cashea-sheet-btn {
+      background: #fdff00; color: #000;
+      border: none; border-radius: 10px; padding: 11px 24px;
+      font-size: 13px; font-weight: 800; cursor: pointer; width: 100%;
+    }
+
     /* ── ESTADO ─────────────────────────────────── */
     .estado {
       min-height: 50vh; display: flex; flex-direction: column;
@@ -807,6 +840,17 @@
     <div class="cat-sheet-title">Filtrar por categoría</div>
     <input type="text" class="cat-sheet-search" id="cat-search" placeholder="Buscar categoría" oninput="filtrarListaCategorias(this.value)" />
     <div class="cat-sheet-list" id="cat-sheet-list"></div>
+  </div>
+</div>
+
+<!-- Popup Comprar con Cashea -->
+<div class="cashea-overlay" id="cashea-overlay" onclick="cerrarCasheaOverlay(event)">
+  <div class="cashea-sheet">
+    <button class="cashea-sheet-close" onclick="cerrarCasheaPopup()">✕</button>
+    <div class="cashea-sheet-icon">ℹ️</div>
+    <div class="cashea-sheet-title">Comprar con Cashea</div>
+    <div class="cashea-sheet-text" id="cashea-sheet-text"></div>
+    <button class="cashea-sheet-btn" onclick="preguntarVendedorCashea()">Preguntar al vendedor</button>
   </div>
 </div>
 
@@ -1164,6 +1208,7 @@
     if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Redes</a>`; hayContacto = true; }
+    if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) { btns.innerHTML += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`; hayContacto = true; }
     if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
 
     // Galería — los agotados (stock cargado y en 0) no se borran de la base,
@@ -1246,6 +1291,29 @@
     document.getElementById('btn-cat-filtro-label').textContent = cat ? cat.nombre : 'Categoría';
     document.getElementById('btn-cat-filtro').classList.toggle('activo', !!id);
     renderGaleriaGrid();
+  }
+
+  /* ── POPUP COMPRAR CON CASHEA ────────────────── */
+  function abrirCasheaPopup() {
+    const s = _socioData;
+    if (!s?.info_cashea_texto) return;
+    document.getElementById('cashea-sheet-text').textContent = s.info_cashea_texto;
+    document.getElementById('cashea-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function cerrarCasheaPopup() {
+    document.getElementById('cashea-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function cerrarCasheaOverlay(e) {
+    if (e.target === document.getElementById('cashea-overlay')) cerrarCasheaPopup();
+  }
+  function preguntarVendedorCashea() {
+    const s = _socioData;
+    cerrarCasheaPopup();
+    if (!s?.whatsapp) return;
+    const msg = `Hola! Quiero comprar con Cashea en *${s.nombre}*. ¿Me ayudas con el proceso?\n${urlTienda(s)}`;
+    window.open(`https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
   async function abrirProducto(item) {
@@ -1410,6 +1478,7 @@
       if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
       if (s.telefono) btnsHtml += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
       if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Redes</a>`;
+      if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) btnsHtml += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`;
       html += `<div class="info-sec">
         <div class="info-sec-head"><div class="info-sec-dot"></div><div class="info-sec-label">Contactar</div></div>
         <div class="info-sec-body"><div class="info-sheet-btns">${btnsHtml}</div></div>
