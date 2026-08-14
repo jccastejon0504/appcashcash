@@ -109,15 +109,6 @@
     }
     .topbar-title { font-size: 16px; font-weight: 800; }
     .topbar-sub   { font-size: 12px; color: var(--muted); margin-top: 1px; }
-    .topbar-badge {
-      background: var(--accent);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 99px;
-    }
-
     /* ── Campana de notificaciones ────────────────────────── */
     .notif-bell {
       position: relative;
@@ -176,7 +167,6 @@
 
     /* ── Formularios ──────────────────────────────────────── */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-full  { grid-column: 1 / -1; }
 
     label { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 
@@ -4464,18 +4454,18 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
 
   async function guardarTerminos() {
     const valor = document.getElementById('terminos-texto').value.trim();
-    if (!valor) { showMsg('terminos', 'El texto no puede estar vacío.', 'err'); return; }
+    if (!valor) { showMsg('msg-terminos', 'El texto no puede estar vacío.', 'err'); return; }
     const { error } = await db.from('config_app')
       .upsert({ clave: 'terminos_condiciones', valor }, { onConflict: 'clave' });
-    if (error) { showMsg('terminos', 'Error: ' + error.message, 'err'); return; }
-    showMsg('terminos', '¡Guardado! La app mostrará este texto.', 'ok');
+    if (error) { showMsg('msg-terminos', 'Error: ' + error.message, 'err'); return; }
+    showMsg('msg-terminos', '¡Guardado! La app mostrará este texto.', 'ok');
     await cargarTerminos();
   }
 
   async function borrarTerminos() {
     if (!confirm('¿Eliminar el texto de la BD? La app usará el contenido predeterminado.')) return;
     await db.from('config_app').delete().eq('clave', 'terminos_condiciones');
-    showMsg('terminos', 'Eliminado. La app usará el texto predeterminado.', 'ok');
+    showMsg('msg-terminos', 'Eliminado. La app usará el texto predeterminado.', 'ok');
     await cargarTerminos();
   }
 
@@ -4969,24 +4959,6 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     }).addTo(_mapaL)
       .bindPopup(`<div style="font-family:system-ui;font-size:12px"><b>📍 Ubicación buscada</b><br><span style="font-family:monospace">${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</span><br><span style="color:#FB8C50">${toDMS(coords.lat,true)}  ${toDMS(coords.lng,false)}</span></div>`)
       .openPopup();
-  }
-
-  function extraerCoordsGoogleMaps(texto) {
-    // Formatos comunes de Google Maps:
-    // https://maps.google.com/?q=10.0688,-69.3474
-    // https://www.google.com/maps/@10.0688,-69.3474,17z
-    // https://www.google.com/maps/place/.../@10.0688,-69.3474,17z
-    // https://maps.app.goo.gl/... (link corto — no se puede resolver sin fetch)
-    const patrones = [
-      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
-    ];
-    for (const re of patrones) {
-      const m = texto.match(re);
-      if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-    }
-    return null;
   }
 
   function cambiarCapa() {
