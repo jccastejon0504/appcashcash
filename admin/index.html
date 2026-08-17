@@ -2928,6 +2928,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
             <div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button class="btn btn-sm btn-outline" onclick="toggleEditSol('${uid}')">✏️ Editar datos</button>
               ${estado === 'aprobado' ? `<button class="btn btn-sm btn-outline" style="color:#D97540;border-color:#D97540" onclick="sincronizarSocio('${s.id}','${uid}')">⚙ Sincronizar → Socios Activos</button><span id="msg-sinc-${uid}" style="font-size:12px"></span>` : ''}
+              ${estado === 'aprobado' && _tel ? `<a class="btn btn-sm btn-outline" style="color:#25D366;border-color:#25D366;text-decoration:none" href="https://wa.me/${_tel}?text=${encodeURIComponent(`¡Bienvenido a CashCash! 🎉 Tu tienda *${s.nombre ?? ''}* ya está activa y visible en el directorio.`)}" target="_blank">💬 Enviar bienvenida</a>` : ''}
             </div>
           </div>
           <!-- Editar datos solicitud -->
