@@ -360,6 +360,18 @@
     }
     .gal-sol-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
     @media (max-width: 900px) { .gal-sol-row { grid-template-columns: 1fr 1fr; } }
+    .venc-row {
+      display: grid;
+      grid-template-columns: 2fr 1.3fr 1.6fr 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    @media (max-width: 900px) { .venc-row { grid-template-columns: 1fr 1fr; } }
     .btn-accion {
       font-size: 11px; font-weight: 700; padding: 5px 10px;
       border-radius: 6px; border: none; cursor: pointer;
@@ -1528,6 +1540,31 @@
         </div>
       </div>
 
+      <!-- ── Vencimiento de Tiendas ───────────────────────── -->
+      <div style="margin-top:32px">
+        <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">📅 Vencimiento de Tiendas</h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Tiendas agrupadas por mes de vencimiento, según el filtro seleccionado.</p>
+
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm venc-filtro-btn" data-filtro="activos"      onclick="selFiltroVenc('activos')"      style="font-weight:700">✅ Activos</button>
+          <button class="btn btn-outline btn-sm venc-filtro-btn" data-filtro="por_vencer"   onclick="selFiltroVenc('por_vencer')"   style="font-weight:700">⚠️ Próximos a vencer</button>
+          <button class="btn btn-outline btn-sm venc-filtro-btn" data-filtro="vencidos"     onclick="selFiltroVenc('vencidos')"     style="font-weight:700">🔴 Vencidos</button>
+          <button class="btn btn-outline btn-sm venc-filtro-btn" data-filtro="desactivados" onclick="selFiltroVenc('desactivados')" style="font-weight:700">⛔ Desactivados</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 id="venc-titulo">Tiendas activas</h2>
+            <span id="venc-count" style="font-size:12px;color:var(--muted)">0 tiendas</span>
+          </div>
+          <div style="padding:16px">
+            <div id="venc-loading" style="color:var(--muted);font-size:13px;padding:12px 0;display:none">Cargando…</div>
+            <div id="venc-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none;text-align:center">Sin tiendas en este filtro.</div>
+            <div id="venc-body" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ PLAN PRO ══════════════════════════════════════ -->
@@ -2121,7 +2158,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'descargas')   cargarDescargas();
     if (id === 'analytics')   { if (!_calRango) _initCalendario(); cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); }
     if (id === 'mapa')        cargarMapa();
-    if (id === 'reporte-ingresos') selPeriodo(repPeriodo);
+    if (id === 'reporte-ingresos') { selPeriodo(repPeriodo); selFiltroVenc(filtroVenc); }
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'plan-pro')    cargarPlanPro();
     if (id === 'solicitudes') cargarSolicitudes();
@@ -5238,7 +5275,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       descargas:   cargarDescargas,
       analytics:   () => { cargarAnalytics(); cargarTablaTiendas(); cargarTablaGaleria(); cargarTablaCarrito(); cargarTablaCompras(); cargarTablaConsultas(); },
       mapa:        cargarMapa,
-      'reporte-ingresos': () => selPeriodo(repPeriodo),
+      'reporte-ingresos': () => { selPeriodo(repPeriodo); selFiltroVenc(filtroVenc); },
       ofertas:     cargarOfertas,
       solicitudes: cargarSolicitudes,
       'cambio-datos': cargarCambioDatos,
@@ -6057,6 +6094,90 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       `;
       body.appendChild(row);
     });
+  }
+
+  // ── Vencimiento de Tiendas ──────────────────────────────────────────────
+
+  var filtroVenc = 'activos';
+
+  function selFiltroVenc(f) {
+    filtroVenc = f;
+    document.querySelectorAll('.venc-filtro-btn').forEach(btn => {
+      const activo = btn.dataset.filtro === f;
+      btn.style.background  = activo ? 'var(--accent)' : '';
+      btn.style.color       = activo ? '#fff'          : '';
+      btn.style.borderColor = activo ? 'var(--accent)' : '';
+    });
+    const titulos = {
+      activos: 'Tiendas activas', por_vencer: 'Tiendas próximas a vencer',
+      vencidos: 'Tiendas vencidas', desactivados: 'Tiendas desactivadas',
+    };
+    document.getElementById('venc-titulo').textContent = titulos[f] ?? 'Tiendas';
+    cargarReporteVencimientos();
+  }
+
+  async function cargarReporteVencimientos() {
+    const loading = document.getElementById('venc-loading');
+    const empty   = document.getElementById('venc-empty');
+    const body    = document.getElementById('venc-body');
+    loading.style.display = 'block';
+    empty.style.display   = 'none';
+    body.innerHTML = '';
+
+    const { data, error } = await db.from('socios_comerciales')
+      .select('id,nombre,telefono,whatsapp,email,fecha_vencimiento,activo');
+
+    loading.style.display = 'none';
+    if (error) { body.innerHTML = `<div style="color:red;padding:10px">Error: ${error.message}</div>`; return; }
+
+    const ahora   = new Date();
+    const limite7 = new Date(ahora.getTime() + 7 * 86400000);
+
+    // Vencido/por vencer se calcula por fecha, no por el flag `activo` (el
+    // cron nocturno que lo apaga no respeta los dias de gracia, asi que
+    // puede tardar en reflejar el vencimiento real).
+    let filas = (data ?? []).filter(s => {
+      const activo    = s.activo !== false;
+      const fv        = s.fecha_vencimiento ? new Date(s.fecha_vencimiento) : null;
+      const vencida   = !!fv && fv < ahora;
+      const porVencer = !!fv && fv >= ahora && fv <= limite7;
+      if (filtroVenc === 'desactivados') return !activo;
+      if (!activo) return false;
+      if (filtroVenc === 'vencidos')   return vencida;
+      if (filtroVenc === 'por_vencer') return porVencer;
+      return !vencida; // activos: sin fecha o con fecha futura (incluye "por vencer")
+    });
+
+    filas.sort((a, b) => {
+      if (!a.fecha_vencimiento) return 1;
+      if (!b.fecha_vencimiento) return -1;
+      return new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento);
+    });
+
+    document.getElementById('venc-count').textContent = `${filas.length} tienda${filas.length === 1 ? '' : 's'}`;
+
+    if (!filas.length) { empty.style.display = 'block'; return; }
+
+    const html = [];
+    let grupoActual = null;
+    filas.forEach(s => {
+      const key = s.fecha_vencimiento
+        ? new Date(s.fecha_vencimiento).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+        : 'Sin fecha asignada';
+      if (key !== grupoActual) {
+        grupoActual = key;
+        html.push(`<div style="font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-top:14px;padding-bottom:6px;border-bottom:1px solid var(--border)">${key}</div>`);
+        html.push(`<div class="venc-row" style="background:#f0f4ff;font-weight:700;color:#3b82f6;font-size:12px"><span>Tienda</span><span>Teléfono</span><span>Correo</span><span>Vence</span></div>`);
+      }
+      html.push(`
+        <div class="venc-row">
+          <span style="font-weight:700">${s.nombre ?? '—'}</span>
+          <span>${s.telefono || s.whatsapp || '—'}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.email ?? '—'}</span>
+          <span>${s.fecha_vencimiento ? fmtFecha(s.fecha_vencimiento) : '—'}</span>
+        </div>`);
+    });
+    body.innerHTML = html.join('');
   }
 
   // ── Toast ─────────────────────────────────────────────────────────────────
