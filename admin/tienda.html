@@ -1148,6 +1148,9 @@
     }
 
     if (!s) return mostrarError('Tienda no encontrada', 'Este link ya no está disponible.');
+    if (s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date()) {
+      return mostrarError('Tienda no disponible', 'Esta tienda no tiene su membresía activa en este momento.');
+    }
 
     _waGlobal  = s.whatsapp;
     _socioData = s;
