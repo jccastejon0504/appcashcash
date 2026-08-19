@@ -1738,6 +1738,11 @@
             <label>Fecha vencimiento</label>
             <input type="date" id="edit-socio-vencimiento" />
           </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Galería extra (slots comprados aparte del plan)</label>
+            <input type="number" id="edit-socio-galeria-extra" min="0" step="1" />
+            <small style="color:var(--muted)">Ajusta manualmente si una solicitud de paquete se borró sin restar los slots (no se resta sola al eliminar una solicitud).</small>
+          </div>
           <div class="form-group">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="edit-socio-destacado" />
@@ -4211,6 +4216,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('edit-socio-descripcion').value = s.descripcion ?? '';
     document.getElementById('edit-socio-plan').value        = s.plan        ?? 'gratis';
     document.getElementById('edit-socio-vencimiento').value = s.fecha_vencimiento ? s.fecha_vencimiento.slice(0,10) : '';
+    document.getElementById('edit-socio-galeria-extra').value = s.galeria_extra ?? 0;
     document.getElementById('edit-socio-destacado').checked = s.destacado   ?? false;
     document.getElementById('edit-socio-activo').checked    = s.activo      !== false;
     document.getElementById('msg-editar-socio').textContent = '';
@@ -4235,6 +4241,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       descripcion:       document.getElementById('edit-socio-descripcion').value.trim() || null,
       plan:              document.getElementById('edit-socio-plan').value,
       fecha_vencimiento: venc ? new Date(venc).toISOString() : null,
+      galeria_extra:     Math.max(0, parseInt(document.getElementById('edit-socio-galeria-extra').value) || 0),
       destacado:         document.getElementById('edit-socio-destacado').checked,
       activo:            document.getElementById('edit-socio-activo').checked,
     };
