@@ -1711,6 +1711,11 @@
             <input type="text" id="edit-socio-whatsapp" />
           </div>
           <div class="form-group" style="grid-column:1/-1">
+            <label>Correo</label>
+            <input type="email" id="edit-socio-email" />
+            <small style="color:var(--muted)">Usado junto al teléfono para verificar el dueño de la tienda (Recuperar acceso / Mi Tienda).</small>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
             <label>Redes / Web</label>
             <input type="text" id="edit-socio-redes" />
           </div>
@@ -4210,6 +4215,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     document.getElementById('edit-socio-nombre').dataset.original       = s.nombre ?? '';
     document.getElementById('edit-socio-telefono').value    = s.telefono    ?? '';
     document.getElementById('edit-socio-whatsapp').value    = s.whatsapp    ?? '';
+    document.getElementById('edit-socio-email').value       = s.email       ?? '';
     document.getElementById('edit-socio-redes').value       = s.web         ?? '';
     document.getElementById('edit-socio-ciudad').value      = s.ciudad      ?? '';
     document.getElementById('edit-socio-direccion').value   = s.direccion   ?? '';
@@ -4235,6 +4241,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       nombre:            document.getElementById('edit-socio-nombre').value.trim(),
       telefono:          document.getElementById('edit-socio-telefono').value.trim() || null,
       whatsapp:          document.getElementById('edit-socio-whatsapp').value.trim() || null,
+      email:             document.getElementById('edit-socio-email').value.trim().toLowerCase() || null,
       web:               document.getElementById('edit-socio-redes').value.trim()    || null,
       ciudad:            document.getElementById('edit-socio-ciudad').value.trim()   || null,
       direccion:         document.getElementById('edit-socio-direccion').value.trim()|| null,
@@ -4253,6 +4260,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       nombre:            payload.nombre,
       telefono:          payload.telefono,
       whatsapp:          payload.whatsapp,
+      email:             payload.email,
       redes:             payload.web,
       ciudad:            payload.ciudad,
       direccion:         payload.direccion,
