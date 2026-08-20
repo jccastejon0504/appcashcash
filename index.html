@@ -1,685 +1,400 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>CashCach · Tienda</title>
-  <meta id="og-title"       property="og:title"       content="Tienda en CashCach" />
-  <meta id="og-description" property="og:description" content="Descubre esta tienda en CashCach" />
-  <meta id="og-image"       property="og:image"       content="" />
-  <meta property="og:type"  content="website" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent:   #6c3fc5;
-      --accent-l: #8b5cf6;
-      --bg:       #f7f8fa;
-      --card:     #ffffff;
-      --border:   #eaecf0;
-      --text:     #111827;
-      --muted:    #6b7280;
-      --muted2:   #9ca3af;
-      --green:    #059669;
-      --wa:       #25D366;
-      --r:        16px;
-    }
-    body {
-      font-family: 'Inter', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 100px;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>CashCash · Tu dinero, tus tasas, tu tienda</title>
+<meta name="description" content="CashCash: calculadora de tasas BCV/USDT en tiempo real, directorio de comercios locales y control de tus ingresos y gastos, todo en una sola app." />
+<meta property="og:type" content="website">
+<meta property="og:title" content="CashCash · Tu dinero, tus tasas, tu tienda">
+<meta property="og:description" content="Calculadora de tasas, directorio de comercios y control de gastos, todo en una sola app.">
+<meta property="og:image" content="https://appcashcash.com/admin/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
 
-    /* ── TOPBAR ─────────────────────────────────── */
-    .topbar {
-      background: #fff;
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex; align-items: center; gap: 10px;
-      position: sticky; top: 0; z-index: 50;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  :root{
+    --accent:      #FB8C50;
+    --accent-ink:  #A0511F;
+    --cream:       #EFDFCE;
+    --ink:         #181818;
+    --paper:       #FBF7F2;
+    --surface:     #FFFFFF;
+    --line:        #E8DCC8;
+    --muted:       #7A7266;
+    --shadow:      220 30% 10%;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --accent:      #FF9E67;
+      --accent-ink:  #FFC79B;
+      --cream:       #2B2118;
+      --ink:         #F4ECE0;
+      --paper:       #17140F;
+      --surface:     #211B14;
+      --line:        #35291C;
+      --muted:       #B2A793;
     }
-    .topbar-logo {
-      width: 34px; height: 34px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-l));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
-    }
-    .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
-    .topbar-sub  { font-size: 11px; color: var(--muted); }
-    .topbar-badge {
-      margin-left: auto; background: #fef3c7; color: #92400e;
-      font-size: 11px; font-weight: 700; padding: 4px 10px;
-      border-radius: 20px; display: flex; align-items: center; gap: 4px;
-      flex-shrink: 0;
-    }
+  }
+  :root[data-theme="dark"]{
+    --accent:      #FF9E67;
+    --accent-ink:  #FFC79B;
+    --cream:       #2B2118;
+    --ink:         #F4ECE0;
+    --paper:       #17140F;
+    --surface:     #211B14;
+    --line:        #35291C;
+    --muted:       #B2A793;
+  }
 
-    /* ── HERO ───────────────────────────────────── */
-    .hero {
-      position: relative; width: 100%; height: 320px;
-      overflow: hidden; background: #1e1040;
-    }
-    @media (min-width: 600px) { .hero { height: 420px; } }
-    .hero-img { width: 100%; height: 100%; object-fit: cover; }
-    .hero-placeholder {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #1e1040 0%, #6c3fc5 100%);
-      font-size: 80px;
-    }
-    .hero-grad {
-      position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,.05) 0%, rgba(0,0,0,.65) 100%);
-    }
-    .hero-content {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 24px 20px 20px;
-    }
-    .hero-nombre {
-      font-size: 28px; font-weight: 900; color: #fff;
-      line-height: 1.2; margin-bottom: 8px;
-      text-shadow: 0 2px 12px rgba(0,0,0,.4);
-    }
-    @media (min-width: 600px) { .hero-nombre { font-size: 36px; } }
-    .hero-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-    .hero-tag {
-      display: flex; align-items: center; gap: 5px;
-      background: rgba(255,255,255,.18);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 20px; padding: 4px 12px;
-      font-size: 12px; color: #fff; font-weight: 600;
-    }
-    .hero-tag-dest {
-      background: rgba(245,158,11,.85);
-      border-color: rgba(245,158,11,.5);
-    }
+  body{
+    font-family:'Plus Jakarta Sans',-apple-system,sans-serif;
+    background:var(--paper); color:var(--ink);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 28px}
+  h1,h2,h3{font-family:'Fredoka',sans-serif;font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+  section{padding:88px 0}
+  img{max-width:100%;display:block}
 
-    /* ── LAYOUT ─────────────────────────────────── */
-    .layout {
-      max-width: 960px; margin: 0 auto;
-      padding: 20px 16px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-    @media (min-width: 720px) {
-      .layout {
-        grid-template-columns: 280px 1fr;
-        align-items: start;
-      }
-    }
+  /* ── awning stripe divider, echoes the logo's scalloped awning ── */
+  .awning{
+    height:16px; width:100%;
+    background-image: radial-gradient(circle at 12px 0, transparent 11px, var(--accent) 11px);
+    background-size:24px 16px; background-repeat:repeat-x; background-position:center top;
+    opacity:.55;
+  }
 
-    /* ── SIDEBAR ────────────────────────────────── */
-    .sidebar { display: flex; flex-direction: column; gap: 14px; }
+  /* ── nav ── */
+  .navbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb, var(--paper) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav-inner{max-width:1160px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{width:32px;height:32px;border-radius:9px}
+  .brand span{font-family:'Fredoka',sans-serif;font-size:19px;font-weight:600}
+  .nav-links{display:flex;align-items:center;gap:30px;font-size:14.5px;font-weight:600;color:var(--muted)}
+  .nav-links a{transition:color .15s}
+  .nav-links a:hover{color:var(--ink)}
 
-    /* ── CARD ───────────────────────────────────── */
-    .card {
-      background: var(--card);
-      border-radius: var(--r);
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: 0 1px 4px rgba(0,0,0,.04);
-    }
-    .card-head {
-      padding: 14px 16px 0;
-      font-size: 10px; font-weight: 800;
-      color: var(--muted2); letter-spacing: 1.2px; text-transform: uppercase;
-    }
-    .card-body { padding: 12px 16px 16px; }
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:100px;font-weight:700;font-size:14.5px;cursor:pointer;border:1.5px solid transparent;transition:transform .15s ease, box-shadow .15s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-accent{background:var(--accent);color:var(--ink);box-shadow:0 8px 20px -8px color-mix(in srgb, var(--accent) 70%, transparent)}
+  .btn-ghost{background:var(--cream);color:var(--accent-ink);cursor:default}
+  .btn-ghost:hover{transform:none}
+  .btn-line{border-color:var(--line);color:var(--ink)}
 
-    /* ── CONTACTO ───────────────────────────────── */
-    .btns-contacto { display: flex; flex-direction: column; gap: 8px; }
-    .btn-c {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 13px 16px; border-radius: 12px; border: none;
-      font-size: 14px; font-weight: 700; color: #fff; cursor: pointer;
-      text-decoration: none; transition: filter .15s, transform .1s;
-    }
-    .btn-c:hover { filter: brightness(1.08); transform: translateY(-1px); }
-    .btn-c:active { transform: translateY(0); }
-    .btn-wa  { background: linear-gradient(135deg, #25D366, #1aaf53); }
-    .btn-tel { background: linear-gradient(135deg, #059669, #047857); }
-    .btn-web { background: linear-gradient(135deg, var(--accent), var(--accent-l)); }
+  /* ── hero: left copy, right stall stack ── */
+  .hero{padding-top:64px;padding-bottom:40px}
+  .hero-inner{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--accent-ink);background:var(--cream);padding:6px 14px;border-radius:100px;margin-bottom:22px}
+  .hero h1{font-size:clamp(34px,4.6vw,52px);line-height:1.06;margin-bottom:20px}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .hero p{font-size:17.5px;color:var(--muted);max-width:460px;margin-bottom:32px}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
 
-    /* ── INFO ROWS ──────────────────────────────── */
-    .info-row {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 8px 0; border-bottom: 1px solid var(--border);
-      font-size: 13px; color: var(--text);
-    }
-    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-    .info-label { font-size: 10px; color: var(--muted2); font-weight: 600; margin-bottom: 1px; }
-    .info-val { font-size: 13px; color: var(--text); font-weight: 500; }
+  /* stall cards */
+  .stalls{display:flex;flex-direction:column;gap:14px}
+  .stall{
+    background:var(--surface); border:1px solid var(--line); border-radius:0 0 18px 18px;
+    padding:20px 22px 20px; position:relative; overflow:hidden;
+    box-shadow:0 20px 40px -28px hsl(var(--shadow) / .5);
+  }
+  .stall .awning{position:absolute;top:0;left:0;right:0}
+  .stall-body{display:flex;align-items:center;gap:16px;margin-top:10px}
+  .stall-icon{width:44px;height:44px;border-radius:12px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-ink)}
+  .stall-icon svg{width:22px;height:22px}
+  .stall-txt .k{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .stall-txt .v{font-family:'Fredoka',sans-serif;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
 
-    /* ── DESCRIPCIÓN ────────────────────────────── */
-    .desc-text {
-      font-size: 14px; color: #374151; line-height: 1.7;
-    }
+  /* ── section head ── */
+  .section-head{max-width:600px;margin-bottom:52px}
+  .section-head .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:14px}
+  .section-head .kicker::before{content:'';width:22px;height:2px;background:var(--accent);border-radius:2px}
+  .section-head h2{font-size:clamp(26px,3vw,34px);margin-bottom:12px}
+  .section-head p{color:var(--muted);font-size:15.5px}
 
-    /* ── MAIN ───────────────────────────────────── */
-    .main { display: flex; flex-direction: column; gap: 16px; }
+  /* ── features ── */
+  .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .feature-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:30px 26px}
+  .feature-icon{width:48px;height:48px;border-radius:13px;background:var(--cream);display:flex;align-items:center;justify-content:center;color:var(--accent-ink);margin-bottom:18px}
+  .feature-icon svg{width:24px;height:24px}
+  .feature-card h3{font-size:18px;margin-bottom:9px}
+  .feature-card p{font-size:14.5px;color:var(--muted)}
 
-    /* ── SECCIÓN TÍTULO ─────────────────────────── */
-    .sec-titulo {
-      font-size: 18px; font-weight: 800; color: var(--text);
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 14px;
-    }
-    .sec-titulo-line {
-      flex: 1; height: 2px;
-      background: linear-gradient(to right, var(--border), transparent);
-    }
+  /* ── para tiendas ── */
+  .tiendas{background:var(--ink);color:var(--paper);border-radius:28px;padding:0;overflow:hidden;position:relative}
+  .tiendas .awning{opacity:1}
+  .tiendas-inner{padding:52px 44px;display:flex;align-items:center;justify-content:space-between;gap:44px;flex-wrap:wrap}
+  .tiendas-copy{max-width:480px}
+  .tiendas h2{font-size:clamp(24px,3vw,30px);margin-bottom:14px;color:var(--paper)}
+  .tiendas p{color:color-mix(in srgb, var(--paper) 65%, transparent);font-size:15px;margin-bottom:24px}
+  .plans{display:flex;gap:12px;flex-wrap:wrap}
+  .plan-chip{background:color-mix(in srgb, var(--paper) 8%, transparent);border:1px solid color-mix(in srgb, var(--paper) 16%, transparent);border-radius:14px;padding:16px 20px;min-width:110px;position:relative}
+  .plan-chip::before{content:'';position:absolute;top:0;left:14px;right:14px;height:3px;background:var(--accent);border-radius:0 0 3px 3px}
+  .plan-chip .p-name{font-size:12.5px;color:color-mix(in srgb, var(--paper) 55%, transparent);font-weight:700;margin-bottom:4px}
+  .plan-chip .p-price{font-family:'Fredoka',sans-serif;font-size:21px;font-weight:600;color:var(--accent)}
+  .plan-chip .p-price span{font-size:12px;font-weight:500;color:color-mix(in srgb, var(--paper) 55%, transparent);font-family:'Plus Jakarta Sans',sans-serif}
 
-    /* ── GALERÍA ────────────────────────────────── */
-    .galeria-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-    @media (min-width: 480px) { .galeria-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (min-width: 720px) { .galeria-grid { grid-template-columns: repeat(3, 1fr); } }
+  /* ── faq ── */
+  .faq{max-width:720px}
+  .faq-item{border-bottom:1px solid var(--line);padding:22px 0}
+  .faq-item summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .faq-item summary::-webkit-details-marker{display:none}
+  .faq-item .plus{width:22px;height:22px;border-radius:7px;background:var(--cream);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;transition:transform .2s}
+  .faq-item[open] .plus{transform:rotate(45deg)}
+  .faq-item p{margin-top:13px;font-size:14.5px;color:var(--muted);max-width:62ch}
+  .faq-item a{color:var(--accent-ink);font-weight:700}
 
-    .prod-card {
-      background: var(--card);
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      cursor: pointer;
-      transition: box-shadow .2s, transform .2s;
-      position: relative;
-    }
-    .prod-card:hover {
-      box-shadow: 0 12px 32px rgba(108,63,197,.15);
-      transform: translateY(-3px);
-    }
-    .prod-img-wrap { position: relative; overflow: hidden; aspect-ratio: 1; }
-    .prod-img {
-      width: 100%; height: 100%;
-      object-fit: cover; display: block;
-      transition: transform .3s;
-    }
-    .prod-card:hover .prod-img { transform: scale(1.05); }
-    .prod-placeholder {
-      width: 100%; aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-      font-size: 40px;
-    }
-    .prod-badge-imgs {
-      position: absolute; top: 8px; right: 8px;
-      background: rgba(0,0,0,.5); color: #fff;
-      font-size: 10px; font-weight: 700;
-      padding: 2px 7px; border-radius: 10px;
-    }
-    .prod-info { padding: 10px 12px 14px; }
-    .prod-nombre {
-      font-size: 13px; font-weight: 700; color: var(--text);
-      line-height: 1.4; margin-bottom: 6px;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .prod-precio {
-      font-size: 18px; font-weight: 900;
-      color: var(--accent); line-height: 1;
-    }
-    .prod-precio-bs {
-      font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 500;
-    }
-    .prod-sin-precio {
-      font-size: 12px; color: var(--muted2); font-style: italic;
-    }
+  /* ── cta final ── */
+  .cta-final{text-align:center}
+  .cta-final h2{font-size:clamp(26px,3vw,32px);margin-bottom:12px}
+  .cta-final p{color:var(--muted);margin-bottom:28px}
+  .cta-final .btn{margin:0 auto}
 
-    /* ── MODAL PRODUCTO ─────────────────────────── */
-    .overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(4px);
-      z-index: 300;
-      align-items: flex-end; justify-content: center;
-    }
-    @media (min-width: 540px) { .overlay { align-items: center; } }
-    .overlay.open { display: flex; }
-    .modal {
-      background: #fff;
-      border-radius: 24px 24px 0 0;
-      width: 100%; max-width: 520px;
-      max-height: 92vh; overflow-y: auto;
-      animation: slideUp .25s ease;
-    }
-    @media (min-width: 540px) { .modal { border-radius: 24px; } }
-    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  /* ── footer ── */
+  footer{background:var(--ink);color:color-mix(in srgb, var(--paper) 78%, transparent);padding:0}
+  .footer-inner{padding:56px 0 30px}
+  .footer-top{display:flex;justify-content:space-between;gap:44px;flex-wrap:wrap;padding-bottom:34px;border-bottom:1px solid color-mix(in srgb, var(--paper) 14%, transparent);margin-bottom:26px}
+  .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .footer-brand img{width:30px;height:30px;border-radius:8px}
+  .footer-brand span{font-family:'Fredoka',sans-serif;font-weight:600;font-size:18px;color:var(--paper)}
+  footer .tagline{font-size:13.5px;color:color-mix(in srgb, var(--paper) 55%, transparent);max-width:280px}
+  .footer-links{display:flex;gap:52px;flex-wrap:wrap}
+  .footer-col h4{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--paper) 45%, transparent);margin-bottom:14px}
+  .footer-col a{display:block;font-size:14px;color:color-mix(in srgb, var(--paper) 78%, transparent);margin-bottom:11px;transition:color .15s}
+  .footer-col a:hover{color:var(--paper)}
+  .footer-bottom{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:color-mix(in srgb, var(--paper) 45%, transparent);flex-wrap:wrap;gap:10px}
 
-    .modal-handle {
-      width: 40px; height: 4px; background: #e5e7eb;
-      border-radius: 4px; margin: 12px auto 0;
-    }
-    @media (min-width: 540px) { .modal-handle { display: none; } }
+  a:focus-visible, .btn:focus-visible, summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
 
-    .modal-img-wrap { position: relative; }
-    .modal-img-main {
-      width: 100%; aspect-ratio: 1; object-fit: cover;
-      background: var(--bg);
-    }
-    .modal-cerrar {
-      position: absolute; top: 12px; right: 12px;
-      background: rgba(0,0,0,.45); border: none;
-      width: 34px; height: 34px; border-radius: 50%;
-      color: #fff; font-size: 16px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .modal-thumbs {
-      display: flex; gap: 8px; padding: 10px 16px;
-      overflow-x: auto; background: #f9fafb;
-      border-bottom: 1px solid var(--border);
-    }
-    .modal-thumb {
-      width: 58px; height: 58px; object-fit: cover;
-      border-radius: 10px; cursor: pointer; flex-shrink: 0;
-      border: 2.5px solid transparent; transition: border-color .15s;
-    }
-    .modal-thumb.on { border-color: var(--accent); }
-    .modal-body { padding: 18px 18px 24px; }
-    .modal-nombre { font-size: 20px; font-weight: 800; line-height: 1.3; margin-bottom: 10px; }
-    .modal-precios { margin-bottom: 14px; }
-    .modal-precio { font-size: 28px; font-weight: 900; color: var(--accent); }
-    .modal-precio-bs { font-size: 14px; color: var(--muted); margin-top: 2px; }
-    .modal-sep { height: 1px; background: var(--border); margin: 14px 0; }
-    .modal-desc { font-size: 14px; color: #374151; line-height: 1.7; }
-    .modal-wa {
-      margin-top: 18px;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .btn-wa-modal {
-      display: flex; align-items: center; justify-content: center; gap: 9px;
-      background: linear-gradient(135deg, #25D366, #1aaf53);
-      color: #fff; border: none; border-radius: 14px;
-      padding: 15px; font-size: 15px; font-weight: 800;
-      cursor: pointer; text-decoration: none;
-      transition: filter .15s;
-    }
-    .btn-wa-modal:hover { filter: brightness(1.07); }
-    .modal-nota {
-      text-align: center; font-size: 11px; color: var(--muted2);
-    }
-
-    /* ── BANNER DESCARGA ────────────────────────── */
-    .banner {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: #fff;
-      border-top: 1px solid var(--border);
-      box-shadow: 0 -4px 24px rgba(0,0,0,.1);
-      padding: 10px 16px;
-      display: flex; align-items: center; gap: 12px;
-      z-index: 100;
-    }
-    .banner-logo {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: linear-gradient(135deg, #1e1040, var(--accent));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-    }
-    .banner-txt { flex: 1; min-width: 0; }
-    .banner-t1 { font-size: 13px; font-weight: 800; color: var(--text); }
-    .banner-t2 { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .banner-btns { display: flex; gap: 6px; flex-shrink: 0; }
-    .banner-btn {
-      padding: 9px 13px; border-radius: 10px; border: none;
-      font-size: 11px; font-weight: 800; cursor: pointer;
-      text-decoration: none; display: inline-block; white-space: nowrap;
-    }
-    .banner-btn-android { background: linear-gradient(135deg, var(--accent), var(--accent-l)); color: #fff; }
-    .banner-btn-ios     { background: #111827; color: #fff; }
-
-    /* ── ESTADO ─────────────────────────────────── */
-    .estado {
-      min-height: 50vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 14px; color: var(--muted); text-align: center;
-      padding: 24px;
-    }
-    .estado-icono { font-size: 56px; }
-    .estado-titulo { font-size: 18px; font-weight: 700; color: var(--text); }
-    .estado-sub { font-size: 14px; }
-    .spinner {
-      width: 40px; height: 40px; border: 3px solid var(--border);
-      border-top-color: var(--accent); border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── EMPTY STATE ────────────────────────────── */
-    .empty-galeria {
-      text-align: center; padding: 40px 20px;
-      color: var(--muted2); font-size: 14px;
-    }
-
-    /* scrollbar mínima */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  </style>
+  @media (max-width:860px){
+    .nav-links{display:none}
+    .hero-inner{grid-template-columns:1fr}
+    .hero p{max-width:none}
+    .features-grid{grid-template-columns:1fr}
+    .tiendas-inner{padding:40px 26px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    .btn,.faq-item .plus{transition:none}
+  }
+</style>
 </head>
 <body>
 
-<!-- Loading state inicial -->
-<div id="loading" class="estado" style="min-height:100vh">
-  <div class="spinner"></div>
-  <div class="estado-sub">Cargando tienda…</div>
-</div>
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="#" class="brand">
+      <img src="/admin/icon.png" alt="CashCash">
+      <span>CashCash</span>
+    </a>
+    <div class="nav-links">
+      <a href="#funciones">Cómo funciona</a>
+      <a href="#tiendas">Para tiendas</a>
+      <a href="#faq">Preguntas</a>
+    </div>
+    <a class="btn btn-ghost" href="#faq">Próximamente</a>
+  </div>
+</nav>
 
-<!-- Página principal (oculta hasta cargar) -->
-<div id="pagina" style="display:none">
-
-  <!-- Topbar -->
-  <div class="topbar" id="topbar">
-    <div class="topbar-logo">💰</div>
+<header class="hero wrap">
+  <div class="hero-inner">
     <div>
-      <div class="topbar-name" id="top-nombre">—</div>
-      <div class="topbar-sub">CashCach · Directorio de Tiendas</div>
-    </div>
-    <div id="top-dest" class="topbar-badge" style="display:none">⭐ Destacada</div>
-  </div>
-
-  <!-- Hero -->
-  <div class="hero" id="hero"></div>
-
-  <!-- Layout -->
-  <div class="layout">
-
-    <!-- Sidebar -->
-    <aside class="sidebar">
-
-      <!-- Contacto -->
-      <div class="card" id="card-contacto" style="display:none">
-        <div class="card-head">Contactar</div>
-        <div class="card-body">
-          <div class="btns-contacto" id="btns-contacto"></div>
-        </div>
-      </div>
-
-      <!-- Info -->
-      <div class="card" id="card-info" style="display:none">
-        <div class="card-head">Información</div>
-        <div class="card-body" id="info-body"></div>
-      </div>
-
-      <!-- Descripción -->
-      <div class="card" id="card-desc" style="display:none">
-        <div class="card-head">Sobre el negocio</div>
-        <div class="card-body">
-          <p class="desc-text" id="desc-text"></p>
-        </div>
-      </div>
-
-    </aside>
-
-    <!-- Main: Galería -->
-    <main class="main" id="main-galeria" style="display:none">
-      <div class="sec-titulo">
-        🛍 Productos
-        <div class="sec-titulo-line"></div>
-      </div>
-      <div class="galeria-grid" id="galeria-grid"></div>
-    </main>
-
-  </div><!-- /layout -->
-
-</div><!-- /pagina -->
-
-<!-- Modal Producto -->
-<div class="overlay" id="overlay" onclick="cerrarOverlay(event)">
-  <div class="modal" id="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-img-wrap">
-      <img id="m-img" class="modal-img-main" src="" alt="" />
-      <button class="modal-cerrar" onclick="cerrarModal()">✕</button>
-    </div>
-    <div id="m-thumbs" class="modal-thumbs" style="display:none"></div>
-    <div class="modal-body">
-      <div class="modal-nombre"  id="m-nombre"></div>
-      <div class="modal-precios" id="m-precios"></div>
-      <div id="m-desc-wrap" style="display:none">
-        <div class="modal-sep"></div>
-        <div class="modal-desc" id="m-desc"></div>
-      </div>
-      <div class="modal-wa" id="m-wa" style="display:none">
-        <a id="m-wa-btn" href="#" target="_blank" class="btn-wa-modal">
-          💬 Consultar por WhatsApp
-        </a>
-        <div class="modal-nota">Te conecta directamente con la tienda</div>
+      <span class="eyebrow">🇻🇪 Hecha para Venezuela</span>
+      <h1>Tu dinero, tus tasas, <em>tu tienda.</em><br>Todo en una sola app.</h1>
+      <p>Calcula tasas BCV y USDT en tiempo real, compra en comercios locales del directorio y lleva el control de tus ingresos y gastos — sin cambiar de app.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-ghost" href="#faq">Próximamente en App Store y Google Play</a>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Banner Descarga -->
-<div class="banner">
-  <div class="banner-logo">💰</div>
-  <div class="banner-txt">
-    <div class="banner-t1">Descarga CashCach</div>
-    <div class="banner-t2">Tasa BCV · Calculadora · Directorio completo</div>
-  </div>
-  <div class="banner-btns">
-    <a href="https://play.google.com/store/apps/details?id=com.cashcach" target="_blank" class="banner-btn banner-btn-android">▶ Android</a>
-    <a href="https://apps.apple.com/app/cashcach" target="_blank" class="banner-btn banner-btn-ios"> iOS</a>
-  </div>
-</div>
-
-<script>
-  const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
-  const { createClient } = supabase;
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  let _waGlobal = null;
-
-  const DEMO = {
-    s: {
-      nombre: 'Tienda Demo · CashCach',
-      imagen: '',
-      destacado: true,
-      ciudad: 'Caracas',
-      plan: 'premium',
-      whatsapp: '58412000000',
-      telefono: '02120000000',
-      web: 'cashcach.com',
-      direccion: 'Av. Principal, Local 5, Las Mercedes',
-      descripcion: 'Somos una tienda de electrónica y accesorios con más de 10 años en el mercado. Trabajamos con las mejores marcas y ofrecemos precios en dólares y bolívares al cambio BCV.',
-    },
-    galeria: [
-      { titulo: 'iPhone 15 Pro', precio: '999', precio_bs: '36450', imagen: '', descripcion: 'iPhone 15 Pro 256GB Titanio Natural. Garantía oficial 1 año.' },
-      { titulo: 'Samsung Galaxy S24', precio: '799', precio_bs: '29163', imagen: '', descripcion: 'Samsung Galaxy S24 128GB. Sellado, garantía 1 año.' },
-      { titulo: 'AirPods Pro 2', precio: '249', precio_bs: '9087', imagen: '' },
-      { titulo: 'Cargador 65W GaN', precio: '35', precio_bs: '1278', imagen: '' },
-      { titulo: 'Cable USB-C 2m', precio: '12', precio_bs: '438', imagen: '' },
-      { titulo: 'Funda iPhone 15', precio: '18', precio_bs: '657', imagen: '' },
-    ],
-  };
-
-  async function cargar() {
-    const id = new URLSearchParams(location.search).get('id');
-    if (!id) return mostrarError('Link inválido', 'Falta el ID de la tienda.');
-
-    let s, galeria;
-
-    if (id === 'demo') {
-      s = DEMO.s;
-      galeria = DEMO.galeria;
-    } else {
-      const [r1, r2] = await Promise.all([
-        db.from('socios_comerciales').select('*').eq('id', id).single(),
-        db.from('galeria_items').select('*').eq('socio_id', id).order('orden'),
-      ]);
-      s = r1.data;
-      galeria = r2.data;
-    }
-
-    if (!s) return mostrarError('Tienda no encontrada', 'Este link ya no está disponible.');
-
-    _waGlobal = s.whatsapp;
-
-    // Meta OG
-    document.title = `${s.nombre} · CashCach`;
-    document.getElementById('og-title').content       = s.nombre;
-    document.getElementById('og-description').content = s.descripcion ?? `${s.nombre} en CashCach · ${s.ciudad ?? ''}`;
-    if (s.imagen) document.getElementById('og-image').content = s.imagen;
-
-    // Topbar
-    document.getElementById('top-nombre').textContent = s.nombre;
-    if (s.destacado) document.getElementById('top-dest').style.display = 'flex';
-
-    // Hero
-    const hero = document.getElementById('hero');
-    hero.innerHTML = `
-      ${s.imagen
-        ? `<img class="hero-img" src="${s.imagen}" alt="${s.nombre}" />`
-        : `<div class="hero-placeholder">🏪</div>`}
-      <div class="hero-grad"></div>
-      <div class="hero-content">
-        <div class="hero-nombre">${s.nombre}</div>
-        <div class="hero-tags">
-          ${s.destacado ? `<span class="hero-tag hero-tag-dest">⭐ Destacada</span>` : ''}
-          ${s.ciudad    ? `<span class="hero-tag">📍 ${s.ciudad}</span>` : ''}
-          ${s.plan && s.plan !== 'gratis'
-            ? `<span class="hero-tag">✦ Plan ${s.plan.charAt(0).toUpperCase()+s.plan.slice(1)}</span>` : ''}
-        </div>
-      </div>`;
-
-    // Botones contacto
-    const btns = document.getElementById('btns-contacto');
-    let hayContacto = false;
-    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
-    if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
-    if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Ver web / redes</a>`; hayContacto = true; }
-    if (hayContacto) document.getElementById('card-contacto').style.display = 'block';
-
-    // Info
-    const info = [];
-    if (s.direccion) info.push({ i: '📌', l: 'Dirección', v: s.direccion });
-    if (s.ciudad)    info.push({ i: '🏙', l: 'Ciudad',    v: s.ciudad    });
-    if (info.length) {
-      document.getElementById('info-body').innerHTML = info.map(r =>
-        `<div class="info-row">
-          <span class="info-icon">${r.i}</span>
-          <div><div class="info-label">${r.l}</div><div class="info-val">${r.v}</div></div>
-        </div>`
-      ).join('');
-      document.getElementById('card-info').style.display = 'block';
-    }
-
-    // Descripción
-    if (s.descripcion) {
-      document.getElementById('desc-text').textContent = s.descripcion;
-      document.getElementById('card-desc').style.display = 'block';
-    }
-
-    // Galería
-    if (galeria?.length) {
-      const grid = document.getElementById('galeria-grid');
-      galeria.forEach(item => {
-        const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
-        const div = document.createElement('div');
-        div.className = 'prod-card';
-        div.onclick = () => abrirProducto(item);
-        div.innerHTML = `
-          <div class="prod-img-wrap">
-            ${item.imagen
-              ? `<img class="prod-img" src="${item.imagen}" alt="${item.titulo ?? ''}" loading="lazy" />`
-              : `<div class="prod-placeholder">📦</div>`}
-            ${imgs.length > 1 ? `<div class="prod-badge-imgs">+${imgs.length} fotos</div>` : ''}
+    <div class="stalls">
+      <div class="stall">
+        <div class="awning"></div>
+        <div class="stall-body">
+          <div class="stall-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10M7 7l3-3M17 7l-3-3M17 17H7M17 17l-3 3M7 17l3 3"/></svg>
           </div>
-          <div class="prod-info">
-            ${item.titulo ? `<div class="prod-nombre">${item.titulo}</div>` : ''}
-            ${item.precio
-              ? `<div class="prod-precio">$${item.precio}</div>
-                 ${item.precio_bs ? `<div class="prod-precio-bs">Bs. ${Number(item.precio_bs).toLocaleString('es-VE')}</div>` : ''}`
-              : `<div class="prod-sin-precio">Consultar precio</div>`}
-          </div>`;
-        grid.appendChild(div);
-      });
-      document.getElementById('main-galeria').style.display = 'block';
-    }
+          <div class="stall-txt">
+            <div class="k">Calculadora</div>
+            <div class="v">1 USD → Bs 187,42</div>
+          </div>
+        </div>
+      </div>
+      <div class="stall">
+        <div class="awning"></div>
+        <div class="stall-body">
+          <div class="stall-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c1.5 1 4.5 1 6 0s4.5-1 6 0 4.5 1 6 0M5 9v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/></svg>
+          </div>
+          <div class="stall-txt">
+            <div class="k">Mi Tienda</div>
+            <div class="v">6 comercios cerca de ti</div>
+          </div>
+        </div>
+      </div>
+      <div class="stall">
+        <div class="awning"></div>
+        <div class="stall-body">
+          <div class="stall-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M15 14h3"/></svg>
+          </div>
+          <div class="stall-txt">
+            <div class="k">Mi Cartera</div>
+            <div class="v">Este mes: +$420 · −$180</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
 
-    // Mostrar página
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('pagina').style.display  = 'block';
-  }
+<div class="wrap"><div class="awning" style="opacity:.35"></div></div>
 
-  function abrirProducto(item) {
-    const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
+<section id="funciones" class="wrap">
+  <div class="section-head">
+    <span class="kicker">Funciones</span>
+    <h2>Todo lo que necesitas, en un solo lugar</h2>
+    <p>Tres herramientas pensadas para el día a día en Venezuela.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10M7 7l3-3M17 7l-3-3M17 17H7M17 17l-3 3M7 17l3 3"/></svg>
+      </div>
+      <h3>Calculadora de tasas</h3>
+      <p>Convierte USD, EUR y USDT P2P a bolívares con la tasa BCV y de mercado en tiempo real. Botones rápidos, comparte o copia el resultado al instante.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c1.5 1 4.5 1 6 0s4.5-1 6 0 4.5 1 6 0M5 9v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/></svg>
+      </div>
+      <h3>Mi Tienda</h3>
+      <p>Descubre comercios locales cerca de ti, filtra por ciudad y categoría, compra directo desde la app y da seguimiento a tu pedido.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M15 14h3"/></svg>
+      </div>
+      <h3>Mi Cartera</h3>
+      <p>Registra tus ingresos y gastos personales, todo en el mismo lugar donde ya revisas tus tasas y haces tus compras.</p>
+    </div>
+  </div>
+</section>
 
-    // Imagen principal
-    const imgEl = document.getElementById('m-img');
-    imgEl.src = imgs[0] ?? '';
+<section id="tiendas" class="wrap">
+  <div class="tiendas">
+    <div class="awning"></div>
+    <div class="tiendas-inner">
+      <div class="tiendas-copy">
+        <h2>¿Tienes un negocio?</h2>
+        <p>Súmate al directorio de CashCash y llega a compradores de tu ciudad. Elige el plan que se ajuste a tu negocio y activa tu perfil.</p>
+        <a class="btn btn-accent" href="https://wa.me/584120188080?text=Hola%2C%20quiero%20registrar%20mi%20tienda%20en%20CashCash" target="_blank" rel="noopener">Regístrate por WhatsApp</a>
+      </div>
+      <div class="plans" id="plans-precios">
+        <div class="plan-chip"><div class="p-name">Básico</div><div class="p-price">$15<span>/mes</span></div></div>
+        <div class="plan-chip"><div class="p-name">Pro</div><div class="p-price">$30<span>/mes</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    // Miniaturas
-    const thumbs = document.getElementById('m-thumbs');
-    if (imgs.length > 1) {
-      thumbs.style.display = 'flex';
-      thumbs.innerHTML = imgs.map((src, i) =>
-        `<img class="modal-thumb${i===0?' on':''}" src="${src}"
-          onclick="setImg('${src}',this)" />`
-      ).join('');
-    } else { thumbs.style.display = 'none'; }
+<section id="faq" class="wrap">
+  <div class="section-head">
+    <span class="kicker">Preguntas frecuentes</span>
+    <h2>Todo lo que quieras saber</h2>
+  </div>
+  <div class="faq">
+    <details class="faq-item" open>
+      <summary>¿CashCash es gratis? <span class="plus">+</span></summary>
+      <p>Sí, descargar y usar la calculadora de tasas y Mi Cartera es completamente gratis. Registrar una tienda en el directorio tiene planes de membresía desde $10/mes.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Qué monedas soporta la calculadora? <span class="plus">+</span></summary>
+      <p>Dólares (USD), euros (EUR) y USDT P2P, convertidos a bolívares con tasa BCV y de mercado, actualizadas en tiempo real desde fuentes públicas.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Cómo registro mi tienda? <span class="plus">+</span></summary>
+      <p>Escríbenos por WhatsApp o regístrate directamente desde la app en la sección Mi Tienda. Tu solicitud se revisa y activa en menos de 24 horas hábiles.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Mis datos están seguros? <span class="plus">+</span></summary>
+      <p>Sí. No vendemos tus datos a terceros. Puedes leer el detalle completo en nuestra <a href="/privacidad.html">Política de Privacidad</a>.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Cuándo estará disponible para descargar? <span class="plus">+</span></summary>
+      <p>Estamos en la etapa final de pruebas. Escríbenos por WhatsApp si quieres que te avisemos apenas esté disponible en App Store y Google Play.</p>
+    </details>
+  </div>
+</section>
 
-    // Nombre
-    document.getElementById('m-nombre').textContent = item.titulo ?? 'Producto';
+<section class="wrap cta-final">
+  <h2>Muy pronto en tu teléfono</h2>
+  <p>Estamos afinando los últimos detalles antes de salir a producción.</p>
+  <a class="btn btn-accent" href="https://wa.me/584120188080?text=Hola%2C%20quiero%20que%20me%20avisen%20cuando%20CashCash%20est%C3%A9%20disponible" target="_blank" rel="noopener">Avísenme cuando esté lista</a>
+</section>
 
-    // Precios
-    const prEl = document.getElementById('m-precios');
-    if (item.precio) {
-      prEl.innerHTML = `<div class="modal-precio">$${item.precio}</div>
-        ${item.precio_bs ? `<div class="modal-precio-bs">Bs. ${Number(item.precio_bs).toLocaleString('es-VE')}</div>` : ''}`;
-    } else {
-      prEl.innerHTML = `<div style="font-size:14px;color:var(--muted);font-style:italic">Consultar precio</div>`;
-    }
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">
+          <img src="/admin/icon.png" alt="CashCash">
+          <span>CashCash</span>
+        </div>
+        <p class="tagline">Calculadora de tasas, directorio de comercios y control de gastos — hecha para Venezuela.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Producto</h4>
+          <a href="#funciones">Cómo funciona</a>
+          <a href="#tiendas">Para tiendas</a>
+          <a href="#faq">Preguntas frecuentes</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="/terminos.html">Términos y condiciones</a>
+          <a href="/privacidad.html">Política de privacidad</a>
+        </div>
+        <div class="footer-col">
+          <h4>Contacto</h4>
+          <a href="https://wa.me/584120188080" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 CashCash · Todos los derechos reservados</span>
+    </div>
+  </div>
+</footer>
 
-    // Descripción
-    const dw = document.getElementById('m-desc-wrap');
-    if (item.descripcion) {
-      document.getElementById('m-desc').textContent = item.descripcion;
-      dw.style.display = 'block';
-    } else { dw.style.display = 'none'; }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Mismas claves y defaults que usa la app (src/app/planes-tienda.tsx) para
+  // que el precio mostrado aqui siempre coincida con lo que el admin tenga
+  // configurado en "Ofertas y Planes" (config_app).
+  (function () {
+    const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // WhatsApp
-    const waWrap = document.getElementById('m-wa');
-    if (_waGlobal) {
-      const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${item.precio ? ' ($'+item.precio+')' : ''}`);
-      document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
-      waWrap.style.display = 'flex';
-    } else { waWrap.style.display = 'none'; }
-
-    document.getElementById('overlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function setImg(src, el) {
-    document.getElementById('m-img').src = src;
-    document.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('on'));
-    el.classList.add('on');
-  }
-
-  function cerrarModal() {
-    document.getElementById('overlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  function cerrarOverlay(e) {
-    if (e.target === document.getElementById('overlay')) cerrarModal();
-  }
-
-  function mostrarError(titulo, sub) {
-    document.getElementById('loading').innerHTML = `
-      <div class="estado-icono">🏪</div>
-      <div class="estado-titulo">${titulo}</div>
-      <div class="estado-sub">${sub}</div>`;
-  }
-
-  cargar();
+    db.from('config_app').select('clave,valor')
+      .in('clave', ['precio_base_basico_mensual', 'precio_base_pro_mensual'])
+      .then(({ data }) => {
+        const map = Object.fromEntries((data || []).map(r => [r.clave, r.valor]));
+        const basico = map.precio_base_basico_mensual ? parseFloat(map.precio_base_basico_mensual) : 15;
+        const pro    = map.precio_base_pro_mensual    ? parseFloat(map.precio_base_pro_mensual)    : 30;
+        document.getElementById('plans-precios').innerHTML = `
+          <div class="plan-chip"><div class="p-name">Básico</div><div class="p-price">$${basico}<span>/mes</span></div></div>
+          <div class="plan-chip"><div class="p-name">Pro</div><div class="p-price">$${pro}<span>/mes</span></div></div>
+        `;
+      })
+      .catch(() => {}); // si falla, se queda con los valores por defecto ya en el HTML
+  })();
 </script>
 </body>
 </html>
