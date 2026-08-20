@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Política de Privacidad · CashCach</title>
+  <meta name="description" content="Política de Privacidad de CashCach: qué datos recopilamos, cómo los usamos y tus derechos." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent:   #6c3fc5;
+      --accent-l: #8b5cf6;
+      --bg:       #f7f8fa;
+      --card:     #ffffff;
+      --border:   #eaecf0;
+      --text:     #111827;
+      --muted:    #6b7280;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .topbar-logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-l));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .topbar-titulos { display: flex; flex-direction: column; }
+    .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
+    .topbar-sub  { font-size: 12px; color: var(--muted); }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+
+    .intro {
+      display: flex; align-items: center; gap: 10px;
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+      border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 20px;
+      color: var(--accent); font-weight: 600; font-size: 14px;
+    }
+
+    .seccion {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .seccion h2 {
+      font-size: 16px; font-weight: 800; margin-bottom: 8px; line-height: 1.4;
+    }
+    .seccion p {
+      font-size: 14px; line-height: 1.7; color: var(--muted); white-space: pre-line;
+    }
+
+    .pie {
+      text-align: center; margin-top: 24px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+
+    #contenido-loading { text-align: center; padding: 40px 0; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-logo">🔒</div>
+    <div class="topbar-titulos">
+      <span class="topbar-name">CashCach</span>
+      <span class="topbar-sub">Política de Privacidad</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro">🛡️ Última actualización: agosto 2026</div>
+    <div id="contenido-loading">Cargando…</div>
+    <div id="contenido" style="display:none"></div>
+
+    <div class="pie">© 2026 CashCach · Todos los derechos reservados</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ── Contenido predeterminado (si no hay nada guardado en config_app) ──
+    const SECCIONES_DEFAULT = [
+      { t: '1. Responsable de los datos', c: 'CashCach es la aplicación y el sitio responsables del tratamiento de los datos descritos en esta Política de Privacidad. Para cualquier consulta sobre tus datos, puedes contactarnos por el WhatsApp indicado en el directorio de la aplicación o por los canales oficiales.' },
+      { t: '2. Datos que recopilamos', c: 'Dependiendo de cómo uses CashCach, podemos recopilar:\n• Datos de contacto: nombre, teléfono, correo electrónico y WhatsApp, al registrar una cuenta o una tienda.\n• Ubicación: usamos tu ubicación aproximada o precisa (con tu permiso) para mostrarte comercios y ofertas cercanas.\n• Cámara y fotos: al registrar productos o el perfil de tu tienda, accedemos a la cámara o galería solo cuando tú decides subir una imagen.\n• Datos de pedidos: nombre, dirección de entrega, punto de referencia y método de pago seleccionado, al hacer una compra en una tienda del directorio.\n• Comprobantes de pago: capturas o fotos que subes voluntariamente al reportar un pago.\n• Identificador de notificaciones (push token): para poder enviarte avisos de tus pedidos o solicitudes.\n• Datos de uso: interacciones básicas dentro de la app para fines estadísticos internos.' },
+      { t: '3. Cómo usamos tus datos', c: 'Usamos tus datos únicamente para:\n• Operar las funciones de la app: calculadora de tasas, directorio de tiendas, carrito de compras y Mi Cartera.\n• Mostrar tu tienda o producto en el directorio, si te registras como socio comercial.\n• Procesar y dar seguimiento a tus pedidos entre tú y la tienda correspondiente.\n• Enviarte notificaciones relacionadas con tu actividad (pedidos, solicitudes, aprobaciones).\n• Mejorar la app a partir de estadísticas de uso agregadas.' },
+      { t: '4. Con quién compartimos tus datos', c: 'No vendemos tus datos personales a terceros.\n\nCompartimos datos únicamente con los proveedores que necesitamos para operar la app:\n• Supabase: nuestra base de datos e infraestructura de almacenamiento (fotos, comprobantes).\n• Firebase Cloud Messaging (Android) y Apple Push Notification service (iOS): para enviarte notificaciones push.\n• La tienda con la que haces un pedido: recibe los datos necesarios para completar esa compra (nombre, dirección, teléfono, referencia de pago).\n\nEstos proveedores solo acceden a los datos necesarios para prestar su servicio y no están autorizados a usarlos con otro fin.' },
+      { t: '5. Almacenamiento y seguridad', c: 'Tus datos se almacenan en servidores de Supabase con medidas estándar de seguridad (cifrado en tránsito y control de acceso). Ningún sistema es 100% infalible, pero tomamos precauciones razonables para proteger tu información contra accesos no autorizados.' },
+      { t: '6. Menores de edad', c: 'CashCach no está dirigida a menores de 13 años y no recopilamos intencionalmente datos de menores. Si detectamos una cuenta de un menor sin el consentimiento correspondiente, procederemos a eliminarla.' },
+      { t: '7. Tus derechos', c: 'Puedes solicitar en cualquier momento:\n• Acceder a los datos que tenemos sobre ti.\n• Corregir datos incorrectos o desactualizados.\n• Eliminar tu cuenta, tienda o datos asociados.\n\nPara ejercer estos derechos, contáctanos por WhatsApp o por los canales oficiales de la aplicación. Atendemos estas solicitudes en un plazo razonable.' },
+      { t: '8. Permisos del dispositivo', c: 'La app puede solicitarte permisos de Ubicación y Cámara. Estos permisos son opcionales para el funcionamiento general de la app, pero necesarios para funciones específicas (mostrar comercios cercanos, subir fotos de productos). Puedes revocarlos en cualquier momento desde los ajustes de tu dispositivo; algunas funciones dejarán de estar disponibles si lo haces.' },
+      { t: '9. Cambios a esta política', c: 'Podemos actualizar esta Política de Privacidad ocasionalmente. Los cambios entran en vigor desde su publicación en esta página. Te recomendamos revisarla periódicamente.' },
+      { t: '10. Contacto', c: 'Para consultas o solicitudes relacionadas con tus datos personales, contáctanos por el WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.' },
+    ];
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function render(texto) {
+      const cont = document.getElementById('contenido');
+      if (texto) {
+        cont.innerHTML = `<div class="seccion"><p>${escapeHtml(texto)}</p></div>`;
+      } else {
+        cont.innerHTML = SECCIONES_DEFAULT.map(s =>
+          `<div class="seccion"><h2>${escapeHtml(s.t)}</h2><p>${escapeHtml(s.c)}</p></div>`
+        ).join('');
+      }
+      document.getElementById('contenido-loading').style.display = 'none';
+      cont.style.display = 'block';
+    }
+
+    db.from('config_app').select('valor').eq('clave', 'politica_privacidad').single()
+      .then(({ data }) => render(data && data.valor ? data.valor : null))
+      .catch(() => render(null));
+  </script>
+</body>
+</html>
