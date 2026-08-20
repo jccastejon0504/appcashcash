@@ -456,6 +456,9 @@
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
     </div>
+    <div class="nav-item" data-section="privacidad">
+      <span class="icon">🔒</span> Política de Privacidad
+    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -1890,6 +1893,31 @@
       </div>
     </div>
 
+    <!-- ══ POLÍTICA DE PRIVACIDAD ═══════════════════════════ -->
+    <div class="section" id="section-privacidad">
+      <div class="card">
+        <div class="card-header">
+          <h2>Política de Privacidad</h2>
+          <span class="badge badge-gray" id="badge-privacidad">Sin guardar</span>
+        </div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+            Este texto se muestra en la pantalla "Política de Privacidad" de la app y en appcashcash.com/privacidad. Si lo dejas vacío, se mostrará el contenido predeterminado integrado.
+          </p>
+          <div class="form-group" style="margin-bottom:14px">
+            <label>Contenido (texto plano)</label>
+            <textarea id="privacidad-texto" rows="20" placeholder="Escribe aquí la política de privacidad…"></textarea>
+          </div>
+          <div class="msg" id="msg-privacidad"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="guardarPrivacidad()">Guardar</button>
+            <button class="btn btn-outline" onclick="cargarTextoDefectoPrivacidad()">Cargar texto predeterminado</button>
+            <button class="btn btn-danger" onclick="borrarPrivacidad()" id="btn-borrar-privacidad" style="display:none">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ PUBLICIDAD ══════════════════════════════════════ -->
     <div class="section" id="section-publicidad">
       <div class="card" style="max-width:560px">
@@ -2099,6 +2127,7 @@
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
     publicidad:   { title: 'Publicidad',               sub: 'Cintillo en la ficha y popup flotante en la pantalla de inicio' },
     terminos:     { title: 'Términos y Condiciones',   sub: 'Texto legal que se muestra en la app' },
+    privacidad:   { title: 'Política de Privacidad',   sub: 'Texto legal que se muestra en la app y en la web' },
   };
 
   const TERMINOS_DEFAULT = `1. Aceptación de los Términos
@@ -2146,6 +2175,60 @@ Nos reservamos el derecho de actualizar estos Términos en cualquier momento. Lo
 11. Contacto
 Para consultas, reclamos o soporte relacionado con estos términos, puedes contactarnos a través del WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.`;
 
+  const PRIVACIDAD_DEFAULT = `1. Responsable de los datos
+CashCach es la aplicación y el sitio responsables del tratamiento de los datos descritos en esta Política de Privacidad. Para cualquier consulta sobre tus datos, puedes contactarnos por el WhatsApp indicado en el directorio de la aplicación o por los canales oficiales.
+
+2. Datos que recopilamos
+Dependiendo de cómo uses CashCach, podemos recopilar:
+• Datos de contacto: nombre, teléfono, correo electrónico y WhatsApp, al registrar una cuenta o una tienda.
+• Ubicación: usamos tu ubicación aproximada o precisa (con tu permiso) para mostrarte comercios y ofertas cercanas.
+• Cámara y fotos: al registrar productos o el perfil de tu tienda, accedemos a la cámara o galería solo cuando tú decides subir una imagen.
+• Datos de pedidos: nombre, dirección de entrega, punto de referencia y método de pago seleccionado, al hacer una compra en una tienda del directorio.
+• Comprobantes de pago: capturas o fotos que subes voluntariamente al reportar un pago.
+• Identificador de notificaciones (push token): para poder enviarte avisos de tus pedidos o solicitudes.
+• Datos de uso: interacciones básicas dentro de la app (por ejemplo, qué secciones visitas) para fines estadísticos internos.
+
+3. Cómo usamos tus datos
+Usamos tus datos únicamente para:
+• Operar las funciones de la app: calculadora de tasas, directorio de tiendas, carrito de compras y Mi Cartera.
+• Mostrar tu tienda o producto en el directorio, si te registras como socio comercial.
+• Procesar y dar seguimiento a tus pedidos entre tú y la tienda correspondiente.
+• Enviarte notificaciones relacionadas con tu actividad (pedidos, solicitudes, aprobaciones).
+• Mejorar la app a partir de estadísticas de uso agregadas.
+
+4. Con quién compartimos tus datos
+No vendemos tus datos personales a terceros.
+
+Compartimos datos únicamente con los proveedores que necesitamos para operar la app:
+• Supabase: nuestra base de datos e infraestructura de almacenamiento (fotos, comprobantes).
+• Firebase Cloud Messaging (Android) y Apple Push Notification service (iOS): para enviarte notificaciones push.
+• La tienda con la que haces un pedido: recibe los datos necesarios para completar esa compra (nombre, dirección, teléfono, referencia de pago).
+
+Estos proveedores solo acceden a los datos necesarios para prestar su servicio y no están autorizados a usarlos con otro fin.
+
+5. Almacenamiento y seguridad
+Tus datos se almacenan en servidores de Supabase con medidas estándar de seguridad (cifrado en tránsito y control de acceso). Ningún sistema es 100% infalible, pero tomamos precauciones razonables para proteger tu información contra accesos no autorizados.
+
+6. Menores de edad
+CashCach no está dirigida a menores de 13 años y no recopilamos intencionalmente datos de menores. Si detectamos una cuenta de un menor sin el consentimiento correspondiente, procederemos a eliminarla.
+
+7. Tus derechos
+Puedes solicitar en cualquier momento:
+• Acceder a los datos que tenemos sobre ti.
+• Corregir datos incorrectos o desactualizados.
+• Eliminar tu cuenta, tienda o datos asociados.
+
+Para ejercer estos derechos, contáctanos por WhatsApp o por los canales oficiales de la aplicación. Atendemos estas solicitudes en un plazo razonable.
+
+8. Permisos del dispositivo
+La app puede solicitarte permisos de Ubicación y Cámara. Estos permisos son opcionales para el funcionamiento general de la app, pero necesarios para funciones específicas (mostrar comercios cercanos, subir fotos de productos). Puedes revocarlos en cualquier momento desde los ajustes de tu dispositivo; algunas funciones dejarán de estar disponibles si lo haces.
+
+9. Cambios a esta política
+Podemos actualizar esta Política de Privacidad ocasionalmente. Los cambios entran en vigor desde su publicación en esta página. Te recomendamos revisarla periódicamente.
+
+10. Contacto
+Para consultas o solicitudes relacionadas con tus datos personales, contáctanos por el WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.`;
+
   // ── Navegación ────────────────────────────────────────────────────────────
 
   function navTo(id) {
@@ -2169,6 +2252,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     if (id === 'metodos')     cargarMetodos();
     if (id === 'publicidad')  cargarPublicidad();
     if (id === 'terminos')    cargarTerminos();
+    if (id === 'privacidad')  cargarPrivacidad();
   }
 
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -4518,6 +4602,44 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
     await cargarTerminos();
   }
 
+  // ── Política de Privacidad ────────────────────────────────────────────────
+
+  async function cargarPrivacidad() {
+    const { data } = await db.from('config_app').select('valor').eq('clave', 'politica_privacidad').single();
+    const badge = document.getElementById('badge-privacidad');
+    const btnBorrar = document.getElementById('btn-borrar-privacidad');
+    if (data?.valor) {
+      document.getElementById('privacidad-texto').value = data.valor;
+      badge.textContent = 'Guardado en BD'; badge.className = 'badge badge-green';
+      btnBorrar.style.display = 'inline-flex';
+    } else {
+      document.getElementById('privacidad-texto').value = '';
+      badge.textContent = 'Usando texto predeterminado'; badge.className = 'badge badge-gray';
+      btnBorrar.style.display = 'none';
+    }
+  }
+
+  function cargarTextoDefectoPrivacidad() {
+    document.getElementById('privacidad-texto').value = PRIVACIDAD_DEFAULT;
+  }
+
+  async function guardarPrivacidad() {
+    const valor = document.getElementById('privacidad-texto').value.trim();
+    if (!valor) { showMsg('msg-privacidad', 'El texto no puede estar vacío.', 'err'); return; }
+    const { error } = await db.from('config_app')
+      .upsert({ clave: 'politica_privacidad', valor }, { onConflict: 'clave' });
+    if (error) { showMsg('msg-privacidad', 'Error: ' + error.message, 'err'); return; }
+    showMsg('msg-privacidad', '¡Guardado! La app y la web mostrarán este texto.', 'ok');
+    await cargarPrivacidad();
+  }
+
+  async function borrarPrivacidad() {
+    if (!confirm('¿Eliminar el texto de la BD? La app y la web usarán el contenido predeterminado.')) return;
+    await db.from('config_app').delete().eq('clave', 'politica_privacidad');
+    showMsg('msg-privacidad', 'Eliminado. Se usará el texto predeterminado.', 'ok');
+    await cargarPrivacidad();
+  }
+
   // ── Reglas de Registro ───────────────────────────────────────────────────
 
   async function cargarReglas() {
@@ -5284,6 +5406,7 @@ Para consultas, reclamos o soporte relacionado con estos términos, puedes conta
       ubicaciones: cargarEstados,
       metodos:     cargarMetodos,
       terminos:    cargarTerminos,
+      privacidad:  cargarPrivacidad,
     }[_seccionActual];
     if (fn) fn();
   }

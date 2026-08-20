@@ -131,6 +131,7 @@ function AppTabs() {
       <Tabs.Screen name="unirse-socio"       options={{ href: null }} />
       <Tabs.Screen name="editar-mi-negocio"  options={{ href: null }} />
       <Tabs.Screen name="terminos"           options={{ href: null }} />
+      <Tabs.Screen name="privacidad"         options={{ href: null }} />
     </Tabs>
   );
 }

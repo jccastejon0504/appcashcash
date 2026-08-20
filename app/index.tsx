@@ -689,6 +689,11 @@ export default function CalculadoraBCVScreen() {
               <Ionicons name="document-text-outline" size={18} color={T.textMuted} />
               <Text style={[s.menuItemText, { color: T.textMuted }]}>Términos y Condiciones</Text>
             </TouchableOpacity>
+            <View style={[s.menuDivider, { backgroundColor: T.border }]} />
+            <TouchableOpacity style={s.menuItem} onPress={() => { setMenuVisible(false); router.navigate('/privacidad'); }}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={T.textMuted} />
+              <Text style={[s.menuItemText, { color: T.textMuted }]}>Política de Privacidad</Text>
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
