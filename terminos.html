@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Términos y Condiciones · CashCach</title>
+  <meta name="description" content="Términos y Condiciones de uso de CashCach." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent:   #6c3fc5;
+      --accent-l: #8b5cf6;
+      --bg:       #f7f8fa;
+      --card:     #ffffff;
+      --border:   #eaecf0;
+      --text:     #111827;
+      --muted:    #6b7280;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .topbar-logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-l));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .topbar-titulos { display: flex; flex-direction: column; }
+    .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
+    .topbar-sub  { font-size: 12px; color: var(--muted); }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+
+    .intro {
+      display: flex; align-items: center; gap: 10px;
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+      border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 20px;
+      color: var(--accent); font-weight: 600; font-size: 14px;
+    }
+
+    .seccion {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .seccion h2 {
+      font-size: 16px; font-weight: 800; margin-bottom: 8px; line-height: 1.4;
+    }
+    .seccion p {
+      font-size: 14px; line-height: 1.7; color: var(--muted); white-space: pre-line;
+    }
+
+    .pie {
+      text-align: center; margin-top: 24px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+
+    #contenido-loading { text-align: center; padding: 40px 0; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-logo">📄</div>
+    <div class="topbar-titulos">
+      <span class="topbar-name">CashCach</span>
+      <span class="topbar-sub">Términos y Condiciones</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro">📄 Última actualización: agosto 2026</div>
+    <div id="contenido-loading">Cargando…</div>
+    <div id="contenido" style="display:none"></div>
+
+    <div class="pie">© 2026 CashCach · Todos los derechos reservados</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ── Contenido predeterminado (si no hay nada guardado en config_app) ──
+    const SECCIONES_DEFAULT = [
+      { t: '1. Aceptación de los Términos', c: 'Al descargar, instalar o utilizar la aplicación CashCach, aceptas quedar vinculado por estos Términos y Condiciones. Si no estás de acuerdo con alguna parte de estos términos, no debes utilizar la aplicación.' },
+      { t: '2. Descripción del Servicio', c: 'CashCach es una aplicación de utilidad financiera que ofrece:\n• Calculadora de cambio con tasas BCV y USDT en tiempo real.\n• Lista de compras y comparación de precios de mercado.\n• Registro de ingresos y gastos personales (Mi Cartera).\n• Directorio de comercios locales (Mi Tienda).' },
+      { t: '3. Tasas de Cambio', c: 'Las tasas mostradas en la aplicación son obtenidas de fuentes públicas externas (BCV, DolarAPI, Binance P2P) y pueden tener un desfase de hasta 4 horas con respecto a la tasa oficial. CashCach no garantiza la exactitud, completitud ni vigencia de las tasas en tiempo real. No somos responsables de decisiones financieras tomadas con base en los datos mostrados.' },
+      { t: '4. Módulo Mi Tienda — Socios Comerciales', c: 'Los comercios que aparecen en el Directorio son registros proporcionados voluntariamente por sus propietarios. CashCach actúa como plataforma de publicación y no es responsable de la calidad, disponibilidad, precios ni veracidad de la información publicada por cada negocio.\n\nLas membresías de socios (Plan Básico y Plan Pro) requieren pago previo. Los pagos son procesados directamente entre el usuario y CashCach mediante los métodos habilitados. Una vez confirmado el pago, la activación del perfil puede tomar hasta 24 horas hábiles.' },
+      { t: '5. Pagos y Reembolsos', c: 'Los pagos de membresía son no reembolsables una vez que el perfil del negocio ha sido activado. En caso de error en el pago o duplicidad, el usuario debe contactarnos por WhatsApp dentro de las 24 horas siguientes a la transacción para gestionar la corrección.' },
+      { t: '6. Conducta del Usuario', c: 'El usuario se compromete a:\n• No publicar información falsa, engañosa o ilegal en su perfil de negocio.\n• No utilizar la aplicación para fines fraudulentos o actividades ilícitas.\n• No intentar acceder a partes de la aplicación o base de datos que no le corresponden.\n• Mantener actualizados los datos de contacto de su negocio.' },
+      { t: '7. Contenido y Usos Prohibidos', c: 'Está estrictamente prohibido usar CashCach para publicar, compartir, vender o promocionar:\n• Pornografía o contenido sexual explícito de cualquier tipo.\n• Explotación o abuso sexual infantil (CSAM) en cualquier forma — tolerancia cero. Cualquier cuenta o contenido detectado será eliminado de inmediato y reportado a las autoridades competentes y organismos especializados (como NCMEC).\n• Fraude, estafas, esquemas piramidales, suplantación de identidad o cualquier intento de engañar a otros usuarios.\n• Venta o promoción de productos o servicios ilegales, incluyendo armas, drogas ilícitas, medicamentos sin regulación o artículos robados.\n• Contenido violento, discurso de odio, acoso, amenazas o discriminación por raza, género, religión, orientación sexual o cualquier otra condición.\n• Spam, phishing, malware o cualquier intento de comprometer la seguridad de otros usuarios o de la plataforma.\n• Suplantación de otra tienda, marca o persona sin autorización.\n\nEl incumplimiento de esta sección puede resultar en la suspensión o eliminación inmediata de la cuenta o tienda, sin previo aviso, y en la denuncia ante las autoridades correspondientes cuando la ley lo exija o lo amerite.' },
+      { t: '8. Privacidad de Datos', c: 'La información proporcionada al registrar un negocio (nombre, teléfono, dirección, imágenes) es publicada de forma visible en el directorio de la aplicación. Al enviar esta información, el usuario autoriza expresamente su publicación.\n\nCashCach no vende ni comparte datos personales con terceros con fines comerciales. Los datos son almacenados en Supabase con medidas estándar de seguridad. Para más detalle, consulta nuestra Política de Privacidad.' },
+      { t: '9. Propiedad Intelectual', c: 'El diseño, código, marca y contenido de CashCach son propiedad de sus desarrolladores. Queda prohibida la reproducción, distribución o modificación de cualquier parte de la aplicación sin autorización expresa por escrito.' },
+      { t: '10. Limitación de Responsabilidad', c: 'CashCach se proporciona "tal como está". No garantizamos disponibilidad continua del servicio ni ausencia de errores. En ningún caso CashCach será responsable de pérdidas económicas derivadas del uso de la aplicación, incluyendo pérdidas por tasas incorrectas, decisiones de compra/venta o transacciones comerciales.' },
+      { t: '11. Modificaciones', c: 'Nos reservamos el derecho de actualizar estos Términos en cualquier momento. Los cambios entran en vigor desde su publicación en la aplicación. El uso continuado de CashCach implica la aceptación de los términos vigentes.' },
+      { t: '12. Contacto', c: 'Para consultas, reclamos o soporte relacionado con estos términos, puedes contactarnos a través del WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.' },
+    ];
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function render(texto) {
+      const cont = document.getElementById('contenido');
+      if (texto) {
+        cont.innerHTML = `<div class="seccion"><p>${escapeHtml(texto)}</p></div>`;
+      } else {
+        cont.innerHTML = SECCIONES_DEFAULT.map(s =>
+          `<div class="seccion"><h2>${escapeHtml(s.t)}</h2><p>${escapeHtml(s.c)}</p></div>`
+        ).join('');
+      }
+      document.getElementById('contenido-loading').style.display = 'none';
+      cont.style.display = 'block';
+    }
+
+    db.from('config_app').select('valor').eq('clave', 'terminos_condiciones').single()
+      .then(({ data }) => render(data && data.valor ? data.valor : null))
+      .catch(() => render(null));
+  </script>
+</body>
+</html>
