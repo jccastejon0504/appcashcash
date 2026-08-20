@@ -36,23 +36,27 @@ const SECCIONES = [
     cuerpo: 'El usuario se compromete a:\n\n• No publicar información falsa, engañosa o ilegal en su perfil de negocio.\n• No utilizar la aplicación para fines fraudulentos o actividades ilícitas.\n• No intentar acceder a partes de la aplicación o base de datos que no le corresponden.\n• Mantener actualizados los datos de contacto de su negocio.',
   },
   {
-    titulo: '7. Privacidad de Datos',
-    cuerpo: 'La información proporcionada al registrar un negocio (nombre, teléfono, dirección, imágenes) es publicada de forma visible en el directorio de la aplicación. Al enviar esta información, el usuario autoriza expresamente su publicación.\n\nCashCach no vende ni comparte datos personales con terceros con fines comerciales. Los datos son almacenados en Supabase con medidas estándar de seguridad.',
+    titulo: '7. Contenido y Usos Prohibidos',
+    cuerpo: 'Está estrictamente prohibido usar CashCach para publicar, compartir, vender o promocionar:\n\n• Pornografía o contenido sexual explícito de cualquier tipo.\n• Explotación o abuso sexual infantil (CSAM) en cualquier forma — tolerancia cero. Cualquier cuenta o contenido detectado será eliminado de inmediato y reportado a las autoridades competentes y organismos especializados (como NCMEC).\n• Fraude, estafas, esquemas piramidales, suplantación de identidad o cualquier intento de engañar a otros usuarios.\n• Venta o promoción de productos o servicios ilegales, incluyendo armas, drogas ilícitas, medicamentos sin regulación o artículos robados.\n• Contenido violento, discurso de odio, acoso, amenazas o discriminación por raza, género, religión, orientación sexual o cualquier otra condición.\n• Spam, phishing, malware o cualquier intento de comprometer la seguridad de otros usuarios o de la plataforma.\n• Suplantación de otra tienda, marca o persona sin autorización.\n\nEl incumplimiento de esta sección puede resultar en la suspensión o eliminación inmediata de la cuenta o tienda, sin previo aviso, y en la denuncia ante las autoridades correspondientes cuando la ley lo exija o lo amerite.',
   },
   {
-    titulo: '8. Propiedad Intelectual',
+    titulo: '8. Privacidad de Datos',
+    cuerpo: 'La información proporcionada al registrar un negocio (nombre, teléfono, dirección, imágenes) es publicada de forma visible en el directorio de la aplicación. Al enviar esta información, el usuario autoriza expresamente su publicación.\n\nCashCach no vende ni comparte datos personales con terceros con fines comerciales. Los datos son almacenados en Supabase con medidas estándar de seguridad. Para más detalle, consulta nuestra Política de Privacidad.',
+  },
+  {
+    titulo: '9. Propiedad Intelectual',
     cuerpo: 'El diseño, código, marca y contenido de CashCach son propiedad de sus desarrolladores. Queda prohibida la reproducción, distribución o modificación de cualquier parte de la aplicación sin autorización expresa por escrito.',
   },
   {
-    titulo: '9. Limitación de Responsabilidad',
+    titulo: '10. Limitación de Responsabilidad',
     cuerpo: 'CashCach se proporciona "tal como está". No garantizamos disponibilidad continua del servicio ni ausencia de errores. En ningún caso CashCach será responsable de pérdidas económicas derivadas del uso de la aplicación, incluyendo pérdidas por tasas incorrectas, decisiones de compra/venta o transacciones comerciales.',
   },
   {
-    titulo: '10. Modificaciones',
+    titulo: '11. Modificaciones',
     cuerpo: 'Nos reservamos el derecho de actualizar estos Términos en cualquier momento. Los cambios entran en vigor desde su publicación en la aplicación. El uso continuado de CashCach implica la aceptación de los términos vigentes.',
   },
   {
-    titulo: '11. Contacto',
+    titulo: '12. Contacto',
     cuerpo: 'Para consultas, reclamos o soporte relacionado con estos términos, puedes contactarnos a través del WhatsApp indicado en el directorio de CashCach o por los canales oficiales de la aplicación.',
   },
 ];
