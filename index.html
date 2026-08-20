@@ -121,12 +121,18 @@
   .tiendas-copy{max-width:480px}
   .tiendas h2{font-size:clamp(24px,3vw,30px);margin-bottom:14px;color:var(--paper)}
   .tiendas p{color:color-mix(in srgb, var(--paper) 65%, transparent);font-size:15px;margin-bottom:24px}
-  .plans{display:flex;gap:12px;flex-wrap:wrap}
-  .plan-chip{background:color-mix(in srgb, var(--paper) 8%, transparent);border:1px solid color-mix(in srgb, var(--paper) 16%, transparent);border-radius:14px;padding:16px 20px;min-width:110px;position:relative}
-  .plan-chip::before{content:'';position:absolute;top:0;left:14px;right:14px;height:3px;background:var(--accent);border-radius:0 0 3px 3px}
-  .plan-chip .p-name{font-size:12.5px;color:color-mix(in srgb, var(--paper) 55%, transparent);font-weight:700;margin-bottom:4px}
-  .plan-chip .p-price{font-family:'Fredoka',sans-serif;font-size:21px;font-weight:600;color:var(--accent)}
-  .plan-chip .p-price span{font-size:12px;font-weight:500;color:color-mix(in srgb, var(--paper) 55%, transparent);font-family:'Plus Jakarta Sans',sans-serif}
+  .plans{display:flex;flex-direction:column;gap:10px;min-width:280px}
+  .plan-row{
+    background:color-mix(in srgb, var(--paper) 8%, transparent);
+    border:1px solid color-mix(in srgb, var(--paper) 16%, transparent);
+    border-radius:14px;padding:14px 18px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+  }
+  .plan-row .p-name{font-family:'Fredoka',sans-serif;font-size:15px;font-weight:600;color:var(--paper)}
+  .plan-row .p-prices{display:flex;gap:20px}
+  .plan-row .p-price-item{text-align:right}
+  .plan-row .p-price{font-family:'Fredoka',sans-serif;font-size:18px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+  .plan-row .p-period{display:block;font-size:11px;font-weight:500;color:color-mix(in srgb, var(--paper) 50%, transparent)}
 
   /* ── faq ── */
   .faq{max-width:720px}
@@ -279,8 +285,27 @@
         <a class="btn btn-accent" href="https://wa.me/584120188080?text=Hola%2C%20quiero%20registrar%20mi%20tienda%20en%20CashCash" target="_blank" rel="noopener">Regístrate por WhatsApp</a>
       </div>
       <div class="plans" id="plans-precios">
-        <div class="plan-chip"><div class="p-name">Básico</div><div class="p-price">$15<span>/mes</span></div></div>
-        <div class="plan-chip"><div class="p-name">Pro</div><div class="p-price">$30<span>/mes</span></div></div>
+        <div class="plan-row">
+          <div class="p-name">Básico</div>
+          <div class="p-prices">
+            <div class="p-price-item"><span class="p-price">$15</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$20</span><span class="p-period">/año</span></div>
+          </div>
+        </div>
+        <div class="plan-row">
+          <div class="p-name">Medio</div>
+          <div class="p-prices">
+            <div class="p-price-item"><span class="p-price">$45</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$40</span><span class="p-period">/año</span></div>
+          </div>
+        </div>
+        <div class="plan-row">
+          <div class="p-name">Pro</div>
+          <div class="p-prices">
+            <div class="p-price-item"><span class="p-price">$50</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$60</span><span class="p-period">/año</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -366,16 +391,46 @@
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // "Medio" reutiliza las mismas claves internas de "pro" (precio_base_pro_*)
+    // -- asi lo tiene el admin en "Ofertas y Planes" -- mientras que "Pro" de
+    // verdad usa sus propias claves (pro_precio_*), configuradas aparte en
+    // "Plan Pro". Cada plan tiene su propio interruptor de visibilidad.
     db.from('config_app').select('clave,valor')
-      .in('clave', ['precio_base_basico_mensual', 'precio_base_pro_mensual'])
+      .in('clave', [
+        'precio_base_basico_mensual', 'precio_base_basico_anual', 'plan_basico_visible',
+        'precio_base_pro_mensual',    'precio_base_pro_anual',    'plan_pro_visible',
+        'pro_precio_mensual',         'pro_precio_anual',
+        'pro_mensual_activo',         'pro_anual_activo',
+      ])
       .then(({ data }) => {
         const map = Object.fromEntries((data || []).map(r => [r.clave, r.valor]));
-        const basico = map.precio_base_basico_mensual ? parseFloat(map.precio_base_basico_mensual) : 15;
-        const pro    = map.precio_base_pro_mensual    ? parseFloat(map.precio_base_pro_mensual)    : 30;
-        document.getElementById('plans-precios').innerHTML = `
-          <div class="plan-chip"><div class="p-name">Básico</div><div class="p-price">$${basico}<span>/mes</span></div></div>
-          <div class="plan-chip"><div class="p-name">Pro</div><div class="p-price">$${pro}<span>/mes</span></div></div>
-        `;
+        const num = (v, d) => v ? parseFloat(v) : d;
+        const on  = v => v !== 'false';
+
+        const fila = (nombre, mensual, anual, mostrarMensual, mostrarAnual) => {
+          if (!mostrarMensual && !mostrarAnual) return '';
+          const item = (precio, periodo) => `
+            <div class="p-price-item"><span class="p-price">$${precio}</span><span class="p-period">/${periodo}</span></div>`;
+          return `
+            <div class="plan-row">
+              <div class="p-name">${nombre}</div>
+              <div class="p-prices">
+                ${mostrarMensual ? item(mensual, 'mes') : ''}
+                ${mostrarAnual   ? item(anual,   'año') : ''}
+              </div>
+            </div>`;
+        };
+
+        const basicoVisible = on(map.plan_basico_visible);
+        const medioVisible   = on(map.plan_pro_visible);
+
+        const html = [
+          fila('Básico', num(map.precio_base_basico_mensual, 15), num(map.precio_base_basico_anual, 150), basicoVisible, basicoVisible),
+          fila('Medio',  num(map.precio_base_pro_mensual, 30),    num(map.precio_base_pro_anual, 300),    medioVisible, medioVisible),
+          fila('Pro',    num(map.pro_precio_mensual, 50),         num(map.pro_precio_anual, 60),          on(map.pro_mensual_activo), on(map.pro_anual_activo)),
+        ].join('');
+
+        if (html.trim()) document.getElementById('plans-precios').innerHTML = html;
       })
       .catch(() => {}); // si falla, se queda con los valores por defecto ya en el HTML
   })();
