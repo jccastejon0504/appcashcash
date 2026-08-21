@@ -135,6 +135,9 @@
   .plan-row .p-period{display:block;font-size:11px;font-weight:500;color:color-mix(in srgb, var(--paper) 50%, transparent)}
 
   /* ── faq ── */
+  .faq-layout{display:grid;grid-template-columns:1fr auto;gap:56px;align-items:start}
+  .faq-visual{align-self:center}
+  .faq-visual img{max-width:280px;filter:drop-shadow(0 30px 50px hsl(var(--shadow) / .28))}
   .faq{max-width:720px}
   .faq-item{border-bottom:1px solid var(--line);padding:22px 0}
   .faq-item summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -172,6 +175,8 @@
     .hero p{max-width:none}
     .features-grid{grid-template-columns:1fr}
     .tiendas-inner{padding:40px 26px}
+    .faq-layout{grid-template-columns:1fr}
+    .faq-visual{display:none}
   }
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto}
@@ -312,31 +317,38 @@
 </section>
 
 <section id="faq" class="wrap">
-  <div class="section-head">
-    <span class="kicker">Preguntas frecuentes</span>
-    <h2>Todo lo que quieras saber</h2>
-  </div>
-  <div class="faq">
-    <details class="faq-item" open>
-      <summary>¿CashCash es gratis? <span class="plus">+</span></summary>
-      <p>Sí, descargar y usar la calculadora de tasas y Mi Cartera es completamente gratis. Registrar una tienda en el directorio tiene planes de membresía desde $10/mes.</p>
-    </details>
-    <details class="faq-item">
-      <summary>¿Qué monedas soporta la calculadora? <span class="plus">+</span></summary>
-      <p>Dólares (USD), euros (EUR) y USDT P2P, convertidos a bolívares con tasa BCV y de mercado, actualizadas en tiempo real desde fuentes públicas.</p>
-    </details>
-    <details class="faq-item">
-      <summary>¿Cómo registro mi tienda? <span class="plus">+</span></summary>
-      <p>Escríbenos por WhatsApp o regístrate directamente desde la app en la sección Mi Tienda. Tu solicitud se revisa y activa en menos de 24 horas hábiles.</p>
-    </details>
-    <details class="faq-item">
-      <summary>¿Mis datos están seguros? <span class="plus">+</span></summary>
-      <p>Sí. No vendemos tus datos a terceros. Puedes leer el detalle completo en nuestra <a href="/privacidad.html">Política de Privacidad</a>.</p>
-    </details>
-    <details class="faq-item">
-      <summary>¿Cuándo estará disponible para descargar? <span class="plus">+</span></summary>
-      <p>Estamos en la etapa final de pruebas. Escríbenos por WhatsApp si quieres que te avisemos apenas esté disponible en App Store y Google Play.</p>
-    </details>
+  <div class="faq-layout">
+    <div>
+      <div class="section-head">
+        <span class="kicker">Preguntas frecuentes</span>
+        <h2>Todo lo que quieras saber</h2>
+      </div>
+      <div class="faq">
+        <details class="faq-item" open>
+          <summary>¿CashCash es gratis? <span class="plus">+</span></summary>
+          <p>Sí, descargar y usar la calculadora de tasas y Mi Cartera es completamente gratis. Registrar una tienda en el directorio tiene planes de membresía desde $10/mes.</p>
+        </details>
+        <details class="faq-item">
+          <summary>¿Qué monedas soporta la calculadora? <span class="plus">+</span></summary>
+          <p>Dólares (USD), euros (EUR) y USDT P2P, convertidos a bolívares con tasa BCV y de mercado, actualizadas en tiempo real desde fuentes públicas.</p>
+        </details>
+        <details class="faq-item">
+          <summary>¿Cómo registro mi tienda? <span class="plus">+</span></summary>
+          <p>Escríbenos por WhatsApp o regístrate directamente desde la app en la sección Mi Tienda. Tu solicitud se revisa y activa en menos de 24 horas hábiles.</p>
+        </details>
+        <details class="faq-item">
+          <summary>¿Mis datos están seguros? <span class="plus">+</span></summary>
+          <p>Sí. No vendemos tus datos a terceros. Puedes leer el detalle completo en nuestra <a href="/privacidad.html">Política de Privacidad</a>.</p>
+        </details>
+        <details class="faq-item">
+          <summary>¿Cuándo estará disponible para descargar? <span class="plus">+</span></summary>
+          <p>Estamos en la etapa final de pruebas. Escríbenos por WhatsApp si quieres que te avisemos apenas esté disponible en App Store y Google Play.</p>
+        </details>
+      </div>
+    </div>
+    <div class="faq-visual">
+      <img src="/assets/images/mockup-tienda.webp" alt="Directorio de tiendas en la app CashCash" loading="lazy">
+    </div>
   </div>
 </section>
 
