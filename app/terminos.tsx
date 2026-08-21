@@ -17,7 +17,7 @@ const SECCIONES = [
   },
   {
     titulo: '2. Descripción del Servicio',
-    cuerpo: 'CashCach es una aplicación de utilidad financiera que ofrece:\n\n• Calculadora de cambio con tasas BCV y USDT en tiempo real.\n• Lista de compras y comparación de precios de mercado.\n• Registro de ingresos y gastos personales (Mi Cartera).\n• Directorio de comercios locales (Mi Tienda).',
+    cuerpo: 'CashCach es una aplicación de utilidad financiera que ofrece:\n\n• Mi Tienda: directorio de comercios locales — compra en tiendas cercanas o abre la tuya propia para vender.\n• Mi Cartera: lleva el control de tus compras y, si vendes, de tus pedidos, reportes de ventas y clientes.\n• Calculadora de cambio con tasas BCV y USDT en tiempo real.',
   },
   {
     titulo: '3. Tasas de Cambio',
