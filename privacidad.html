@@ -9,8 +9,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --accent:   #6c3fc5;
-      --accent-l: #8b5cf6;
+      --accent:   #E65E02;
       --bg:       #f7f8fa;
       --card:     #ffffff;
       --border:   #eaecf0;
@@ -34,10 +33,9 @@
     }
     .topbar-logo {
       width: 34px; height: 34px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-l));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
+      overflow: hidden; flex-shrink: 0;
     }
+    .topbar-logo img { width: 100%; height: 100%; display: block; }
     .topbar-titulos { display: flex; flex-direction: column; }
     .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
     .topbar-sub  { font-size: 12px; color: var(--muted); }
@@ -46,11 +44,10 @@
 
     .intro {
       display: flex; align-items: center; gap: 10px;
-      background: color-mix(in srgb, var(--accent) 10%, transparent);
-      border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+      background: var(--accent);
       border-radius: 14px; padding: 14px 16px;
       margin-bottom: 20px;
-      color: var(--accent); font-weight: 600; font-size: 14px;
+      color: #fff; font-weight: 600; font-size: 14px;
     }
 
     .seccion {
@@ -79,7 +76,7 @@
 <body>
 
   <div class="topbar">
-    <div class="topbar-logo">🔒</div>
+    <div class="topbar-logo"><img src="/admin/icon.png" alt="CashCash"></div>
     <div class="topbar-titulos">
       <span class="topbar-name">CashCach</span>
       <span class="topbar-sub">Política de Privacidad</span>
