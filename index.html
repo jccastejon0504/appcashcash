@@ -136,8 +136,15 @@
 
   /* ── faq ── */
   .faq-layout{display:grid;grid-template-columns:1fr auto;gap:56px;align-items:start}
-  .faq-visual{align-self:center}
+  .faq-visual{align-self:center;display:flex;flex-direction:column;align-items:center;gap:18px}
   .faq-visual img{max-width:280px;filter:drop-shadow(0 30px 50px hsl(var(--shadow) / .28))}
+  .store-badges{display:flex;gap:10px}
+  .store-badge{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:8px 14px;font-weight:700;font-size:13px;color:var(--ink);
+  }
+  .store-badge svg{width:22px;height:22px;flex-shrink:0}
   .faq{max-width:720px}
   .faq-item{border-bottom:1px solid var(--line);padding:22px 0}
   .faq-item summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -348,6 +355,23 @@
     </div>
     <div class="faq-visual">
       <img src="/assets/images/mockup-tienda.webp" alt="Directorio de tiendas en la app CashCash" loading="lazy">
+      <div class="store-badges" aria-label="Muy pronto en App Store y Google Play">
+        <div class="store-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect width="24" height="24" rx="6" fill="#000"/>
+            <path d="M16.365 12.03c-.02-2.11 1.72-3.12 1.8-3.17-.98-1.44-2.51-1.64-3.05-1.66-1.3-.13-2.54.76-3.2.76-.66 0-1.68-.74-2.76-.72-1.42.02-2.73.82-3.46 2.09-1.48 2.56-.38 6.35 1.06 8.43.7 1.02 1.54 2.16 2.64 2.12 1.06-.04 1.46-.68 2.74-.68 1.27 0 1.64.68 2.76.66 1.14-.02 1.86-1.03 2.56-2.06.8-1.18 1.13-2.32 1.15-2.38-.02-.01-2.2-.85-2.24-3.39z" fill="#fff"/>
+            <path d="M14.4 5.86c.58-.7.98-1.68.87-2.66-.84.04-1.86.56-2.46 1.26-.54.62-1.02 1.62-.89 2.58.94.07 1.9-.48 2.48-1.18z" fill="#fff"/>
+          </svg>
+          <span>App Store</span>
+        </div>
+        <div class="store-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect width="24" height="24" rx="6" fill="#00C853"/>
+            <path d="M8 5.5v13c0 .3.32.5.6.36l10.5-6.5a.42.42 0 0 0 0-.72l-10.5-6.5a.42.42 0 0 0-.6.36z" fill="#fff"/>
+          </svg>
+          <span>Google Play</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
