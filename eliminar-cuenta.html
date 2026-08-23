@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Eliminar cuenta · CashCash</title>
+  <meta name="description" content="Cómo solicitar la eliminación de tu cuenta y datos en CashCash." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent:   #E65E02;
+      --bg:       #f7f8fa;
+      --card:     #ffffff;
+      --border:   #eaecf0;
+      --text:     #111827;
+      --muted:    #6b7280;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .topbar-logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .topbar-logo img { width: 100%; height: 100%; display: block; }
+    .topbar-titulos { display: flex; flex-direction: column; }
+    .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
+    .topbar-sub  { font-size: 12px; color: var(--muted); }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+
+    .intro {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--accent);
+      border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 20px;
+      color: #fff; font-weight: 600; font-size: 14px;
+    }
+
+    .seccion {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .seccion h2 {
+      font-size: 16px; font-weight: 800; margin-bottom: 8px; line-height: 1.4;
+    }
+    .seccion p {
+      font-size: 14px; line-height: 1.7; color: var(--muted); white-space: pre-line;
+    }
+    .seccion ol, .seccion ul {
+      margin: 8px 0 0 18px;
+      font-size: 14px; line-height: 1.8; color: var(--muted);
+    }
+    .boton-whatsapp {
+      display: inline-block;
+      margin-top: 12px;
+      background: #25D366;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+    }
+
+    .pie {
+      text-align: center; margin-top: 24px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-logo"><img src="/admin/icon.png" alt="CashCash"></div>
+    <div class="topbar-titulos">
+      <span class="topbar-name">CashCash</span>
+      <span class="topbar-sub">Eliminar cuenta y datos</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro">🗑️ Última actualización: agosto 2026</div>
+
+    <div class="seccion">
+      <h2>Cómo solicitar la eliminación</h2>
+      <p>Puedes solicitar la eliminación de tu cuenta de CashCash y de los datos asociados en cualquier momento, sin necesidad de tener la app instalada.</p>
+      <ol>
+        <li>Escríbenos por WhatsApp usando el botón de abajo.</li>
+        <li>Indícanos el número de teléfono y/o correo con el que registraste tu cuenta en CashCash.</li>
+        <li>Confirma que quieres eliminar tu cuenta y todos tus datos asociados.</li>
+      </ol>
+      <p style="margin-top:10px">Procesamos las solicitudes en un plazo máximo de 7 días hábiles y te confirmamos por el mismo medio cuando se complete.</p>
+      <a class="boton-whatsapp" href="https://wa.me/584120188080?text=Quiero%20eliminar%20mi%20cuenta%20de%20CashCash" target="_blank" rel="noopener">💬 Solicitar por WhatsApp</a>
+    </div>
+
+    <div class="seccion">
+      <h2>Qué datos se eliminan</h2>
+      <ul>
+        <li>Datos de perfil: nombre, teléfono, correo electrónico.</li>
+        <li>Datos de tu tienda (si tienes una registrada): información del negocio, galería de productos, ofertas y cupones.</li>
+        <li>Ubicación guardada, favoritos y preferencias dentro de la app.</li>
+        <li>Identificador de notificaciones push (token del dispositivo).</li>
+      </ul>
+    </div>
+
+    <div class="seccion">
+      <h2>Qué datos se conservan y por qué</h2>
+      <p>Por obligaciones contables y de prevención de fraude, conservamos el historial de pedidos y comprobantes de pago asociados a tu cuenta (sin tus datos de perfil identificables) hasta por 12 meses después de eliminada la cuenta, antes de borrarlos por completo. No usamos estos registros para ningún otro fin.</p>
+    </div>
+
+    <div class="pie">© 2026 CashCash · Todos los derechos reservados</div>
+  </div>
+
+</body>
+</html>
