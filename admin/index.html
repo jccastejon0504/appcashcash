@@ -442,6 +442,9 @@
     <div class="nav-item" data-section="socios">
       <span class="icon">🏪</span> Socios Activos
     </div>
+    <div class="nav-item" data-section="moderacion">
+      <span class="icon">🛡️</span> Moderación de Contenido
+    </div>
 
     <div class="nav-section">Configuración</div>
     <div class="nav-item" data-section="ubicaciones">
@@ -1730,6 +1733,26 @@
       </div>
     </div>
 
+    <div class="section" id="section-moderacion">
+      <div class="card">
+        <div class="card-header">
+          <h2>Moderación de Contenido</h2>
+          <button class="btn btn-outline btn-sm" onclick="cargarModeracion()">Actualizar</button>
+        </div>
+        <p style="padding:0 20px 12px;color:var(--muted);font-size:13px">
+          Últimos productos publicados por las tiendas. Revisa las imágenes y elimina lo que no cumpla las normas (contenido explícito, armas, drogas, etc.).
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Publicado</th><th></th></tr>
+            </thead>
+            <tbody id="tabla-moderacion"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal editar socio -->
     <div id="modal-editar-socio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;padding:24px 16px">
       <div style="background:var(--card);border-radius:16px;max-width:560px;margin:0 auto;padding:28px;position:relative">
@@ -2122,6 +2145,7 @@
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     'cambio-datos': { title: 'Corrección de Datos',    sub: 'Solicitudes de cambio de nombre o teléfono de tiendas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
+    moderacion:   { title: 'Moderación de Contenido',   sub: 'Revisa los productos publicados por las tiendas y elimina los que no cumplan las normas' },
     'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
@@ -2259,6 +2283,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'cambio-datos') cargarCambioDatos();
     if (id === 'socios')      cargarSocios();
+    if (id === 'moderacion')  cargarModeracion();
     if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
@@ -4429,6 +4454,70 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     await _limpiarDatosDeTienda(id);
     await db.from('socios_comerciales').delete().eq('id', id);
     cargarSocios();
+  }
+
+  // ── Moderación de Contenido ─────────────────────────────────────────────────
+  // Revisión manual de lo que las tiendas van publicando en su galería
+  // (galeria_items): últimos 200 productos, con imágenes y botón para
+  // eliminar los que no cumplan las normas (contenido explícito, armas,
+  // drogas, etc.). No hay filtrado automático, es revisión humana.
+
+  async function cargarModeracion() {
+    const tbody = document.getElementById('tabla-moderacion');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Cargando…</td></tr>';
+
+    const { data: productos } = await db.from('galeria_items')
+      .select('id,socio_id,titulo,precio,imagen,imagen2,imagen3,created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (!productos?.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>No hay productos publicados</p></td></tr>';
+      return;
+    }
+
+    const socioIds = [...new Set(productos.map(p => p.socio_id).filter(Boolean))];
+    const { data: socios } = await db.from('socios_comerciales').select('id,nombre').in('id', socioIds);
+    const nombreMap = {};
+    (socios ?? []).forEach(s => { nombreMap[s.id] = s.nombre; });
+
+    tbody.innerHTML = productos.map(p => {
+      const imgs = [p.imagen, p.imagen2, p.imagen3].filter(Boolean);
+      const thumbs = imgs.map(u => `
+        <a href="${u}" target="_blank" rel="noopener">
+          <img src="${u}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" loading="lazy" />
+        </a>`).join('');
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="display:flex;gap:4px">${thumbs || '—'}</div>
+              <b>${p.titulo || '(sin título)'}</b>
+            </div>
+          </td>
+          <td>${nombreMap[p.socio_id] || '—'}</td>
+          <td>${p.precio ? '$' + p.precio : '—'}</td>
+          <td style="color:var(--muted)">${fmtFecha(p.created_at)}</td>
+          <td><button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444" onclick="eliminarProductoModeracion('${p.id}')">Eliminar</button></td>
+        </tr>`;
+    }).join('');
+  }
+
+  async function eliminarProductoModeracion(id) {
+    if (!confirm('¿Eliminar este producto? Se borrará de la tienda y sus imágenes del almacenamiento. No se puede deshacer.')) return;
+
+    const { data: item } = await db.from('galeria_items').select('imagen,imagen2,imagen3').eq('id', id).single();
+    await db.from('galeria_items').delete().eq('id', id);
+
+    if (item) {
+      const PREFIX = `${SUPABASE_URL}/storage/v1/object/public/socios%20comerciales/`;
+      const rutas = [item.imagen, item.imagen2, item.imagen3]
+        .filter(u => u && u.startsWith(PREFIX))
+        .map(u => decodeURIComponent(u.slice(PREFIX.length)));
+      if (rutas.length) await db.storage.from('socios comerciales').remove(rutas);
+    }
+
+    cargarModeracion();
   }
 
   // ── Métodos de pago ───────────────────────────────────────────────────────
