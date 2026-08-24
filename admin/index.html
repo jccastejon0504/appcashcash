@@ -4468,11 +4468,12 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
     const { data: productos } = await db.from('galeria_items')
       .select('id,socio_id,titulo,precio,imagen,imagen2,imagen3,created_at')
+      .eq('revisado', false)
       .order('created_at', { ascending: false })
       .limit(200);
 
     if (!productos?.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>No hay productos publicados</p></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>No hay productos pendientes de revisión</p></td></tr>';
       return;
     }
 
@@ -4498,9 +4499,19 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           <td>${nombreMap[p.socio_id] || '—'}</td>
           <td>${p.precio ? '$' + p.precio : '—'}</td>
           <td style="color:var(--muted)">${fmtFecha(p.created_at)}</td>
-          <td><button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444" onclick="eliminarProductoModeracion('${p.id}')">Eliminar</button></td>
+          <td style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" style="color:var(--green);border-color:var(--green)" onclick="aprobarProductoModeracion('${p.id}')">✓ Está bien</button>
+            <button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444" onclick="eliminarProductoModeracion('${p.id}')">Eliminar</button>
+          </td>
         </tr>`;
     }).join('');
+  }
+
+  // Marca el producto como revisado sin borrarlo (sigue visible en la
+  // tienda) — solo lo saca de esta cola de moderación.
+  async function aprobarProductoModeracion(id) {
+    await db.from('galeria_items').update({ revisado: true }).eq('id', id);
+    cargarModeracion();
   }
 
   async function eliminarProductoModeracion(id) {
