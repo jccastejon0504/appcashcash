@@ -4510,7 +4510,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   // Marca el producto como revisado sin borrarlo (sigue visible en la
   // tienda) — solo lo saca de esta cola de moderación.
   async function aprobarProductoModeracion(id) {
-    await db.from('galeria_items').update({ revisado: true }).eq('id', id);
+    const { error } = await db.from('galeria_items').update({ revisado: true }).eq('id', id);
+    if (error) { alert('No se pudo guardar. Intenta de nuevo.\n' + error.message); return; }
     cargarModeracion();
   }
 
@@ -4518,7 +4519,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (!confirm('¿Eliminar este producto? Se borrará de la tienda y sus imágenes del almacenamiento. No se puede deshacer.')) return;
 
     const { data: item } = await db.from('galeria_items').select('imagen,imagen2,imagen3').eq('id', id).single();
-    await db.from('galeria_items').delete().eq('id', id);
+    const { error } = await db.from('galeria_items').delete().eq('id', id);
+    if (error) { alert('No se pudo eliminar. Intenta de nuevo.\n' + error.message); return; }
 
     if (item) {
       const PREFIX = `${SUPABASE_URL}/storage/v1/object/public/socios%20comerciales/`;
