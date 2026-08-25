@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "W42VMYM2F9.com.cashcash.app2",
+        "appIDs": ["W42VMYM2F9.com.cashcash.app2"],
+        "paths": ["/t/*"]
+      }
+    ]
+  }
+}

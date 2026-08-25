@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.cashcash.app2",
+      "sha256_cert_fingerprints": [
+        "A8:FE:35:4E:0E:1D:1A:93:6A:11:46:39:86:10:E2:AF:13:CE:C9:62:F6:73:60:0E:9A:0D:11:41:DA:C8:E1:6B"
+      ]
+    }
+  }
+]

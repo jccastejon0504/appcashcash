@@ -10,6 +10,12 @@
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
       ]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" }
+      ]
     }
   ]
 }
