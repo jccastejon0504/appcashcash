@@ -100,7 +100,7 @@ export default function PrivacidadScreen() {
 
         <View style={[styles.pie, { borderTopColor: Colors.border }]}>
           <Text style={[styles.pieTexto, { color: Colors.textMuted }]}>
-            © 2026 CashCach · Todos los derechos reservados
+            © 2026 Juan Castejón — CashCash · Todos los derechos reservados
           </Text>
         </View>
 
