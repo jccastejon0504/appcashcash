@@ -45,9 +45,8 @@
     }
     .logo-icon {
       width: 48px; height: 48px; border-radius: 14px;
-      background: linear-gradient(135deg, #3D1F0A, var(--accent));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px;
+      display: block;
+      object-fit: cover;
     }
     .logo-text { font-size: 22px; font-weight: 900; color: var(--text); }
     .logo-sub  { font-size: 12px; color: var(--muted); font-weight: 500; }
@@ -117,7 +116,7 @@
 <body>
   <div class="card">
     <div class="logo">
-      <div class="logo-icon">💰</div>
+      <img class="logo-icon" src="./icon.png" alt="CashCach" />
       <div>
         <div class="logo-text">CashCach</div>
         <div class="logo-sub">Panel de Administración</div>
