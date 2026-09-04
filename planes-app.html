@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Planes · CashCash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --accent:      #e65e02;
+    --accent-ink:  #A0511F;
+    --cream:       #EFDFCE;
+    --ink:         #181818;
+    --paper:       #FBF7F2;
+    --surface:     #FFFFFF;
+    --line:        #E8DCC8;
+    --muted:       #7A7266;
+    --success:     #16a34a;
+    --danger:      #ef4444;
+    --warn:        #f59e0b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --accent:      #FF9E67;
+      --accent-ink:  #FFC79B;
+      --cream:       #2B2118;
+      --ink:         #F4ECE0;
+      --paper:       #17140F;
+      --surface:     #211B14;
+      --line:        #35291C;
+      --muted:       #B2A793;
+    }
+  }
+  :root[data-theme="dark"]{
+    --accent:      #FF9E67;
+    --accent-ink:  #FFC79B;
+    --cream:       #2B2118;
+    --ink:         #F4ECE0;
+    --paper:       #17140F;
+    --surface:     #211B14;
+    --line:        #35291C;
+    --muted:       #B2A793;
+  }
+
+  body{
+    font-family:'Plus Jakarta Sans',-apple-system,sans-serif;
+    background:var(--paper); color:var(--ink);
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  a{color:inherit}
+  h1,h2,h3{font-family:'Fredoka',sans-serif;font-weight:600}
+  .wrap{max-width:520px;margin:0 auto;padding:0 20px}
+  img{max-width:100%;display:block}
+
+  header.top{padding:22px 0 6px;text-align:center}
+  header.top img{width:44px;height:44px;border-radius:12px;margin:0 auto 10px}
+  header.top h1{font-size:20px}
+  header.top p{color:var(--muted);font-size:13.5px;margin-top:4px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:16px}
+  .card h2{font-size:16px;margin-bottom:4px}
+  .card .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+
+  label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  input[type=text],input[type=tel]{
+    width:100%;border-radius:10px;border:1px solid var(--line);background:var(--paper);
+    color:var(--ink);padding:11px 13px;font-size:15px;margin-bottom:14px;font-family:inherit;
+  }
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+  .planes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .plan-opt{
+    border:1.5px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;
+    cursor:pointer;background:var(--paper);
+  }
+  .plan-opt.activo{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--paper))}
+  .plan-opt .nombre{font-family:'Fredoka',sans-serif;font-weight:600;font-size:14px}
+  .plan-opt .precio{font-size:15px;font-weight:800;margin-top:4px}
+  .plan-opt .periodo{font-size:10.5px;color:var(--muted)}
+
+  .toggle{display:flex;border-radius:10px;background:var(--paper);border:1px solid var(--line);padding:3px;margin-bottom:14px}
+  .toggle button{flex:1;border:none;background:transparent;padding:8px;border-radius:8px;font-weight:700;font-size:13.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+  .toggle button.activo{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+  .metodos{display:flex;gap:8px;margin-bottom:14px}
+  .metodo{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--paper)}
+  .metodo.activo{border-color:var(--accent);color:var(--accent-ink);background:color-mix(in srgb, var(--accent) 12%, var(--paper))}
+
+  .info-pago{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px}
+  .info-pago .linea{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-family:monospace}
+  .info-pago button{border:none;background:var(--line);border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer}
+
+  .file-slot{
+    border:1.5px dashed var(--line);border-radius:12px;height:120px;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
+    color:var(--muted);font-size:13px;margin-bottom:14px;overflow:hidden;position:relative;cursor:pointer;
+    background:var(--paper);
+  }
+  .file-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .file-slot input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+  .btn{
+    display:block;width:100%;border:none;border-radius:12px;padding:14px;
+    font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;text-align:center;
+  }
+  .btn-accent{background:var(--accent);color:#fff}
+  .btn-accent:disabled{opacity:.5;cursor:default}
+  .btn-line{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+
+  .estado-banner{border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
+  .estado-banner.pendiente{background:color-mix(in srgb, var(--warn) 15%, var(--surface));color:var(--warn)}
+  .estado-banner.vencida{background:color-mix(in srgb, var(--danger) 12%, var(--surface));color:var(--danger)}
+  .estado-banner.ok{background:color-mix(in srgb, var(--success) 15%, var(--surface));color:var(--success)}
+
+  .opcion-plan{
+    display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-top:12px;cursor:pointer;background:var(--surface);
+  }
+  .opcion-plan .icono{width:38px;height:38px;border-radius:10px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+  .opcion-plan .txt{flex:1}
+  .opcion-plan .txt .t{font-weight:800;font-size:14px}
+  .opcion-plan .txt .d{font-size:12.5px;color:var(--muted);margin-top:1px}
+
+  .oculto{display:none !important}
+  .center{text-align:center}
+  .exito-icono{font-size:52px;margin:10px 0}
+  .muted{color:var(--muted);font-size:13.5px}
+  .whatsapp-fallback{margin-top:22px;text-align:center;font-size:13px;color:var(--muted)}
+  .whatsapp-fallback a{color:var(--accent-ink);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <img src="/admin/icon.png" alt="CashCash">
+    <h1 id="titulo-pagina">CashCash</h1>
+    <p id="subtitulo-pagina">Cargando…</p>
+  </header>
+
+  <div id="app"></div>
+
+  <div class="whatsapp-fallback">
+    ¿Prefieres que te ayudemos directo? <a href="https://wa.me/584120188080" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function () {
+  const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const params = new URLSearchParams(location.search);
+  const socioId = params.get('id');
+  const app = document.getElementById('app');
+  const subtitulo = document.getElementById('subtitulo-pagina');
+
+  const money = n => `$${n}`;
+
+  async function subirComprobante(file) {
+    const path = `solicitudes/${Date.now()}_comprobante.jpg`;
+    const bucket = 'socios%20comerciales';
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SUPABASE_KEY}`, 'x-upsert': 'true' },
+      body: fd,
+    });
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+  }
+
+  function fileSlot(id) {
+    return `
+      <label>Foto del comprobante *</label>
+      <div class="file-slot" id="${id}-slot">
+        <span id="${id}-placeholder">📎 Toca para adjuntar</span>
+        <input type="file" accept="image/*" id="${id}" />
+      </div>`;
+  }
+  function wireFileSlot(id) {
+    const input = document.getElementById(id);
+    const slot  = document.getElementById(`${id}-slot`);
+    input.addEventListener('change', () => {
+      const f = input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        slot.querySelector('img')?.remove();
+        document.getElementById(`${id}-placeholder`).style.display = 'none';
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        slot.prepend(img);
+      };
+      reader.readAsDataURL(f);
+    });
+  }
+
+  function metodosRow(id, metodos) {
+    return `<div class="metodos" id="${id}">${metodos.map((m, i) =>
+      `<div class="metodo${i === 0 ? ' activo' : ''}" data-key="${m.id}">${m.label}</div>`
+    ).join('')}</div>`;
+  }
+  function wireMetodos(rowId, infoPagoId, infoPago, onChange) {
+    const row = document.getElementById(rowId);
+    const pintar = key => {
+      document.getElementById(infoPagoId).innerHTML =
+        (infoPago[key] || []).map(l => {
+          const valor = l.includes(': ') ? l.split(': ').slice(1).join(': ') : l;
+          return `<div class="linea"><span>${l}</span><button type="button" data-copiar="${valor.replace(/"/g,'&quot;')}">Copiar</button></div>`;
+        }).join('') || 'Cargando datos…';
+    };
+    row.querySelectorAll('.metodo').forEach(el => {
+      el.addEventListener('click', () => {
+        row.querySelectorAll('.metodo').forEach(x => x.classList.remove('activo'));
+        el.classList.add('activo');
+        pintar(el.dataset.key);
+        onChange && onChange(el.dataset.key);
+      });
+    });
+    row.addEventListener('click', e => {
+      const btn = e.target.closest('[data-copiar]');
+      if (!btn) return;
+      navigator.clipboard?.writeText(btn.dataset.copiar);
+      btn.textContent = '✓';
+      setTimeout(() => (btn.textContent = 'Copiar'), 1500);
+    });
+    pintar(row.querySelector('.metodo').dataset.key);
+  }
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-copiar]');
+    if (btn) { navigator.clipboard?.writeText(btn.dataset.copiar); }
+  });
+
+  async function cargarMetodosPago() {
+    const { data } = await db.from('metodos_pago').select('id,label,datos,activo').eq('activo', true);
+    const metodos = (data || []).filter(m => !m.label.toLowerCase().includes('usdt') || true);
+    const infoPago = {};
+    (data || []).forEach(m => { infoPago[m.id] = m.datos; });
+    return { metodos: (data || []).map(m => ({ id: m.id, label: m.label })), infoPago };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // MODO A — Registro nuevo (sin ?id)
+  // ─────────────────────────────────────────────────────────────
+  async function modoRegistro() {
+    subtitulo.textContent = 'Registra tu negocio';
+
+    const { data: cfg } = await db.from('config_app').select('clave,valor').in('clave', [
+      'precio_base_basico_mensual', 'precio_base_basico_anual', 'plan_basico_visible',
+      'precio_base_pro_mensual', 'precio_base_pro_anual', 'plan_pro_visible',
+      'pro_precio_mensual', 'pro_precio_anual', 'pro_mensual_activo', 'pro_anual_activo',
+    ]);
+    const map = Object.fromEntries((cfg || []).map(r => [r.clave, r.valor]));
+    const num = (v, d) => (v != null ? parseFloat(v) : d);
+
+    const planes = {
+      basico: { nombre: 'Básico', mensual: num(map.precio_base_basico_mensual, 15), anual: num(map.precio_base_basico_anual, 150), planValor: 'basico' },
+      medio:  { nombre: 'Medio',  mensual: num(map.precio_base_pro_mensual, 30),    anual: num(map.precio_base_pro_anual, 300),    planValor: 'pro' },
+      pro:    { nombre: 'Pro',    mensual: num(map.pro_precio_mensual, 50),         anual: num(map.pro_precio_anual, 60),          planValor: 'pro', tipoExtra: 'registro_pro' },
+    };
+
+    const { metodos, infoPago } = await cargarMetodosPago();
+
+    app.innerHTML = `
+      <div class="card">
+        <h2>Información de tu negocio</h2>
+        <div class="sub">Cuéntanos sobre tu tienda</div>
+        <label>Nombre de tu tienda *</label>
+        <input type="text" id="r-nombre" placeholder="Ej: Panadería La Esperanza" />
+        <label>Ciudad *</label>
+        <input type="text" id="r-ciudad" placeholder="Ej: Maracaibo" />
+        <label>Teléfono</label>
+        <input type="tel" id="r-telefono" placeholder="0414-0000000" />
+        <label>WhatsApp</label>
+        <input type="tel" id="r-whatsapp" placeholder="0414-0000000" />
+      </div>
+
+      <div class="card">
+        <h2>Elige tu plan</h2>
+        <div class="toggle" id="r-periodo">
+          <button data-p="mensual" class="activo">Mensual</button>
+          <button data-p="anual">Anual</button>
+        </div>
+        <div class="planes-grid" id="r-planes">
+          ${Object.entries(planes).map(([k, p], i) => `
+            <div class="plan-opt${i === 0 ? ' activo' : ''}" data-plan="${k}">
+              <div class="nombre">${p.nombre}</div>
+              <div class="precio" data-mensual="${p.mensual}" data-anual="${p.anual}">$${p.mensual}</div>
+              <div class="periodo">/mes</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card" id="r-pago-card">
+        <h2>Pago</h2>
+        <div class="sub">Total: <b id="r-total">$${planes.basico.mensual}</b></div>
+        ${metodosRow('r-metodos', metodos)}
+        <div class="info-pago" id="r-info-pago"></div>
+        <label>Número de referencia *</label>
+        <input type="text" id="r-referencia" placeholder="Ej: 12345678" />
+        ${fileSlot('r-comprobante')}
+      </div>
+
+      <button class="btn btn-accent" id="r-enviar" style="margin-top:16px">Enviar solicitud</button>
+    `;
+    wireFileSlot('r-comprobante');
+    let metodoActivo = metodos[0]?.id;
+    wireMetodos('r-metodos', 'r-info-pago', infoPago, k => (metodoActivo = k));
+
+    let planActivo = 'basico', periodoActivo = 'mensual';
+    const actualizarTotal = () => {
+      const el = app.querySelector(`.plan-opt[data-plan="${planActivo}"] .precio`);
+      const precio = periodoActivo === 'anual' ? el.dataset.anual : el.dataset.mensual;
+      document.getElementById('r-total').textContent = `$${precio}`;
+    };
+    app.querySelectorAll('#r-planes .plan-opt').forEach(el => {
+      el.addEventListener('click', () => {
+        app.querySelectorAll('#r-planes .plan-opt').forEach(x => x.classList.remove('activo'));
+        el.classList.add('activo');
+        planActivo = el.dataset.plan;
+        actualizarTotal();
+      });
+    });
+    app.querySelectorAll('#r-periodo button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        app.querySelectorAll('#r-periodo button').forEach(x => x.classList.remove('activo'));
+        btn.classList.add('activo');
+        periodoActivo = btn.dataset.p;
+        app.querySelectorAll('#r-planes .precio').forEach(p => {
+          p.textContent = `$${periodoActivo === 'anual' ? p.dataset.anual : p.dataset.mensual}`;
+        });
+        app.querySelector('#r-planes').nextElementSibling;
+        app.querySelectorAll('.periodo').forEach(p => (p.textContent = periodoActivo === 'anual' ? '/año' : '/mes'));
+        actualizarTotal();
+      });
+    });
+
+    document.getElementById('r-enviar').addEventListener('click', async () => {
+      const nombre   = document.getElementById('r-nombre').value.trim();
+      const ciudad   = document.getElementById('r-ciudad').value.trim();
+      const telefono = document.getElementById('r-telefono').value.trim();
+      const whatsapp = document.getElementById('r-whatsapp').value.trim();
+      const referencia = document.getElementById('r-referencia').value.trim();
+      const file = document.getElementById('r-comprobante').files[0];
+      if (!nombre || !ciudad || (!telefono && !whatsapp)) { alert('Completa nombre, ciudad y al menos un teléfono.'); return; }
+      if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
+
+      const btn = document.getElementById('r-enviar');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+
+      const p = planes[planActivo];
+      const monto = periodoActivo === 'anual' ? p.anual : p.mensual;
+      const comprobanteUrl = await subirComprobante(file);
+
+      const { error } = await db.from('solicitudes').insert({
+        nombre, ciudad, telefono: telefono || null, whatsapp: whatsapp || null,
+        plan: p.planValor, periodo: periodoActivo, metodo_pago: metodoActivo,
+        referencia, monto, comprobante: comprobanteUrl,
+        ...(p.tipoExtra ? { tipo: p.tipoExtra } : {}),
+      });
+
+      if (error) { alert('No se pudo enviar la solicitud: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar solicitud'; return; }
+      pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y activará tu tienda en las próximas horas. Te contactaremos por WhatsApp.');
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // MODO B — Gestionar plan existente (?id=socio_id)
+  // ─────────────────────────────────────────────────────────────
+  async function modoGestionar() {
+    subtitulo.textContent = 'Gestiona tu plan';
+    const { data: socio } = await db.from('socios_comerciales')
+      .select('id,nombre,telefono,whatsapp,tipo,fecha_vencimiento,destacado_hasta')
+      .eq('id', socioId).single();
+
+    if (!socio) { app.innerHTML = `<div class="card center muted">No encontramos esa tienda. Escríbenos por WhatsApp para ayudarte.</div>`; return; }
+
+    const vencida = socio.fecha_vencimiento && new Date(socio.fecha_vencimiento) < new Date();
+    const { metodos, infoPago } = await cargarMetodosPago();
+
+    const { data: cfg } = await db.from('config_app').select('clave,valor').in('clave', [
+      'precio_base_basico_mensual', 'precio_base_basico_anual',
+      'precio_base_pro_mensual', 'precio_base_pro_anual',
+      'pro_precio_mensual', 'pro_precio_anual',
+      'destacado_precio_dia', 'precio_paquete_galeria', 'slots_paquete_galeria',
+    ]);
+    const map = Object.fromEntries((cfg || []).map(r => [r.clave, r.valor]));
+    const num = (v, d) => (v != null ? parseFloat(v) : d);
+    const esPro = socio.tipo === 'pro';
+    const precioDestDia = num(map.destacado_precio_dia, 1);
+    const precioGalPaq  = num(map.precio_paquete_galeria, 5);
+    const slotsGalPaq   = parseInt(map.slots_paquete_galeria || '4');
+
+    app.innerHTML = `
+      <div class="card">
+        <h2>${socio.nombre}</h2>
+        <div class="sub">Plan actual: ${esPro ? 'Pro' : (socio.tipo || 'Básico/Medio')}</div>
+        ${vencida ? `<div class="estado-banner vencida">🔒 Tu membresía está vencida. Renueva para reactivar tu tienda.</div>` : ''}
+      </div>
+      <div id="opciones"></div>
+      <div id="formularios"></div>
+    `;
+
+    const opciones = document.getElementById('opciones');
+    const formularios = document.getElementById('formularios');
+
+    function abrirFormulario(html, onWire) {
+      formularios.innerHTML = html;
+      onWire();
+      formularios.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Renovar
+    const rowRenovar = document.createElement('div');
+    rowRenovar.className = 'opcion-plan';
+    rowRenovar.innerHTML = `<div class="icono">🔄</div><div class="txt"><div class="t">Renovar membresía</div><div class="d">Elige tu plan y realiza el pago</div></div>`;
+    rowRenovar.addEventListener('click', () => {
+      const planesRenov = esPro
+        ? { pro: { nombre: 'Pro', mensual: num(map.pro_precio_mensual, 50), anual: num(map.pro_precio_anual, 60) } }
+        : {
+            basico: { nombre: 'Básico', mensual: num(map.precio_base_basico_mensual, 15), anual: num(map.precio_base_basico_anual, 150) },
+            pro:    { nombre: 'Medio',  mensual: num(map.precio_base_pro_mensual, 30),    anual: num(map.precio_base_pro_anual, 300) },
+          };
+      abrirFormulario(`
+        <div class="card">
+          <h2>Renovar membresía</h2>
+          <div class="toggle" id="ren-periodo"><button data-p="mensual" class="activo">Mensual</button><button data-p="anual">Anual</button></div>
+          <div class="planes-grid" id="ren-planes" style="grid-template-columns:repeat(${Object.keys(planesRenov).length},1fr)">
+            ${Object.entries(planesRenov).map(([k, p], i) => `
+              <div class="plan-opt${i === 0 ? ' activo' : ''}" data-plan="${k}">
+                <div class="nombre">${p.nombre}</div>
+                <div class="precio" data-mensual="${p.mensual}" data-anual="${p.anual}">$${p.mensual}</div>
+                <div class="periodo">/mes</div>
+              </div>`).join('')}
+          </div>
+          <div class="sub">Total: <b id="ren-total">$${Object.values(planesRenov)[0].mensual}</b></div>
+          ${metodosRow('ren-metodos', metodos)}
+          <div class="info-pago" id="ren-info-pago"></div>
+          <label>Número de referencia *</label>
+          <input type="text" id="ren-referencia" placeholder="Ej: 12345678" />
+          ${fileSlot('ren-comprobante')}
+          <button class="btn btn-accent" id="ren-enviar">Enviar renovación</button>
+        </div>
+      `, () => {
+        wireFileSlot('ren-comprobante');
+        let metodoActivo = metodos[0]?.id;
+        wireMetodos('ren-metodos', 'ren-info-pago', infoPago, k => (metodoActivo = k));
+        let planActivo = Object.keys(planesRenov)[0], periodoActivo = 'mensual';
+        const actualizarTotal = () => {
+          const el = formularios.querySelector(`.plan-opt[data-plan="${planActivo}"] .precio`);
+          document.getElementById('ren-total').textContent = `$${periodoActivo === 'anual' ? el.dataset.anual : el.dataset.mensual}`;
+        };
+        formularios.querySelectorAll('#ren-planes .plan-opt').forEach(el => {
+          el.addEventListener('click', () => {
+            formularios.querySelectorAll('#ren-planes .plan-opt').forEach(x => x.classList.remove('activo'));
+            el.classList.add('activo'); planActivo = el.dataset.plan; actualizarTotal();
+          });
+        });
+        formularios.querySelectorAll('#ren-periodo button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            formularios.querySelectorAll('#ren-periodo button').forEach(x => x.classList.remove('activo'));
+            btn.classList.add('activo'); periodoActivo = btn.dataset.p;
+            formularios.querySelectorAll('#ren-planes .precio').forEach(p => { p.textContent = `$${periodoActivo === 'anual' ? p.dataset.anual : p.dataset.mensual}`; });
+            formularios.querySelectorAll('#ren-planes .periodo').forEach(p => (p.textContent = periodoActivo === 'anual' ? '/año' : '/mes'));
+            actualizarTotal();
+          });
+        });
+        document.getElementById('ren-enviar').addEventListener('click', async () => {
+          const referencia = document.getElementById('ren-referencia').value.trim();
+          const file = document.getElementById('ren-comprobante').files[0];
+          if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
+          const btn = document.getElementById('ren-enviar'); btn.disabled = true; btn.textContent = 'Enviando…';
+          const monto = periodoActivo === 'anual' ? planesRenov[planActivo].anual : planesRenov[planActivo].mensual;
+          const comprobanteUrl = await subirComprobante(file);
+          const { error } = await db.from('solicitudes').insert({
+            nombre: socio.nombre, telefono: socio.telefono, whatsapp: socio.whatsapp,
+            plan: planActivo, periodo: periodoActivo, metodo_pago: metodoActivo,
+            referencia, monto, comprobante: comprobanteUrl, tipo: 'renovacion', socio_id: socio.id,
+          });
+          if (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar renovación'; return; }
+          pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y renovará tu membresía en breve.');
+        });
+      });
+    });
+    opciones.appendChild(rowRenovar);
+
+    // Destacar
+    const rowDestacar = document.createElement('div');
+    rowDestacar.className = 'opcion-plan';
+    rowDestacar.innerHTML = `<div class="icono">⭐</div><div class="txt"><div class="t">Destacar mi tienda (${money(precioDestDia)}/día)</div><div class="d">Aparece primero en el directorio</div></div>`;
+    rowDestacar.addEventListener('click', () => {
+      abrirFormulario(`
+        <div class="card">
+          <h2>Destacar mi tienda</h2>
+          <label>Días de destacado</label>
+          <div class="planes-grid" id="dest-dias" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px">
+            ${[1,3,5,7,14,30].map((n,i) => `<div class="plan-opt${i===0?' activo':''}" data-dias="${n}"><div class="nombre">${n}d</div></div>`).join('')}
+          </div>
+          <div class="sub">Total: <b id="dest-total">$${precioDestDia}</b></div>
+          ${metodosRow('dest-metodos', metodos)}
+          <div class="info-pago" id="dest-info-pago"></div>
+          <label>Número de referencia *</label>
+          <input type="text" id="dest-referencia" placeholder="Ej: 12345678" />
+          ${fileSlot('dest-comprobante')}
+          <button class="btn btn-accent" id="dest-enviar">Enviar solicitud</button>
+        </div>
+      `, () => {
+        wireFileSlot('dest-comprobante');
+        let metodoActivo = metodos[0]?.id;
+        wireMetodos('dest-metodos', 'dest-info-pago', infoPago, k => (metodoActivo = k));
+        let dias = 1;
+        formularios.querySelectorAll('#dest-dias .plan-opt').forEach(el => {
+          el.addEventListener('click', () => {
+            formularios.querySelectorAll('#dest-dias .plan-opt').forEach(x => x.classList.remove('activo'));
+            el.classList.add('activo'); dias = parseInt(el.dataset.dias);
+            document.getElementById('dest-total').textContent = `$${dias * precioDestDia}`;
+          });
+        });
+        document.getElementById('dest-enviar').addEventListener('click', async () => {
+          const referencia = document.getElementById('dest-referencia').value.trim();
+          const file = document.getElementById('dest-comprobante').files[0];
+          if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
+          const btn = document.getElementById('dest-enviar'); btn.disabled = true; btn.textContent = 'Enviando…';
+          const comprobanteUrl = await subirComprobante(file);
+          const { error } = await db.from('solicitudes').insert({
+            nombre: socio.nombre, telefono: socio.telefono, whatsapp: socio.whatsapp,
+            plan: 'destacado', estado: 'pendiente', metodo_pago: metodoActivo,
+            referencia, monto: dias * precioDestDia, comprobante: comprobanteUrl,
+            descripcion: `${dias} día${dias > 1 ? 's' : ''} destacado`, socio_id: socio.id,
+          });
+          if (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar solicitud'; return; }
+          pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y activará el destacado en breve.');
+        });
+      });
+    });
+    opciones.appendChild(rowDestacar);
+
+    // Galería extra
+    const rowGaleria = document.createElement('div');
+    rowGaleria.className = 'opcion-plan';
+    rowGaleria.innerHTML = `<div class="icono">🖼️</div><div class="txt"><div class="t">Espacios de galería extra</div><div class="d">+${slotsGalPaq} espacios por ${money(precioGalPaq)}</div></div>`;
+    rowGaleria.addEventListener('click', () => {
+      abrirFormulario(`
+        <div class="card">
+          <h2>Espacios de galería extra</h2>
+          <label>Cantidad de paquetes</label>
+          <div class="planes-grid" id="gal-paq" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">
+            ${[1,2,3,4,5].map((n,i) => `<div class="plan-opt${i===0?' activo':''}" data-n="${n}"><div class="nombre">${n}</div></div>`).join('')}
+          </div>
+          <div class="sub">Total: <b id="gal-total">$${precioGalPaq}</b> · +<span id="gal-slots">${slotsGalPaq}</span> slots</div>
+          ${metodosRow('gal-metodos', metodos)}
+          <div class="info-pago" id="gal-info-pago"></div>
+          <label>Número de referencia *</label>
+          <input type="text" id="gal-referencia" placeholder="Ej: 12345678" />
+          ${fileSlot('gal-comprobante')}
+          <button class="btn btn-accent" id="gal-enviar">Enviar solicitud</button>
+        </div>
+      `, () => {
+        wireFileSlot('gal-comprobante');
+        let metodoActivo = metodos[0]?.id;
+        wireMetodos('gal-metodos', 'gal-info-pago', infoPago, k => (metodoActivo = k));
+        let paquetes = 1;
+        formularios.querySelectorAll('#gal-paq .plan-opt').forEach(el => {
+          el.addEventListener('click', () => {
+            formularios.querySelectorAll('#gal-paq .plan-opt').forEach(x => x.classList.remove('activo'));
+            el.classList.add('activo'); paquetes = parseInt(el.dataset.n);
+            document.getElementById('gal-total').textContent = `$${paquetes * precioGalPaq}`;
+            document.getElementById('gal-slots').textContent = paquetes * slotsGalPaq;
+          });
+        });
+        document.getElementById('gal-enviar').addEventListener('click', async () => {
+          const referencia = document.getElementById('gal-referencia').value.trim();
+          const file = document.getElementById('gal-comprobante').files[0];
+          if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
+          const btn = document.getElementById('gal-enviar'); btn.disabled = true; btn.textContent = 'Enviando…';
+          const comprobanteUrl = await subirComprobante(file);
+          const { error } = await db.from('solicitudes').insert({
+            nombre: socio.nombre, telefono: socio.telefono, whatsapp: socio.whatsapp,
+            plan: 'galeria_extra', tipo: 'galeria_extra', estado: 'pendiente', metodo_pago: metodoActivo,
+            referencia, monto: paquetes * precioGalPaq, comprobante: comprobanteUrl,
+            descripcion: `${paquetes} paquete${paquetes > 1 ? 's' : ''} · ${paquetes * slotsGalPaq} slots extra`, socio_id: socio.id,
+          });
+          if (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar solicitud'; return; }
+          pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y agregará los espacios en breve.');
+        });
+      });
+    });
+    opciones.appendChild(rowGaleria);
+  }
+
+  function pantallaExito(titulo, texto) {
+    app.innerHTML = `
+      <div class="card center">
+        <div class="exito-icono">✅</div>
+        <h2>${titulo}</h2>
+        <p class="muted" style="margin-top:8px">${texto}</p>
+      </div>`;
+  }
+
+  (socioId ? modoGestionar() : modoRegistro()).catch(err => {
+    app.innerHTML = `<div class="card center muted">Ocurrió un error cargando la página. Escríbenos por WhatsApp para ayudarte.</div>`;
+    console.error(err);
+  });
+})();
+</script>
+</body>
+</html>
