@@ -3155,7 +3155,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;font-size:12px;background:#f8f9fb">
             <div>
               <span style="color:var(--muted);font-weight:700">Plan</span><br>
-              <span style="font-weight:800;font-size:13px">${s.plan === 'pro' ? (s.tipo === 'registro_pro' ? 'Pro' : 'Medio') : s.plan ? (s.plan.charAt(0).toUpperCase()+s.plan.slice(1)) : '—'}${s.periodo ? ' · '+s.periodo : ''}</span>
+              <span style="font-weight:800;font-size:13px">${s.plan === 'pro' ? ((s.tipo === 'registro_pro' || s.tipo === 'upgrade_pro') ? 'Pro' : 'Medio') : s.plan ? (s.plan.charAt(0).toUpperCase()+s.plan.slice(1)) : '—'}${s.periodo ? ' · '+s.periodo : ''}</span>
             </div>
             <div>
               <span style="color:var(--muted);font-weight:700">Aprobado</span><br>
@@ -3658,7 +3658,10 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         if (telClean) await db.from('config_app').delete().eq('clave', `rechazo_tel_${telClean}`);
 
         // Nivel de la tienda (socios_comerciales.tipo solo acepta 'pro'/'basico'); no confundir con
-        // sol.tipo, que marca el TIPO DE SOLICITUD ('renovacion'/'destacado'/'galeria_extra'/'registro_pro'/null)
+        // sol.tipo, que marca el TIPO DE SOLICITUD ('renovacion'/'upgrade_pro'/'destacado'/'galeria_extra'/'registro_pro'/null)
+        // 'upgrade_pro' = renovación que además sube la tienda a Pro real (viene de planes-app.html,
+        // registro de negocio en iOS que no permite renovar a Pro real de otro modo).
+        const esRenovacionComoSea = sol.tipo === 'renovacion' || sol.tipo === 'upgrade_pro';
         const tipoSocio = sol.tipo === 'registro_pro' ? 'pro' : 'basico';
 
         // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
@@ -3671,7 +3674,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           const mismo = exist?.find(e => e.nombre?.trim().toLowerCase() === sol.nombre?.trim().toLowerCase());
           if (mismo) {
             socioId = mismo.id;
-          } else if (sol.tipo === 'renovacion') {
+          } else if (esRenovacionComoSea) {
             // Solo para renovaciones: buscar por teléfono sin exigir nombre exacto
             if (exist?.length === 1) {
               // 2) Un solo resultado → es el mismo negocio
@@ -3689,7 +3692,11 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         if (socioId) {
           // Para renovaciones solo actualizar plan y vencimiento; NO sobreescribir datos del negocio con nulls
           const updateData = { fecha_vencimiento: fechaVenc, plan: sol.plan, activo: true };
-          if (!sol.tipo || sol.tipo !== 'renovacion') {
+          if (sol.tipo === 'upgrade_pro') {
+            // Renovación que sube a Pro real: solo tocar `tipo`, el resto de datos del negocio queda igual
+            updateData.tipo = 'pro';
+          }
+          if (!sol.tipo || !esRenovacionComoSea) {
             // Solicitud nueva: sí actualizar todos los campos del negocio
             Object.assign(updateData, {
               tipo: tipoSocio,
@@ -6277,10 +6284,11 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     };
     const conceptoColor = p => p === 'galeria_extra' ? '#f59e0b' : p === 'destacado' ? '#a855f7' : '#3b82f6';
 
-    // Nivel del plan por solicitud: Pro = registro de Tienda Pro (precio fijo);
+    // Nivel del plan por solicitud: Pro = registro de Tienda Pro (precio fijo) o
+    // renovación con upgrade a Pro real (planes-app.html, tipo='upgrade_pro');
     // Medio = mismo campo plan='pro' pero comprado por el flujo normal (o su
     // renovación); Básico = plan='basico'. Ver project_appcashcash_tipo_fields:
-    // sol.tipo='registro_pro' es el único marcador confiable de Tienda Pro real.
+    // sol.tipo='registro_pro'/'upgrade_pro' son los marcadores confiables de Tienda Pro real.
     let totPro      = 0, cntPro      = 0;
     let totMedio    = 0, cntMedio    = 0;
     let totBasico   = 0, cntBasico   = 0;
@@ -6289,7 +6297,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
     filas.forEach(s => {
       const m = parseFloat(s.monto) || 0;
-      if (s.tipo === 'registro_pro')                            { totPro      += m; cntPro++;      }
+      if (s.tipo === 'registro_pro' || s.tipo === 'upgrade_pro') { totPro      += m; cntPro++;      }
       else if (s.plan === 'pro')                                 { totMedio    += m; cntMedio++;    }
       else if (s.plan === 'basico')                              { totBasico   += m; cntBasico++;   }
       else if (s.plan === 'galeria_extra' || s.plan === 'destacado') { totPaquetes += m; cntPaquetes++; }

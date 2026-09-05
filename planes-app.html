@@ -432,10 +432,11 @@
     rowRenovar.innerHTML = `<div class="icono">🔄</div><div class="txt"><div class="t">Renovar membresía</div><div class="d">Elige tu plan y realiza el pago</div></div>`;
     rowRenovar.addEventListener('click', () => {
       const planesRenov = esPro
-        ? { pro: { nombre: 'Pro', mensual: num(map.pro_precio_mensual, 50), anual: num(map.pro_precio_anual, 60) } }
+        ? { pro: { nombre: 'Pro', planValor: 'pro', mensual: num(map.pro_precio_mensual, 50), anual: num(map.pro_precio_anual, 60) } }
         : {
-            basico: { nombre: 'Básico', mensual: num(map.precio_base_basico_mensual, 15), anual: num(map.precio_base_basico_anual, 150) },
-            pro:    { nombre: 'Medio',  mensual: num(map.precio_base_pro_mensual, 30),    anual: num(map.precio_base_pro_anual, 300) },
+            basico: { nombre: 'Básico', planValor: 'basico', mensual: num(map.precio_base_basico_mensual, 15), anual: num(map.precio_base_basico_anual, 150) },
+            medio:  { nombre: 'Medio',  planValor: 'pro',     mensual: num(map.precio_base_pro_mensual, 30),    anual: num(map.precio_base_pro_anual, 300) },
+            pro:    { nombre: 'Pro',    planValor: 'pro',     mensual: num(map.pro_precio_mensual, 50),         anual: num(map.pro_precio_anual, 60), tipoExtra: 'upgrade_pro' },
           };
       abrirFormulario(`
         <div class="card">
@@ -486,12 +487,14 @@
           const file = document.getElementById('ren-comprobante').files[0];
           if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
           const btn = document.getElementById('ren-enviar'); btn.disabled = true; btn.textContent = 'Enviando…';
-          const monto = periodoActivo === 'anual' ? planesRenov[planActivo].anual : planesRenov[planActivo].mensual;
+          const planElegido = planesRenov[planActivo];
+          const monto = periodoActivo === 'anual' ? planElegido.anual : planElegido.mensual;
           const comprobanteUrl = await subirComprobante(file);
           const { error } = await db.from('solicitudes').insert({
             nombre: socio.nombre, telefono: socio.telefono, whatsapp: socio.whatsapp,
-            plan: planActivo, periodo: periodoActivo, metodo_pago: metodoActivo,
-            referencia, monto, comprobante: comprobanteUrl, tipo: 'renovacion', socio_id: socio.id,
+            plan: planElegido.planValor, periodo: periodoActivo, metodo_pago: metodoActivo,
+            referencia, monto, comprobante: comprobanteUrl,
+            tipo: planElegido.tipoExtra || 'renovacion', socio_id: socio.id,
           });
           if (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar renovación'; return; }
           pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y renovará tu membresía en breve.');
