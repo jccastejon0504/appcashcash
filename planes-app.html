@@ -284,6 +284,9 @@
         <input type="tel" id="r-telefono" placeholder="0414-0000000" />
         <label>WhatsApp</label>
         <input type="tel" id="r-whatsapp" placeholder="0414-0000000" />
+        <label>Correo *</label>
+        <input type="text" id="r-correo" placeholder="tucorreo@ejemplo.com" />
+        <div class="muted" style="margin-top:-8px;margin-bottom:2px">Con este correo podrás "Recuperar acceso" a tu tienda desde la app.</div>
       </div>
 
       <div class="card">
@@ -351,9 +354,11 @@
       const ciudad   = document.getElementById('r-ciudad').value.trim();
       const telefono = document.getElementById('r-telefono').value.trim();
       const whatsapp = document.getElementById('r-whatsapp').value.trim();
+      const correo   = document.getElementById('r-correo').value.trim().toLowerCase();
       const referencia = document.getElementById('r-referencia').value.trim();
       const file = document.getElementById('r-comprobante').files[0];
       if (!nombre || !ciudad || (!telefono && !whatsapp)) { alert('Completa nombre, ciudad y al menos un teléfono.'); return; }
+      if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { alert('Ingresa un correo válido — lo necesitarás para acceder a tu tienda desde la app.'); return; }
       if (!referencia || !file) { alert('Completa la referencia y adjunta el comprobante.'); return; }
 
       const btn = document.getElementById('r-enviar');
@@ -364,14 +369,14 @@
       const comprobanteUrl = await subirComprobante(file);
 
       const { error } = await db.from('solicitudes').insert({
-        nombre, ciudad, telefono: telefono || null, whatsapp: whatsapp || null,
+        nombre, ciudad, telefono: telefono || null, whatsapp: whatsapp || null, email: correo,
         plan: p.planValor, periodo: periodoActivo, metodo_pago: metodoActivo,
         referencia, monto, comprobante: comprobanteUrl,
         ...(p.tipoExtra ? { tipo: p.tipoExtra } : {}),
       });
 
       if (error) { alert('No se pudo enviar la solicitud: ' + error.message); btn.disabled = false; btn.textContent = 'Enviar solicitud'; return; }
-      pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y activará tu tienda en las próximas horas. Te contactaremos por WhatsApp.');
+      pantallaExito('¡Solicitud enviada!', 'El equipo revisará tu pago y activará tu tienda en las próximas horas. Una vez activa, abre la app CashCash → Mis Tiendas → "Recuperar acceso" con el correo que registraste aquí.');
     });
   }
 
