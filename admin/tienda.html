@@ -1434,7 +1434,12 @@
     if (s.direccion || s.ciudad) {
       let rowsHtml = '';
       if (s.direccion) {
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.direccion+(s.ciudad?', '+s.ciudad:''))}`;
+        // Preferir coordenadas GPS reales (guardadas al registrar la tienda) sobre
+        // buscar el texto de la direccion -- las direcciones informales venezolanas
+        // casi nunca coinciden con lo que Google Maps espera como busqueda de texto.
+        const mapsUrl = (s.latitud != null && s.longitud != null)
+          ? `https://www.google.com/maps/search/?api=1&query=${s.latitud},${s.longitud}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.direccion+(s.ciudad?', '+s.ciudad:''))}`;
         rowsHtml += `<div class="info-sheet-row">
           <div class="info-row-icon purple">📌</div>
           <div class="info-row-txt">
