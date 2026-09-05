@@ -3787,10 +3787,12 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             );
           }
 
-          // Eliminar las ya aprobadas (superadas por esta nueva aprobación) o rechazadas
-          const aEliminarSols = solsViejas.filter(s =>
-            s.estado === 'aprobado' || s.estado === 'rechazado'
-          );
+          // Solo eliminar las rechazadas (sin valor de historial). Las ya aprobadas
+          // se dejan intactas a propósito -- son el historial real de pagos que
+          // usa el Reporte de Ingresos; borrarlas hacía desaparecer transacciones
+          // reales (ej. el pago de registro Basico/Medio al aprobar despues un
+          // upgrade a Pro del mismo negocio). Detectado 2026-09-05.
+          const aEliminarSols = solsViejas.filter(s => s.estado === 'rechazado');
           for (const vieja of aEliminarSols) {
             await db.from('solicitudes').delete().eq('id', vieja.id);
           }
