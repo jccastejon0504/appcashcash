@@ -145,6 +145,31 @@
     padding:8px 14px;font-weight:700;font-size:13px;color:var(--ink);
   }
   .store-badge svg{width:22px;height:22px;flex-shrink:0}
+  .store-badge[href]{cursor:pointer}
+
+  /* ── POPUP "PRÓXIMAMENTE" (App Store) ──────────── */
+  .app-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+    backdrop-filter:blur(4px);z-index:500;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .app-overlay.open{display:flex}
+  .app-sheet{
+    background:var(--surface);border-radius:24px;width:100%;max-width:340px;
+    padding:28px 24px 24px;text-align:center;animation:slideUp .25s ease;
+  }
+  .app-sheet-icon{
+    width:64px;height:64px;border-radius:16px;margin:0 auto 16px;overflow:hidden;
+    background:linear-gradient(135deg,#3D1F0A,var(--accent));
+  }
+  .app-sheet-icon img{width:100%;height:100%;object-fit:cover}
+  .app-sheet-title{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:8px}
+  .app-sheet-text{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+  .app-sheet-btn{
+    background:var(--accent);color:var(--ink);border:none;border-radius:10px;
+    padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;width:100%;
+  }
+  @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
   .faq{max-width:720px}
   .faq-item{border-bottom:1px solid var(--line);padding:22px 0}
   .faq-item summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -364,14 +389,14 @@
     <div class="faq-visual">
       <img src="/assets/images/mockup-tienda.webp" alt="Directorio de tiendas en la app CashCash" loading="lazy">
       <div class="store-badges" aria-label="Muy pronto en App Store y Google Play">
-        <div class="store-badge">
+        <a href="#" onclick="abrirAppPopup(event)" class="store-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect width="24" height="24" rx="6" fill="#000"/>
             <path d="M16.365 12.03c-.02-2.11 1.72-3.12 1.8-3.17-.98-1.44-2.51-1.64-3.05-1.66-1.3-.13-2.54.76-3.2.76-.66 0-1.68-.74-2.76-.72-1.42.02-2.73.82-3.46 2.09-1.48 2.56-.38 6.35 1.06 8.43.7 1.02 1.54 2.16 2.64 2.12 1.06-.04 1.46-.68 2.74-.68 1.27 0 1.64.68 2.76.66 1.14-.02 1.86-1.03 2.56-2.06.8-1.18 1.13-2.32 1.15-2.38-.02-.01-2.2-.85-2.24-3.39z" fill="#fff"/>
             <path d="M14.4 5.86c.58-.7.98-1.68.87-2.66-.84.04-1.86.56-2.46 1.26-.54.62-1.02 1.62-.89 2.58.94.07 1.9-.48 2.48-1.18z" fill="#fff"/>
           </svg>
           <span>App Store</span>
-        </div>
+        </a>
         <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.cashcash.app2&pcampaignid=web_share" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect width="24" height="24" rx="6" fill="#00C853"/>
@@ -424,6 +449,29 @@
     </div>
   </div>
 </footer>
+
+<!-- Popup "Próximamente" (App Store, mientras Apple aprueba la app) -->
+<div class="app-overlay" id="app-overlay" onclick="cerrarAppOverlay(event)">
+  <div class="app-sheet">
+    <div class="app-sheet-icon"><img src="/admin/icon.png" alt="CashCash" /></div>
+    <div class="app-sheet-title">¡La app ya viene en camino!</div>
+    <div class="app-sheet-text">Muy pronto vas a poder descargarla desde la App Store. Te avisamos apenas esté lista.</div>
+    <button class="app-sheet-btn" onclick="cerrarAppPopup()">Entendido</button>
+  </div>
+</div>
+
+<script>
+  function abrirAppPopup(e) {
+    if (e) e.preventDefault();
+    document.getElementById('app-overlay').classList.add('open');
+  }
+  function cerrarAppPopup() {
+    document.getElementById('app-overlay').classList.remove('open');
+  }
+  function cerrarAppOverlay(e) {
+    if (e.target === document.getElementById('app-overlay')) cerrarAppPopup();
+  }
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
