@@ -3119,7 +3119,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   // repartir por WhatsApp — mismo espíritu visual que la giftcard real de
   // la app (tarjeta naranja, ícono de regalo, código grande).
   function descargarTarjetaPromo(codigo, plan, dias) {
-    const W = 900, H = 560;
+    const W = 900, H = 640;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -3179,9 +3179,13 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     ctx.fillText(codigo, 50, 475);
 
     // Footer
-    ctx.font = '400 18px Arial, sans-serif';
-    ctx.fillStyle = '#ffffffcc';
-    _wrapTextPromo(ctx, 'Actívalo en la app CashCash: "Unirse como Socio" → "¿Tienes un código de bienvenida?"', 50, 520, W - 100, 24);
+    ctx.font = '600 20px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    _wrapTextPromo(
+      ctx,
+      '📲 Descarga la app CashCash Venezuela\nGoogle Play y App Store\nActívalo al registrar tu tienda: "¿Tienes un código de bienvenida?"',
+      50, 525, W - 100, 27,
+    );
 
     const a = document.createElement('a');
     a.download = `cashcash-${codigo}.png`;
@@ -3190,19 +3194,22 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   }
 
   function _wrapTextPromo(ctx, text, x, y, maxWidth, lineHeight) {
-    const words = text.split(' ');
-    let line = '';
-    for (const word of words) {
-      const test = line + word + ' ';
-      if (ctx.measureText(test).width > maxWidth && line) {
-        ctx.fillText(line, x, y);
-        line = word + ' ';
-        y += lineHeight;
-      } else {
-        line = test;
+    for (const parrafo of text.split('\n')) {
+      const words = parrafo.split(' ');
+      let line = '';
+      for (const word of words) {
+        const test = line + word + ' ';
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, y);
+          line = word + ' ';
+          y += lineHeight;
+        } else {
+          line = test;
+        }
       }
+      ctx.fillText(line, x, y);
+      y += lineHeight;
     }
-    ctx.fillText(line, x, y);
   }
 
   async function verCodigosLote(loteId, plan, dias) {
