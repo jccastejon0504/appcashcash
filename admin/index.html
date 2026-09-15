@@ -1700,9 +1700,9 @@
       <div class="card" id="promo-codigos-generados-card" style="display:none;margin-bottom:24px">
         <div class="card-header"><h2>Códigos recién generados</h2></div>
         <div class="card-body">
-          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Cópialos ahora para repartirlos — no vuelven a mostrarse juntos así.</p>
-          <textarea id="promo-codigos-generados" readonly rows="6" style="width:100%;font-family:monospace;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:10px"></textarea>
-          <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="copiarCodigosGenerados()">📋 Copiar todos</button>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Descarga la tarjeta de cada uno para repartirla por WhatsApp, o cópialos todos como texto.</p>
+          <div id="promo-codigos-generados" style="border:1px solid var(--border);border-radius:8px;max-height:280px;overflow-y:auto"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="copiarCodigosGenerados()">📋 Copiar todos como texto</button>
         </div>
       </div>
 
@@ -1712,7 +1712,7 @@
           <div id="promo-lotes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Aún no se ha generado ningún lote.</div>
           <table id="promo-lotes-tabla" style="display:none">
             <thead>
-              <tr><th>Campaña</th><th>Plan</th><th>Días gratis</th><th>Usados</th><th>Fecha</th><th></th></tr>
+              <tr><th>Campaña</th><th>Plan</th><th>Días gratis</th><th>Usados</th><th>Fecha</th><th colspan="2"></th></tr>
             </thead>
             <tbody id="promo-lotes-body"></tbody>
           </table>
@@ -3065,7 +3065,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   let _solicitudesHayMas = true;
 
   // ── Códigos Promocionales ────────────────────────────────────────────────
-  let _ultimoLoteGenerado = null;
+  let _codigosMostrados = [];
 
   async function generarLotePromo() {
     const campana  = document.getElementById('promo-campana').value.trim();
@@ -3083,24 +3083,144 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     btn.disabled = false;
     if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
     msg.textContent = `✓ ${data.length} códigos generados.`; msg.style.color = '#16a34a';
-    _ultimoLoteGenerado = data.map(c => c.codigo);
-    document.getElementById('promo-codigos-generados').value = _ultimoLoteGenerado.join('\n');
-    document.getElementById('promo-codigos-generados-card').style.display = '';
+    _renderCodigosLista(data, plan, dias);
     await cargarPromoCodigos();
   }
 
-  async function copiarCodigosGenerados() {
-    const ta = document.getElementById('promo-codigos-generados');
-    ta.select();
-    try { await navigator.clipboard.writeText(ta.value); } catch { document.execCommand('copy'); }
+  function _renderCodigosLista(codigos, plan, dias) {
+    _codigosMostrados = codigos.map(c => c.codigo);
+    const cont = document.getElementById('promo-codigos-generados');
+    cont.innerHTML = codigos.map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-family:monospace;font-weight:700;flex:1">${c.codigo}</span>
+        ${c.usado ? `<span style="font-size:11px;color:var(--muted)">usado</span>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="descargarTarjetaPromo('${c.codigo}','${plan}',${dias})">🎫 Tarjeta</button>
+      </div>
+    `).join('');
+    document.getElementById('promo-codigos-generados-card').style.display = '';
   }
 
-  async function verCodigosLote(loteId) {
+  async function copiarCodigosGenerados() {
+    try { await navigator.clipboard.writeText(_codigosMostrados.join('\n')); }
+    catch { alert(_codigosMostrados.join('\n')); }
+  }
+
+  function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  // Genera y descarga una tarjeta estilo "giftcard" con el código, para
+  // repartir por WhatsApp — mismo espíritu visual que la giftcard real de
+  // la app (tarjeta naranja, ícono de regalo, código grande).
+  function descargarTarjetaPromo(codigo, plan, dias) {
+    const W = 900, H = 560;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#FB8C50');
+    grad.addColorStop(1, '#E65E02');
+    ctx.fillStyle = grad;
+    _roundRect(ctx, 0, 0, W, H, 28);
+    ctx.fill();
+
+    // Círculo con ícono de regalo
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(90, 90, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🎁', 90, 96);
+
+    // Marca
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 26px Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('CASHCASH', W - 50, 96);
+
+    // Título
+    ctx.textAlign = 'left';
+    ctx.font = '700 22px Arial, sans-serif';
+    ctx.fillStyle = '#ffffffcc';
+    ctx.fillText('CÓDIGO DE BIENVENIDA', 50, 210);
+
+    ctx.font = '800 52px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`Plan ${plan === 'basico' ? 'Básico' : 'Medio / Pro'}`, 50, 265);
+
+    ctx.font = '700 32px Arial, sans-serif';
+    ctx.fillStyle = '#fff7ed';
+    ctx.fillText(`GRATIS por ${dias} días`, 50, 320);
+
+    // Línea divisoria
+    ctx.strokeStyle = '#ffffff55';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(50, 380);
+    ctx.lineTo(W - 50, 380);
+    ctx.stroke();
+
+    // Código
+    ctx.font = '700 18px Arial, sans-serif';
+    ctx.fillStyle = '#ffffffcc';
+    ctx.fillText('CÓDIGO', 50, 425);
+
+    ctx.font = '800 46px "Courier New", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(codigo, 50, 475);
+
+    // Footer
+    ctx.font = '400 18px Arial, sans-serif';
+    ctx.fillStyle = '#ffffffcc';
+    _wrapTextPromo(ctx, 'Actívalo en la app CashCash: "Unirse como Socio" → "¿Tienes un código de bienvenida?"', 50, 520, W - 100, 24);
+
+    const a = document.createElement('a');
+    a.download = `cashcash-${codigo}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  }
+
+  function _wrapTextPromo(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    for (const word of words) {
+      const test = line + word + ' ';
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, y);
+        line = word + ' ';
+        y += lineHeight;
+      } else {
+        line = test;
+      }
+    }
+    ctx.fillText(line, x, y);
+  }
+
+  async function verCodigosLote(loteId, plan, dias) {
     const { data, error } = await db.rpc('promo_codigos_de_lote', { p_lote_id: loteId });
     if (error) { alert('Error: ' + error.message); return; }
-    document.getElementById('promo-codigos-generados').value = data.map(c => `${c.codigo}${c.usado ? '  (usado)' : ''}`).join('\n');
-    document.getElementById('promo-codigos-generados-card').style.display = '';
+    _renderCodigosLista(data, plan, dias);
     document.getElementById('promo-codigos-generados-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function eliminarLotePromo(loteId, campana, usados, cantidad) {
+    const aviso = usados > 0
+      ? `Este lote "${campana}" ya tiene ${usados} de ${cantidad} códigos usados (ligados a tiendas reales). Si lo eliminas, se pierde esa trazabilidad. ¿Eliminar de todos modos?`
+      : `¿Eliminar el lote "${campana}" y sus ${cantidad} códigos? Ninguno está usado todavía.`;
+    if (!confirm(aviso)) return;
+    const { error } = await db.rpc('promo_eliminar_lote', { p_lote_id: loteId });
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    document.getElementById('promo-codigos-generados-card').style.display = 'none';
+    await cargarPromoCodigos();
   }
 
   async function cargarPromoCodigos() {
@@ -3118,7 +3238,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         <td>${l.dias_gratis}</td>
         <td>${l.usados} / ${l.cantidad}</td>
         <td>${fmtFecha(l.created_at)}</td>
-        <td><button class="btn btn-sm btn-outline" onclick="verCodigosLote('${l.id}')">Ver códigos</button></td>
+        <td><button class="btn btn-sm btn-outline" onclick="verCodigosLote('${l.id}','${l.plan}',${l.dias_gratis})">Ver códigos</button></td>
+        <td><button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="eliminarLotePromo('${l.id}','${l.campana.replace(/'/g, "\\'")}',${l.usados},${l.cantidad})">🗑</button></td>
       </tr>
     `).join('');
   }
