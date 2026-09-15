@@ -436,6 +436,9 @@
     <div class="nav-item" data-section="paquete-destacado">
       <span class="icon">🎁</span> Paquete y Destacado
     </div>
+    <div class="nav-item" data-section="promo-codigos">
+      <span class="icon">🎟️</span> Códigos Promocionales
+    </div>
     <div class="nav-item" data-section="solicitudes">
       <span class="icon">📋</span> Solicitudes
     </div>
@@ -1646,6 +1649,77 @@
 
     </div>
 
+    <!-- ══ CÓDIGOS PROMOCIONALES ═══════════════════════════ -->
+    <div class="section" id="section-promo-codigos">
+      <div class="grid-2" style="margin-bottom:24px">
+        <div class="card">
+          <div class="card-header"><h2>Generar lote nuevo</h2></div>
+          <div class="card-body">
+            <form onsubmit="event.preventDefault();generarLotePromo()" style="display:flex;flex-direction:column;gap:14px">
+              <div class="form-group">
+                <label>Campaña</label>
+                <input type="text" id="promo-campana" placeholder="Ej: Lanzamiento primeros 100" />
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Plan a otorgar</label>
+                  <select id="promo-plan">
+                    <option value="basico">Básico</option>
+                    <option value="pro">Medio / Pro</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Días gratis</label>
+                  <input type="number" id="promo-dias" value="90" min="1" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Cantidad de códigos</label>
+                <input type="number" id="promo-cantidad" value="100" min="1" />
+              </div>
+              <button type="submit" class="btn btn-primary" id="promo-btn-generar">Generar códigos</button>
+              <span class="msg" id="promo-msg-generar"></span>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2>Cómo funciona</h2></div>
+          <div class="card-body">
+            <ul style="font-size:13px;color:var(--muted);line-height:1.9;padding-left:18px">
+              <li>Cada código es de un solo uso, para una sola tienda</li>
+              <li>El dueño lo mete en "Unirse como Socio" → "¿Tienes un código de bienvenida?"</li>
+              <li>Su registro salta el paso de pago (no pasa por banco ni Apple/Google)</li>
+              <li>Llega igual a <b>Solicitudes</b> para tu revisión de calidad, marcada 🎁 Promo</li>
+              <li>Al aprobarla, la tienda queda con el plan y los días gratis del lote</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="promo-codigos-generados-card" style="display:none;margin-bottom:24px">
+        <div class="card-header"><h2>Códigos recién generados</h2></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Cópialos ahora para repartirlos — no vuelven a mostrarse juntos así.</p>
+          <textarea id="promo-codigos-generados" readonly rows="6" style="width:100%;font-family:monospace;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:10px"></textarea>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="copiarCodigosGenerados()">📋 Copiar todos</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>Historial de lotes</h2></div>
+        <div style="padding:16px">
+          <div id="promo-lotes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Aún no se ha generado ningún lote.</div>
+          <table id="promo-lotes-tabla" style="display:none">
+            <thead>
+              <tr><th>Campaña</th><th>Plan</th><th>Días gratis</th><th>Usados</th><th>Fecha</th><th></th></tr>
+            </thead>
+            <tbody id="promo-lotes-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ SOLICITUDES ═════════════════════════════════════ -->
     <div class="section" id="section-solicitudes">
       <div class="card">
@@ -2142,6 +2216,7 @@
     analytics:    { title: 'Analytics',               sub: 'Actividad de usuarios en la app' },
     ofertas:      { title: 'Ofertas y Planes',          sub: 'Gestiona las promociones de membresía' },
     'plan-pro':   { title: 'Plan Pro',                 sub: 'Configura el contenido de la pantalla Tienda Pro en la app' },
+    'promo-codigos': { title: 'Códigos Promocionales', sub: 'Genera lotes de códigos para tienda gratis por tiempo limitado (lanzamientos y promociones)' },
     solicitudes:  { title: 'Solicitudes',              sub: 'Solicitudes de membresía recibidas' },
     'cambio-datos': { title: 'Corrección de Datos',    sub: 'Solicitudes de cambio de nombre o teléfono de tiendas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
@@ -2280,6 +2355,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (id === 'reporte-ingresos') { selPeriodo(repPeriodo); selFiltroVenc(filtroVenc); }
     if (id === 'ofertas')     cargarOfertas();
     if (id === 'plan-pro')    cargarPlanPro();
+    if (id === 'promo-codigos') cargarPromoCodigos();
     if (id === 'solicitudes') cargarSolicitudes();
     if (id === 'cambio-datos') cargarCambioDatos();
     if (id === 'socios')      cargarSocios();
@@ -2988,6 +3064,65 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   let _solicitudesOffset = 0;
   let _solicitudesHayMas = true;
 
+  // ── Códigos Promocionales ────────────────────────────────────────────────
+  let _ultimoLoteGenerado = null;
+
+  async function generarLotePromo() {
+    const campana  = document.getElementById('promo-campana').value.trim();
+    const plan     = document.getElementById('promo-plan').value;
+    const dias     = parseInt(document.getElementById('promo-dias').value, 10);
+    const cantidad = parseInt(document.getElementById('promo-cantidad').value, 10);
+    const btn = document.getElementById('promo-btn-generar');
+    const msg = document.getElementById('promo-msg-generar');
+    if (!campana) { msg.textContent = 'Ponle un nombre a la campaña.'; msg.style.color = '#ef4444'; return; }
+    if (!dias || dias <= 0 || !cantidad || cantidad <= 0) { msg.textContent = 'Días y cantidad deben ser mayores a 0.'; msg.style.color = '#ef4444'; return; }
+    btn.disabled = true; msg.textContent = 'Generando…'; msg.style.color = 'var(--muted)';
+    const { data, error } = await db.rpc('promo_generar_lote', {
+      p_campana: campana, p_plan: plan, p_dias_gratis: dias, p_cantidad: cantidad,
+    });
+    btn.disabled = false;
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
+    msg.textContent = `✓ ${data.length} códigos generados.`; msg.style.color = '#16a34a';
+    _ultimoLoteGenerado = data.map(c => c.codigo);
+    document.getElementById('promo-codigos-generados').value = _ultimoLoteGenerado.join('\n');
+    document.getElementById('promo-codigos-generados-card').style.display = '';
+    await cargarPromoCodigos();
+  }
+
+  async function copiarCodigosGenerados() {
+    const ta = document.getElementById('promo-codigos-generados');
+    ta.select();
+    try { await navigator.clipboard.writeText(ta.value); } catch { document.execCommand('copy'); }
+  }
+
+  async function verCodigosLote(loteId) {
+    const { data, error } = await db.rpc('promo_codigos_de_lote', { p_lote_id: loteId });
+    if (error) { alert('Error: ' + error.message); return; }
+    document.getElementById('promo-codigos-generados').value = data.map(c => `${c.codigo}${c.usado ? '  (usado)' : ''}`).join('\n');
+    document.getElementById('promo-codigos-generados-card').style.display = '';
+    document.getElementById('promo-codigos-generados-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function cargarPromoCodigos() {
+    const { data, error } = await db.rpc('promo_lotes_resumen');
+    const tabla = document.getElementById('promo-lotes-tabla');
+    const vacio = document.getElementById('promo-lotes-empty');
+    const body  = document.getElementById('promo-lotes-body');
+    if (error) { vacio.textContent = 'Error al cargar: ' + error.message; vacio.style.display = ''; tabla.style.display = 'none'; return; }
+    if (!data || data.length === 0) { vacio.style.display = ''; tabla.style.display = 'none'; return; }
+    vacio.style.display = 'none'; tabla.style.display = '';
+    body.innerHTML = data.map(l => `
+      <tr>
+        <td>${l.campana}</td>
+        <td>${l.plan === 'basico' ? 'Básico' : 'Medio/Pro'}</td>
+        <td>${l.dias_gratis}</td>
+        <td>${l.usados} / ${l.cantidad}</td>
+        <td>${fmtFecha(l.created_at)}</td>
+        <td><button class="btn btn-sm btn-outline" onclick="verCodigosLote('${l.id}')">Ver códigos</button></td>
+      </tr>
+    `).join('');
+  }
+
   async function cargarSolicitudes(append = false) {
     if (!append) { _solicitudesOffset = 0; _solicitudesHayMas = true; }
     const filtro = _filtroSolicitudesActual;
@@ -3168,10 +3303,15 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           </div>
           <!-- Pago y acciones -->
           <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;background:var(--card)">
-            <span class="badge badge-gray">${fmt(s.monto ?? 0)}</span>
-            ${s.metodo_pago ? `<span style="color:var(--muted)">${s.metodo_pago}</span>` : ''}
-            ${s.referencia  ? `<span style="font-family:monospace;color:var(--muted)">Ref: ${s.referencia}</span>` : ''}
-            ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">🧾 Comprobante</a>` : ''}
+            ${s.codigo_promocional ? `
+              <span class="badge" style="background:#fde68a;color:#92400e">🎁 Promo</span>
+              <span style="font-family:monospace;color:var(--muted)">${s.codigo_promocional}</span>
+            ` : `
+              <span class="badge badge-gray">${fmt(s.monto ?? 0)}</span>
+              ${s.metodo_pago ? `<span style="color:var(--muted)">${s.metodo_pago}</span>` : ''}
+              ${s.referencia  ? `<span style="font-family:monospace;color:var(--muted)">Ref: ${s.referencia}</span>` : ''}
+              ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">🧾 Comprobante</a>` : ''}
+            `}
             <div style="margin-left:auto;display:flex;gap:6px">
               ${estado !== 'aprobado'  ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();cambiarEstado('${s.id}','aprobado')">✓ Aprobar</button>` : ''}
               ${estado !== 'rechazado' ? `<button class="btn btn-sm btn-danger"  onclick="event.stopPropagation();cambiarEstado('${s.id}','rechazado')">✗ Rechazar</button>` : ''}
@@ -3629,7 +3769,14 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         // Calcular fecha de vencimiento
         const hoy = new Date();
         let fechaVenc = null;
-        if (sol.plan === 'gratis') {
+        let diasGratisPromo = null;
+        if (sol.codigo_promocional) {
+          // Código de bienvenida/promoción: los días de cortesía vienen del
+          // lote, no del ciclo normal de facturación (config_app dias_*).
+          const { data: promo } = await db.rpc('promo_codigo_detalle', { p_codigo: sol.codigo_promocional });
+          diasGratisPromo = promo?.[0]?.dias_gratis ?? 90;
+          fechaVenc = new Date(hoy.getTime() + diasGratisPromo * 24 * 60 * 60 * 1000).toISOString();
+        } else if (sol.plan === 'gratis') {
           const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
           // Si hay fecha fin configurada úsala; sino 31 días desde hoy como fallback
           fechaVenc = cfg?.valor
@@ -3662,7 +3809,9 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         // 'upgrade_pro' = renovación que además sube la tienda a Pro real (viene de planes-app.html,
         // registro de negocio en iOS que no permite renovar a Pro real de otro modo).
         const esRenovacionComoSea = sol.tipo === 'renovacion' || sol.tipo === 'upgrade_pro';
-        const tipoSocio = sol.tipo === 'registro_pro' ? 'pro' : 'basico';
+        // Con código promocional, sol.plan ya trae exactamente lo que el código
+        // otorga ('basico'/'pro') — no aplica la regla de "Medio queda en basico".
+        const tipoSocio = sol.codigo_promocional ? sol.plan : (sol.tipo === 'registro_pro' ? 'pro' : 'basico');
 
         // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
         const tel = telClean;
@@ -3689,6 +3838,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           // Para solicitudes nuevas: si no hay nombre exacto → INSERT (no asumir por teléfono solo)
         }
 
+        let tiendaIdFinal = socioId;
         if (socioId) {
           // Para renovaciones solo actualizar plan y vencimiento; NO sobreescribir datos del negocio con nulls
           const updateData = { fecha_vencimiento: fechaVenc, plan: sol.plan, activo: true };
@@ -3737,6 +3887,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             activo:            true,
           }).select('id').single();
           if (errIns) { alert('Error al crear socio: ' + errIns.message); return; }
+          tiendaIdFinal = nuevoSocio?.id ?? null;
           // Guardar el ID del nuevo socio en la solicitud para que ediciones futuras lo encuentren directamente
           if (nuevoSocio?.id) {
             await db.from('solicitudes').update({ socio_id: nuevoSocio.id }).eq('id', id);
@@ -3760,6 +3911,10 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
               } catch(e) { /* galeria_data inválido, ignorar */ }
             }
           }
+        }
+
+        if (sol.codigo_promocional && tiendaIdFinal) {
+          await db.rpc('promo_asignar_tienda', { p_codigo: sol.codigo_promocional, p_tienda_id: tiendaIdFinal });
         }
 
         // ── Limpiar solicitudes y socios_comerciales vencidos del mismo negocio ──
@@ -5522,6 +5677,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       mapa:        cargarMapa,
       'reporte-ingresos': () => { selPeriodo(repPeriodo); selFiltroVenc(filtroVenc); },
       ofertas:     cargarOfertas,
+      'promo-codigos': cargarPromoCodigos,
       solicitudes: cargarSolicitudes,
       'cambio-datos': cargarCambioDatos,
       socios:      cargarSocios,
