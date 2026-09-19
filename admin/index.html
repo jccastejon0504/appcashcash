@@ -3296,6 +3296,10 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       ).join('');
 
       const _tel = (s.telefono || s.whatsapp || '').replace(/\D/g,'');
+      // Los números se guardan en formato local venezolano (0412...);
+      // wa.me exige formato internacional sin el 0 inicial (584120000000),
+      // si no, WhatsApp Web no reconoce el numero y abre en blanco.
+      const _telWa = _tel && !_tel.startsWith('58') ? '58' + _tel.replace(/^0+/, '') : _tel;
       return `
       <div style="border:1px solid ${colorBorde};border-radius:12px;overflow:hidden;background:var(--bg)"
         data-sol-nombre="${(s.nombre ?? '').replace(/"/g,'&quot;')}"
@@ -3355,7 +3359,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             <div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button class="btn btn-sm btn-outline" onclick="toggleEditSol('${uid}')">✏️ Editar datos</button>
               ${estado === 'aprobado' ? `<button class="btn btn-sm btn-outline" style="color:#D97540;border-color:#D97540" onclick="sincronizarSocio('${s.id}','${uid}')">⚙ Sincronizar → Socios Activos</button><span id="msg-sinc-${uid}" style="font-size:12px"></span>` : ''}
-              ${estado === 'aprobado' && _tel ? `<a class="btn btn-sm btn-outline" style="color:#25D366;border-color:#25D366;text-decoration:none" href="https://wa.me/${_tel}?text=${encodeURIComponent(`¡Bienvenido a CashCash! 🎉 Tu tienda *${s.nombre ?? ''}* ya está activa y visible en el directorio.`)}" target="_blank">💬 Enviar bienvenida</a>` : ''}
+              ${estado === 'aprobado' && _telWa ? `<a class="btn btn-sm btn-outline" style="color:#25D366;border-color:#25D366;text-decoration:none" href="https://wa.me/${_telWa}?text=${encodeURIComponent(`¡Bienvenido a CashCash! 🎉 Tu tienda *${s.nombre ?? ''}* ya está activa y visible en el directorio.`)}" target="_blank">💬 Enviar bienvenida</a>` : ''}
             </div>
           </div>
           <!-- Editar datos solicitud -->
