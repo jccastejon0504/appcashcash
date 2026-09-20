@@ -3210,7 +3210,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (expiraEn) {
       const fechaLimite = new Date(expiraEn).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
       ctx.font = '700 20px Arial, sans-serif';
-      const textoLimite = `⏳ Actívalo antes del ${fechaLimite}`;
+      const textoLimite = `Actívalo antes del ${fechaLimite}`;
       const anchoPill = ctx.measureText(textoLimite).width + 32;
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       _roundRect(ctx, 50, 336, anchoPill, 38, 10);
@@ -3241,7 +3241,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     ctx.fillStyle = '#ffffff';
     _wrapTextPromo(
       ctx,
-      '📲 Descarga la app CashCash Venezuela\nGoogle Play y App Store\nActívalo al registrar tu tienda: "¿Tienes un código de bienvenida?"',
+      'Descarga la app CashCash Venezuela\nYa disponible en Android · iOS muy pronto\nActívalo al registrar tu tienda: "¿Tienes un código de bienvenida?"',
       50, 555, W - 100, 27,
     );
 
