@@ -1677,6 +1677,11 @@
                 <label>Cantidad de códigos</label>
                 <input type="number" id="promo-cantidad" value="100" min="1" />
               </div>
+              <div class="form-group">
+                <label>Vence en (días para canjear)</label>
+                <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no vence" min="1" />
+                <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no lo activa a tiempo, el código deja de servir (lo puedes renovar después desde "Ver códigos").</span>
+              </div>
               <button type="submit" class="btn btn-primary" id="promo-btn-generar">Generar códigos</button>
               <span class="msg" id="promo-msg-generar"></span>
             </form>
@@ -1692,6 +1697,7 @@
               <li>Su registro salta el paso de pago (no pasa por banco ni Apple/Google)</li>
               <li>Llega igual a <b>Solicitudes</b> para tu revisión de calidad, marcada 🎁 Promo</li>
               <li>Al aprobarla, la tienda queda con el plan y los días gratis del lote</li>
+              <li>Si le pones vencimiento, el código deja de servir si no se activa a tiempo — puedes renovarlo sin repartir uno nuevo</li>
             </ul>
           </div>
         </div>
@@ -1712,7 +1718,7 @@
           <div id="promo-lotes-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Aún no se ha generado ningún lote.</div>
           <table id="promo-lotes-tabla" style="display:none">
             <thead>
-              <tr><th>Campaña</th><th>Plan</th><th>Días gratis</th><th>Usados</th><th>Fecha</th><th colspan="2"></th></tr>
+              <tr><th>Campaña</th><th>Plan</th><th>Días gratis</th><th>Vence en</th><th>Usados</th><th>Vencidos</th><th>Fecha</th><th colspan="2"></th></tr>
             </thead>
             <tbody id="promo-lotes-body"></tbody>
           </table>
@@ -3066,19 +3072,25 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   // ── Códigos Promocionales ────────────────────────────────────────────────
   let _codigosMostrados = [];
+  let _codigosLoteIdActual = null;
+  let _planLoteActual = null;
+  let _diasLoteActual = null;
 
   async function generarLotePromo() {
-    const campana  = document.getElementById('promo-campana').value.trim();
-    const plan     = document.getElementById('promo-plan').value;
-    const dias     = parseInt(document.getElementById('promo-dias').value, 10);
-    const cantidad = parseInt(document.getElementById('promo-cantidad').value, 10);
+    const campana   = document.getElementById('promo-campana').value.trim();
+    const plan      = document.getElementById('promo-plan').value;
+    const dias      = parseInt(document.getElementById('promo-dias').value, 10);
+    const cantidad  = parseInt(document.getElementById('promo-cantidad').value, 10);
+    const venceStr  = document.getElementById('promo-vencimiento').value.trim();
+    const vence     = venceStr ? parseInt(venceStr, 10) : null;
     const btn = document.getElementById('promo-btn-generar');
     const msg = document.getElementById('promo-msg-generar');
     if (!campana) { msg.textContent = 'Ponle un nombre a la campaña.'; msg.style.color = '#ef4444'; return; }
     if (!dias || dias <= 0 || !cantidad || cantidad <= 0) { msg.textContent = 'Días y cantidad deben ser mayores a 0.'; msg.style.color = '#ef4444'; return; }
+    if (vence !== null && (!Number.isInteger(vence) || vence <= 0)) { msg.textContent = 'Los días de vencimiento deben ser mayores a 0 (o déjalo vacío para que no venza).'; msg.style.color = '#ef4444'; return; }
     btn.disabled = true; msg.textContent = 'Generando…'; msg.style.color = 'var(--muted)';
     const { data, error } = await db.rpc('promo_generar_lote', {
-      p_campana: campana, p_plan: plan, p_dias_gratis: dias, p_cantidad: cantidad,
+      p_campana: campana, p_plan: plan, p_dias_gratis: dias, p_cantidad: cantidad, p_dias_vencimiento: vence,
     });
     btn.disabled = false;
     if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
@@ -3087,17 +3099,48 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     await cargarPromoCodigos();
   }
 
+  // Activo (verde) / por vencer (naranja, con cuenta regresiva) / vencido (rojo, ofrece renovar) / usado (gris)
+  function _estadoCodigoPromo(c) {
+    if (c.usado) return { label: 'usado', color: 'var(--muted)', vencido: false };
+    if (c.expira_en) {
+      const restanteMs = new Date(c.expira_en) - new Date();
+      if (restanteMs <= 0) return { label: 'vencido', color: '#dc2626', vencido: true };
+      const diasRest = Math.max(1, Math.ceil(restanteMs / 86400000));
+      return { label: `vence en ${diasRest}d`, color: '#d97706', vencido: false };
+    }
+    return { label: 'activo', color: '#16a34a', vencido: false };
+  }
+
   function _renderCodigosLista(codigos, plan, dias) {
     _codigosMostrados = codigos.map(c => c.codigo);
+    _codigosLoteIdActual = codigos[0]?.lote_id ?? null;
+    _planLoteActual = plan;
+    _diasLoteActual = dias;
     const cont = document.getElementById('promo-codigos-generados');
-    cont.innerHTML = codigos.map(c => `
+    cont.innerHTML = codigos.map(c => {
+      const estado = _estadoCodigoPromo(c);
+      return `
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)">
         <span style="font-family:monospace;font-weight:700;flex:1">${c.codigo}</span>
-        ${c.usado ? `<span style="font-size:11px;color:var(--muted)">usado</span>` : ''}
+        <span style="font-size:11px;color:${estado.color};font-weight:600;white-space:nowrap">${estado.label}</span>
+        ${estado.vencido ? `<button class="btn btn-sm btn-outline" onclick="renovarCodigoPromo('${c.codigo}')">↻ Renovar</button>` : ''}
         <button class="btn btn-sm btn-outline" onclick="descargarTarjetaPromo('${c.codigo}','${plan}',${dias})">🎫 Tarjeta</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
     document.getElementById('promo-codigos-generados-card').style.display = '';
+  }
+
+  async function renovarCodigoPromo(codigo) {
+    if (!confirm(`¿Darle otra ventana de tiempo al código ${codigo}?`)) return;
+    const { data, error } = await db.rpc('promo_renovar', { p_codigo: codigo });
+    if (error) { alert('Error: ' + error.message); return; }
+    if (!data) { alert('No se pudo renovar — puede que ya se haya usado.'); return; }
+    if (_codigosLoteIdActual) {
+      const { data: fresh, error: err2 } = await db.rpc('promo_codigos_de_lote', { p_lote_id: _codigosLoteIdActual });
+      if (!err2 && fresh) _renderCodigosLista(fresh, _planLoteActual, _diasLoteActual);
+    }
+    await cargarPromoCodigos();
   }
 
   async function copiarCodigosGenerados() {
@@ -3243,7 +3286,9 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         <td>${l.campana}</td>
         <td>${l.plan === 'basico' ? 'Básico' : 'Medio/Pro'}</td>
         <td>${l.dias_gratis}</td>
+        <td>${l.dias_vencimiento ? l.dias_vencimiento + 'd' : '—'}</td>
         <td>${l.usados} / ${l.cantidad}</td>
+        <td>${l.vencidos > 0 ? `<span style="color:#dc2626;font-weight:700">${l.vencidos}</span>` : '0'}</td>
         <td>${fmtFecha(l.created_at)}</td>
         <td><button class="btn btn-sm btn-outline" onclick="verCodigosLote('${l.id}','${l.plan}',${l.dias_gratis})">Ver códigos</button></td>
         <td><button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="eliminarLotePromo('${l.id}','${l.campana.replace(/'/g, "\\'")}',${l.usados},${l.cantidad})">🗑</button></td>
