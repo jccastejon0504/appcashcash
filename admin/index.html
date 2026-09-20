@@ -1678,9 +1678,9 @@
                 <input type="number" id="promo-cantidad" value="100" min="1" />
               </div>
               <div class="form-group">
-                <label>Vence en (días para canjear)</label>
-                <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no vence" min="1" />
-                <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no lo activa a tiempo, el código deja de servir (lo puedes renovar después desde "Ver códigos").</span>
+                <label>Tiempo de caducidad de la tarjeta (días)</label>
+                <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no caduca" min="1" />
+                <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no la activa a tiempo, la tarjeta caduca (la puedes renovar después desde "Ver códigos").</span>
               </div>
               <button type="submit" class="btn btn-primary" id="promo-btn-generar">Generar códigos</button>
               <span class="msg" id="promo-msg-generar"></span>
@@ -3124,7 +3124,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         <span style="font-family:monospace;font-weight:700;flex:1">${c.codigo}</span>
         <span style="font-size:11px;color:${estado.color};font-weight:600;white-space:nowrap">${estado.label}</span>
         ${estado.vencido ? `<button class="btn btn-sm btn-outline" onclick="renovarCodigoPromo('${c.codigo}')">↻ Renovar</button>` : ''}
-        <button class="btn btn-sm btn-outline" onclick="descargarTarjetaPromo('${c.codigo}','${plan}',${dias})">🎫 Tarjeta</button>
+        <button class="btn btn-sm btn-outline" onclick="descargarTarjetaPromo('${c.codigo}','${plan}',${dias},${c.expira_en ? `'${c.expira_en}'` : 'null'})">🎫 Tarjeta</button>
       </div>
     `;
     }).join('');
@@ -3161,7 +3161,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   // Genera y descarga una tarjeta estilo "giftcard" con el código, para
   // repartir por WhatsApp — mismo espíritu visual que la giftcard real de
   // la app (tarjeta naranja, ícono de regalo, código grande).
-  function descargarTarjetaPromo(codigo, plan, dias) {
+  function descargarTarjetaPromo(codigo, plan, dias, expiraEn) {
     const W = 900, H = 640;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
@@ -3204,22 +3204,37 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     ctx.fillStyle = '#fff7ed';
     ctx.fillText(`GRATIS por ${dias} días`, 50, 320);
 
+    // Aviso de vencimiento para ACTIVAR el código (distinto de los días gratis
+    // que regala arriba) — sin esto, quien recibe la tarjeta no tiene forma
+    // de saber que tiene plazo para usarla antes de que deje de servir.
+    if (expiraEn) {
+      const fechaLimite = new Date(expiraEn).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+      ctx.font = '700 20px Arial, sans-serif';
+      const textoLimite = `⏳ Actívalo antes del ${fechaLimite}`;
+      const anchoPill = ctx.measureText(textoLimite).width + 32;
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      _roundRect(ctx, 50, 336, anchoPill, 38, 10);
+      ctx.fill();
+      ctx.fillStyle = '#fffdf5';
+      ctx.fillText(textoLimite, 66, 361);
+    }
+
     // Línea divisoria
     ctx.strokeStyle = '#ffffff55';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(50, 380);
-    ctx.lineTo(W - 50, 380);
+    ctx.moveTo(50, 410);
+    ctx.lineTo(W - 50, 410);
     ctx.stroke();
 
     // Código
     ctx.font = '700 18px Arial, sans-serif';
     ctx.fillStyle = '#ffffffcc';
-    ctx.fillText('CÓDIGO', 50, 425);
+    ctx.fillText('CÓDIGO', 50, 455);
 
     ctx.font = '800 46px "Courier New", monospace';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(codigo, 50, 475);
+    ctx.fillText(codigo, 50, 505);
 
     // Footer
     ctx.font = '600 20px Arial, sans-serif';
@@ -3227,7 +3242,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     _wrapTextPromo(
       ctx,
       '📲 Descarga la app CashCash Venezuela\nGoogle Play y App Store\nActívalo al registrar tu tienda: "¿Tienes un código de bienvenida?"',
-      50, 525, W - 100, 27,
+      50, 555, W - 100, 27,
     );
 
     const a = document.createElement('a');
