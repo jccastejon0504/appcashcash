@@ -854,6 +854,16 @@
   let _catFiltro        = null;
   let _galeriaDisponible = [];
 
+  // Los teléfonos se guardan en formato local venezolano (0412...), pero
+  // wa.me exige formato internacional sin el 0 inicial (584120000000); sin
+  // esto WhatsApp falla con "le falta un código de país". Mismo helper que
+  // telWa() en la app (src/shared/utils/whatsapp.ts).
+  function telWa(numero) {
+    const d = String(numero || '').replace(/\D/g, '');
+    if (!d) return d;
+    return d.startsWith('58') ? d : '58' + d.replace(/^0+/, '');
+  }
+
   // Mismos helpers de link que src/features/tienda/services/tiendaService.ts
   // en la app nativa — el link en el texto del mensaje es lo unico que hace
   // que WhatsApp muestre una vista previa con imagen (wa.me no soporta
@@ -1193,7 +1203,7 @@
     // Botones contacto
     const btns = document.getElementById('btns-contacto');
     let hayContacto = false;
-    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
+    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Redes</a>`; hayContacto = true; }
     if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) { btns.innerHTML += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`; hayContacto = true; }
@@ -1301,7 +1311,7 @@
     cerrarCasheaPopup();
     if (!s?.whatsapp) return;
     const msg = `Hola! Quiero comprar con Cashea en *${s.nombre}*. ¿Me ayudas con el proceso?\n${urlTienda(s)}`;
-    window.open(`https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
   async function abrirProducto(item) {
@@ -1378,7 +1388,7 @@
       const codigoWa = await asegurarCodigoProducto(item.id, item.codigo);
       const enlaceWa = codigoWa ? urlProductoCorto(codigoWa) : urlProducto(_socioData, item.id);
       const msg = encodeURIComponent(`Hola! Me interesa: *${item.titulo ?? 'el producto'}*${precioTxt}${bsTxt}\n${enlaceWa}`);
-      document.getElementById('m-wa-btn').href = `https://wa.me/${_waGlobal.replace(/\D/g,'')}?text=${msg}`;
+      document.getElementById('m-wa-btn').href = `https://wa.me/${telWa(_waGlobal)}?text=${msg}`;
       waWrap.style.display = 'flex';
     } else { waWrap.style.display = 'none'; }
 
@@ -1468,7 +1478,7 @@
     const hayContacto = s.whatsapp || s.telefono || s.web;
     if (hayContacto) {
       let btnsHtml = '';
-      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${s.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
+      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
       if (s.telefono) btnsHtml += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
       if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Redes</a>`;
       if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) btnsHtml += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`;
