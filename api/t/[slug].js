@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
     // llenan por JS y un crawler que no ejecuta JS nunca las ve).
     const filtro = RE_UUID.test(slug) ? `id=eq.${encodeURIComponent(slug)}` : `slug=eq.${encodeURIComponent(slug)}`;
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/socios_comerciales?${filtro}&select=id,nombre,descripcion,imagen&limit=1`,
+      `${SUPABASE_URL}/rest/v1/socios_comerciales?${filtro}&select=id,nombre,descripcion,imagen,catalogo_pausado&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const data = await r.json();
@@ -23,12 +23,14 @@ module.exports = async function handler(req, res) {
       return res.status(404).send(paginaError());
     }
 
-    const { id, nombre, descripcion, imagen } = data[0];
+    const { id, nombre, descripcion, imagen, catalogo_pausado } = data[0];
 
     // Si el link apunta a un producto puntual (?p=), el preview debe mostrar
     // la foto y el titulo de ESE producto, no los genericos de la tienda.
+    // Con el catálogo pausado (el dueño está cambiando precios) el preview
+    // cae al genérico de la tienda para no mostrar un precio viejo.
     let producto = null;
-    if (p) {
+    if (p && !catalogo_pausado) {
       const rp = await fetch(
         `${SUPABASE_URL}/rest/v1/galeria_items?id=eq.${encodeURIComponent(p)}&socio_id=eq.${encodeURIComponent(id)}&select=titulo,imagen,precio,precio_bs,categoria_id&limit=1`,
         { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }

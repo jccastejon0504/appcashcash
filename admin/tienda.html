@@ -195,6 +195,10 @@
     .btn-cat-filtro.activo svg { fill: #fff; }
 
     /* ── GALERÍA ────────────────────────────────── */
+    .catalogo-pausado { text-align: center; padding: 40px 20px; }
+    .catalogo-pausado-icono { font-size: 40px; margin-bottom: 10px; }
+    .catalogo-pausado-titulo { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .catalogo-pausado-texto { font-size: 13px; color: var(--muted); line-height: 1.5; }
     .galeria-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -706,6 +710,15 @@
       <div class="galeria-grid" id="galeria-grid"></div>
     </main>
 
+    <!-- Catálogo pausado por el dueño (cambiando precios) -->
+    <main class="main" id="main-pausado" style="display:none">
+      <div class="catalogo-pausado">
+        <div class="catalogo-pausado-icono">⏸</div>
+        <div class="catalogo-pausado-titulo">Esta tienda está actualizando su catálogo</div>
+        <div class="catalogo-pausado-texto">Vuelve pronto para ver sus productos. Mientras tanto puedes escribirle por WhatsApp.</div>
+      </div>
+    </main>
+
   </div><!-- /layout -->
 
 </div><!-- /pagina -->
@@ -1174,6 +1187,12 @@
     // Galería — los agotados (stock cargado y en 0) no se borran de la base,
     // solo se ocultan de la grilla (igual que en la app nativa). Si el link
     // trae ?p= a un producto agotado igual se puede abrir directo (más abajo).
+    // Catálogo pausado por el dueño (cambiando precios): no se muestran
+    // productos ni se abre el link directo (?p=) a uno.
+    if (s.catalogo_pausado === true) {
+      galeria = [];
+      document.getElementById('main-pausado').style.display = 'block';
+    }
     _galeriaDisponible = (galeria ?? []).filter(item => item.stock == null || item.stock > 0);
     if (_galeriaDisponible.length) {
       renderGaleriaGrid();
