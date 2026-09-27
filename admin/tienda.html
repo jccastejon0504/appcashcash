@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>CashCach · Tienda</title>
+  <title>CashCash · Tienda</title>
   <link rel="icon" type="image/png" href="favicon.png" />
-  <meta id="og-title"       property="og:title"       content="Tienda en CashCach" />
-  <meta id="og-description" property="og:description" content="Descubre esta tienda en CashCach" />
+  <meta id="og-title"       property="og:title"       content="Tienda en CashCash" />
+  <meta id="og-description" property="og:description" content="Descubre esta tienda en CashCash" />
   <meta id="og-image"       property="og:image"       content="" />
   <meta property="og:type"  content="website" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -660,7 +660,7 @@
     <div class="topbar-logo" id="topbar-logo"><img src="icon.png" alt="CashCash" /></div>
     <div>
       <div class="topbar-name" id="top-nombre">—</div>
-      <div class="topbar-sub">CashCach · Directorio de Tiendas</div>
+      <div class="topbar-sub">CashCash · Directorio de Tiendas</div>
     </div>
     <div class="topbar-actions">
       <div id="top-dest" class="topbar-badge" style="display:none">⭐ Destacada</div>
@@ -770,7 +770,7 @@
 <div class="banner">
   <div class="banner-logo"><img src="icon.png" alt="CashCash" /></div>
   <div class="banner-txt">
-    <div class="banner-t1">Descarga CashCach</div>
+    <div class="banner-t1">Descarga CashCash</div>
     <div class="banner-t2">Tasa BCV · Calculadora · Directorio completo</div>
   </div>
   <div class="banner-btns">
@@ -841,7 +841,7 @@
     const s = _socioData;
     if (!s) return;
     const url   = urlTienda(s);
-    const texto = `Mira la tienda *${s.nombre}* en CashCach:\n${url}`;
+    const texto = `Mira la tienda *${s.nombre}* en CashCash:\n${url}`;
     if (navigator.share) {
       try { await navigator.share({ title: s.nombre, text: texto, url }); } catch {}
       return;
@@ -1072,7 +1072,7 @@
 
   const DEMO = {
     s: {
-      nombre: 'Tienda Demo · CashCach',
+      nombre: 'Tienda Demo · CashCash',
       imagen: '',
       destacado: true,
       ciudad: 'Caracas',
@@ -1133,9 +1133,9 @@
     }
 
     // Meta OG
-    document.title = `${s.nombre} · CashCach`;
+    document.title = `${s.nombre} · CashCash`;
     document.getElementById('og-title').content       = s.nombre;
-    document.getElementById('og-description').content = s.descripcion ?? `${s.nombre} en CashCach · ${s.ciudad ?? ''}`;
+    document.getElementById('og-description').content = s.descripcion ?? `${s.nombre} en CashCash · ${s.ciudad ?? ''}`;
     if (s.imagen) document.getElementById('og-image').content = s.imagen;
 
     // Topbar
@@ -1165,7 +1165,7 @@
     // Botones contacto
     const btns = document.getElementById('btns-contacto');
     let hayContacto = false;
-    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
+    if (s.whatsapp) { btns.innerHTML += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCash:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`; hayContacto = true; }
     if (s.telefono) { btns.innerHTML += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`; hayContacto = true; }
     if (s.web)      { btns.innerHTML += `<a class="btn-c btn-web" href="${s.web.startsWith('http') ? s.web : 'https://'+s.web}" target="_blank">🌐 Redes</a>`; hayContacto = true; }
     if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) { btns.innerHTML += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`; hayContacto = true; }
@@ -1427,7 +1427,7 @@
     const hayContacto = s.whatsapp || s.telefono || s.web;
     if (hayContacto) {
       let btnsHtml = '';
-      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCach:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
+      if (s.whatsapp) btnsHtml += `<a class="btn-c btn-wa" href="https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(`Hola! Vi *${s.nombre}* en CashCash:\n${urlTienda(s)}`)}" target="_blank">💬 WhatsApp</a>`;
       if (s.telefono) btnsHtml += `<a class="btn-c btn-tel" href="tel:${s.telefono.replace(/\D/g,'')}" target="_blank">📞 Llamar</a>`;
       if (s.web)      btnsHtml += `<a class="btn-c btn-web" href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank">🌐 Redes</a>`;
       if (s.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto) btnsHtml += `<button class="btn-c btn-cashea" type="button" onclick="abrirCasheaPopup()">🟡 Comprar con Cashea</button>`;
