@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
     const producto = dp[0];
 
     const rs = await fetch(
-      `${SUPABASE_URL}/rest/v1/socios_comerciales?id=eq.${encodeURIComponent(producto.socio_id)}&select=id,nombre,slug&limit=1`,
+      `${SUPABASE_URL}/rest/v1/socios_comerciales?id=eq.${encodeURIComponent(producto.socio_id)}&select=id,nombre,slug,catalogo_pausado&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const ds = await rs.json();
@@ -43,8 +43,10 @@ module.exports = async function handler(req, res) {
     const bsTxt = producto.precio_bs
       ? `Bs. ${producto.precio_bs}${precioDesc != null ? ' (no aplica oferta)' : ''}`
       : null;
-    const desc     = [precioTxt, bsTxt, `Disponible en ${tienda.nombre}`]
-      .filter(Boolean).join(' · ');
+    // Catálogo pausado (el dueño está cambiando precios): sin precio viejo.
+    const desc     = tienda.catalogo_pausado
+      ? `${tienda.nombre} está actualizando su catálogo`
+      : [precioTxt, bsTxt, `Disponible en ${tienda.nombre}`].filter(Boolean).join(' · ');
     const img      = producto.imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = `https://appcashcash.com/p/${codigo}`;
     const urlDest  = `https://appcashcash.com/admin/tienda.html?id=${tienda.id}&p=${producto.id}`;
