@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Videos tutoriales · CashCash</title>
+<link rel="icon" type="image/png" href="/admin/favicon.png">
+<link rel="apple-touch-icon" href="/admin/icon.png">
+<meta name="description" content="Aprende a usar CashCash paso a paso: comprar en tiendas del directorio, registrar tu tienda, subir tu catálogo y gestionar tus pedidos." />
+<meta property="og:type" content="website">
+<meta property="og:title" content="Videos tutoriales · CashCash">
+<meta property="og:description" content="Aprende a usar CashCash paso a paso, como comprador o como tienda.">
+<meta property="og:image" content="https://appcashcash.com/admin/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+
+  /* Mismos tokens que index.html */
+  :root{
+    --accent:      #FB8C50;
+    --accent-ink:  #A0511F;
+    --cream:       #EFDFCE;
+    --ink:         #181818;
+    --paper:       #FBF7F2;
+    --surface:     #FFFFFF;
+    --line:        #E8DCC8;
+    --muted:       #7A7266;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --accent:      #FF9E67;
+      --accent-ink:  #FFC79B;
+      --cream:       #2B2118;
+      --ink:         #F4ECE0;
+      --paper:       #17140F;
+      --surface:     #211B14;
+      --line:        #35291C;
+      --muted:       #B2A793;
+    }
+  }
+  :root[data-theme="dark"]{
+    --accent:      #FF9E67;
+    --accent-ink:  #FFC79B;
+    --cream:       #2B2118;
+    --ink:         #F4ECE0;
+    --paper:       #17140F;
+    --surface:     #211B14;
+    --line:        #35291C;
+    --muted:       #B2A793;
+  }
+
+  body{
+    font-family:'Plus Jakarta Sans',-apple-system,sans-serif;
+    background:var(--paper); color:var(--ink);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:'Fredoka',sans-serif;font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+
+  /* ── nav ── */
+  .navbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb, var(--paper) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav-inner{max-width:1000px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{width:32px;height:32px;border-radius:9px}
+  .brand span{font-family:'Fredoka',sans-serif;font-size:19px;font-weight:600}
+  .volver{font-size:14px;font-weight:700;color:var(--accent-ink);background:var(--cream);padding:8px 16px;border-radius:100px}
+
+  /* ── encabezado ── */
+  .cabecera{padding:48px 0 12px;text-align:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--accent-ink);background:var(--cream);padding:6px 14px;border-radius:100px;margin-bottom:18px}
+  .cabecera h1{font-size:clamp(30px,4.4vw,44px);line-height:1.1;margin-bottom:12px}
+  .cabecera p{font-size:16.5px;color:var(--muted);max-width:520px;margin:0 auto}
+  .saltos{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+  .salto{font-size:14px;font-weight:700;padding:10px 18px;border-radius:100px;border:1.5px solid var(--line);background:var(--surface)}
+
+  /* ── grupos y tarjetas ── */
+  .grupo{padding:36px 0 8px;scroll-margin-top:70px}
+  .grupo-titulo{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .grupo-titulo h2{font-size:24px}
+  .grupo-titulo .linea{flex:1;height:1px;background:var(--line)}
+  .grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+
+  .video{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+  .pantalla{position:relative;aspect-ratio:16/9;background:var(--cream);display:flex;align-items:center;justify-content:center;border:0;width:100%;padding:0;cursor:pointer;color:inherit;font:inherit}
+  .pantalla img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .pantalla iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .play{position:relative;width:62px;height:62px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px -6px rgba(0,0,0,.35);transition:transform .15s ease}
+  .pantalla:hover .play{transform:scale(1.06)}
+  .play svg{width:26px;height:26px;margin-left:4px;fill:#181818}
+  .pantalla.pronto{cursor:default}
+  .pronto-etiqueta{font-size:13px;font-weight:700;color:var(--accent-ink);background:var(--surface);padding:7px 14px;border-radius:100px;border:1px solid var(--line)}
+  .video-info{padding:14px 16px 16px}
+  .video-info h3{font-size:17px;line-height:1.3;margin-bottom:4px}
+  .video-info p{font-size:13.5px;color:var(--muted)}
+
+  /* ── pie ── */
+  .descarga{text-align:center;padding:48px 0 24px}
+  .descarga h2{font-size:24px;margin-bottom:14px}
+  .descarga-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;padding:12px 22px;border-radius:100px;font-weight:700;font-size:14.5px;background:var(--accent);color:var(--ink)}
+  footer{text-align:center;padding:24px 20px 40px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);margin-top:24px}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="brand">
+      <img src="/admin/icon.png" alt="CashCash">
+      <span>CashCash</span>
+    </a>
+    <a href="/" class="volver">← Inicio</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header class="cabecera">
+    <span class="eyebrow">▶ Aprende en minutos</span>
+    <h1>Videos tutoriales</h1>
+    <p>Aprende a usar CashCash paso a paso, ya sea para comprar en las tiendas del directorio o para vender con tu propia tienda.</p>
+    <div class="saltos">
+      <a class="salto" href="#compradores">Para compradores</a>
+      <a class="salto" href="#tiendas">Para tiendas</a>
+    </div>
+  </header>
+
+  <section class="grupo" id="compradores">
+    <div class="grupo-titulo"><h2>Para compradores</h2><div class="linea"></div></div>
+    <div class="grilla" data-grupo="compradores"></div>
+  </section>
+
+  <section class="grupo" id="tiendas">
+    <div class="grupo-titulo"><h2>Para tiendas</h2><div class="linea"></div></div>
+    <div class="grilla" data-grupo="tiendas"></div>
+  </section>
+
+  <section class="descarga">
+    <h2>¿Todavía no tienes la app?</h2>
+    <div class="descarga-btns">
+      <a class="btn" href="https://apps.apple.com/app/cashcash-venezuela/id6796096034" target="_blank" rel="noopener">Descargar en App Store</a>
+      <a class="btn" href="https://play.google.com/store/apps/details?id=com.cashcash.app2&pcampaignid=web_share" target="_blank" rel="noopener">Descargar en Google Play</a>
+    </div>
+  </section>
+</main>
+
+<footer>© 2026 Juan Castejón — CashCash · Todos los derechos reservados</footer>
+
+<script>
+  // ── Lista de tutoriales ───────────────────────────────────────────
+  // Para publicar un video: pegar su link de YouTube en `youtube` (sirve
+  // youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/… o solo el id).
+  // Mientras esté vacío, la tarjeta muestra "Próximamente".
+  const TUTORIALES = [
+    { grupo: 'compradores', titulo: 'Cómo buscar tiendas y productos',        desc: 'Encuentra comercios cerca de ti y busca productos en todo el directorio.', youtube: '' },
+    { grupo: 'compradores', titulo: 'Cómo comprar y enviar tu comprobante',   desc: 'Elige el método de pago, paga y envía tu comprobante desde la app.',     youtube: '' },
+    { grupo: 'compradores', titulo: 'Carrito, cupones y giftcards',           desc: 'Junta varios productos, aplica cupones de descuento y usa tus giftcards.', youtube: '' },
+    { grupo: 'tiendas',     titulo: 'Cómo registrar tu tienda',               desc: 'Crea tu tienda en el directorio y elige tu plan.',                        youtube: '' },
+    { grupo: 'tiendas',     titulo: 'Cómo subir tu catálogo',                 desc: 'Agrega tus productos con fotos, precios, tallas, colores y stock.',       youtube: '' },
+    { grupo: 'tiendas',     titulo: 'Pausar catálogo y método de pago',       desc: 'Oculta tus productos mientras cambias precios y elige cómo te pagan.',    youtube: '' },
+    { grupo: 'tiendas',     titulo: 'Cómo gestionar tus pedidos en Cartera',  desc: 'Confirma pagos, actualiza el estado de tus pedidos y revisa tus ventas.', youtube: '' },
+  ];
+
+  function idYoutube(valor) {
+    const v = (valor || '').trim();
+    if (!v) return null;
+    const m = v.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([\w-]{11})/);
+    if (m) return m[1];
+    return /^[\w-]{11}$/.test(v) ? v : null;
+  }
+
+  function esc(t) {
+    return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a.5.5 0 0 0 .77.42l10.2-6.5a.5.5 0 0 0 0-.84L8.77 5.08A.5.5 0 0 0 8 5.5z"/></svg>';
+
+  // Solo se carga el reproductor de YouTube al tocar ▶ (antes, la miniatura):
+  // la página queda liviana aunque tenga muchos videos.
+  function reproducir(boton, id) {
+    boton.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1" title="Video tutorial" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+    boton.onclick = null;
+    boton.style.cursor = 'default';
+  }
+
+  for (const t of TUTORIALES) {
+    const grilla = document.querySelector(`.grilla[data-grupo="${t.grupo}"]`);
+    if (!grilla) continue;
+    const id = idYoutube(t.youtube);
+    const tarjeta = document.createElement('article');
+    tarjeta.className = 'video';
+    tarjeta.innerHTML = `
+      ${id
+        ? `<button class="pantalla" type="button" aria-label="Reproducir: ${esc(t.titulo)}">
+             <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy">
+             <span class="play">${PLAY}</span>
+           </button>`
+        : `<div class="pantalla pronto"><span class="pronto-etiqueta">Próximamente</span></div>`}
+      <div class="video-info">
+        <h3>${esc(t.titulo)}</h3>
+        <p>${esc(t.desc)}</p>
+      </div>`;
+    if (id) tarjeta.querySelector('.pantalla').onclick = e => reproducir(e.currentTarget, id);
+    grilla.appendChild(tarjeta);
+  }
+</script>
+</body>
+</html>
