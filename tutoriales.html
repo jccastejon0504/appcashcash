@@ -151,10 +151,15 @@
 
 <script>
   // ── Lista de tutoriales ───────────────────────────────────────────
-  // Para publicar un video: pegar su link de YouTube en `youtube` (sirve
-  // youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/… o solo el id).
-  // Mientras esté vacío, la tarjeta muestra "Próximamente".
-  const TUTORIALES = [
+  // Los bloques se editan desde el admin (sección "Videos Tutoriales") y
+  // viven en la tabla `tutoriales` de Supabase (solo se leen los visibles).
+  // El link de YouTube sirve en cualquier formato (watch?v=…, youtu.be/…,
+  // shorts/… o solo el id); vacío = "Próximamente".
+  const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
+
+  // Respaldo por si Supabase no responde: la página nunca queda vacía.
+  const TUTORIALES_RESPALDO = [
     { grupo: 'compradores', titulo: 'Cómo buscar tiendas y productos',        desc: 'Encuentra comercios cerca de ti y busca productos en todo el directorio.', youtube: '' },
     { grupo: 'compradores', titulo: 'Cómo comprar y enviar tu comprobante',   desc: 'Elige el método de pago, paga y envía tu comprobante desde la app.',     youtube: '' },
     { grupo: 'compradores', titulo: 'Carrito, cupones y giftcards',           desc: 'Junta varios productos, aplica cupones de descuento y usa tus giftcards.', youtube: '' },
@@ -186,26 +191,49 @@
     boton.style.cursor = 'default';
   }
 
-  for (const t of TUTORIALES) {
-    const grilla = document.querySelector(`.grilla[data-grupo="${t.grupo}"]`);
-    if (!grilla) continue;
-    const id = idYoutube(t.youtube);
-    const tarjeta = document.createElement('article');
-    tarjeta.className = 'video';
-    tarjeta.innerHTML = `
-      ${id
-        ? `<button class="pantalla" type="button" aria-label="Reproducir: ${esc(t.titulo)}">
-             <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy">
-             <span class="play">${PLAY}</span>
-           </button>`
-        : `<div class="pantalla pronto"><span class="pronto-etiqueta">Próximamente</span></div>`}
-      <div class="video-info">
-        <h3>${esc(t.titulo)}</h3>
-        <p>${esc(t.desc)}</p>
-      </div>`;
-    if (id) tarjeta.querySelector('.pantalla').onclick = e => reproducir(e.currentTarget, id);
-    grilla.appendChild(tarjeta);
+  async function cargarTutoriales() {
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/tutoriales?select=grupo,titulo,descripcion,youtube&visible=eq.true&order=grupo.asc,orden.asc,created_at.asc`;
+      const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+      if (!r.ok) throw new Error(r.status);
+      const filas = await r.json();
+      return filas.map(f => ({ grupo: f.grupo, titulo: f.titulo, desc: f.descripcion, youtube: f.youtube }));
+    } catch {
+      return TUTORIALES_RESPALDO;
+    }
   }
+
+  function pintarTutoriales(lista) {
+    for (const t of lista) {
+      const grilla = document.querySelector(`.grilla[data-grupo="${t.grupo}"]`);
+      if (!grilla) continue;
+      const id = idYoutube(t.youtube);
+      const tarjeta = document.createElement('article');
+      tarjeta.className = 'video';
+      tarjeta.innerHTML = `
+        ${id
+          ? `<button class="pantalla" type="button" aria-label="Reproducir: ${esc(t.titulo)}">
+               <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy">
+               <span class="play">${PLAY}</span>
+             </button>`
+          : `<div class="pantalla pronto"><span class="pronto-etiqueta">Próximamente</span></div>`}
+        <div class="video-info">
+          <h3>${esc(t.titulo)}</h3>
+          <p>${esc(t.desc)}</p>
+        </div>`;
+      if (id) tarjeta.querySelector('.pantalla').onclick = e => reproducir(e.currentTarget, id);
+      grilla.appendChild(tarjeta);
+    }
+    // Si una sección se queda sin bloques visibles, se oculta junto con su salto.
+    for (const grupo of ['compradores', 'tiendas']) {
+      const vacia = !lista.some(t => t.grupo === grupo);
+      document.getElementById(grupo).hidden = vacia;
+      const salto = document.querySelector(`.salto[href="#${grupo}"]`);
+      if (salto) salto.hidden = vacia;
+    }
+  }
+
+  cargarTutoriales().then(pintarTutoriales);
 </script>
 </body>
 </html>

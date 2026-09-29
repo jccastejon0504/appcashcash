@@ -461,6 +461,9 @@
     <div class="nav-item" data-section="publicidad">
       <span class="icon">📣</span> Publicidad
     </div>
+    <div class="nav-item" data-section="tutoriales">
+      <span class="icon">🎬</span> Videos Tutoriales
+    </div>
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
     </div>
@@ -1835,6 +1838,65 @@
       </div>
     </div>
 
+    <div class="section" id="section-tutoriales">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h2 id="tut-form-titulo">Agregar bloque</h2>
+          <a class="btn btn-outline btn-sm" href="/tutoriales.html" target="_blank" rel="noopener">Ver página ↗</a>
+        </div>
+        <div class="card-body">
+          <input type="hidden" id="tut-id" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Sección</label>
+              <select id="tut-grupo">
+                <option value="compradores">Para compradores</option>
+                <option value="tiendas">Para tiendas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Título</label>
+              <input id="tut-titulo" maxlength="80" placeholder="Ej: Cómo registrar tu tienda" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label>Descripción</label>
+            <textarea id="tut-desc" maxlength="200" placeholder="Una o dos líneas que expliquen de qué trata el video"></textarea>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label>Link de YouTube (opcional — si lo dejas vacío sale "Próximamente")</label>
+            <input id="tut-youtube" placeholder="https://youtube.com/shorts/… o https://youtu.be/…" oninput="previewTutorial()" />
+          </div>
+          <div id="tut-preview" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="tut-btn-guardar" onclick="guardarTutorial()">Agregar bloque</button>
+            <button class="btn btn-outline" id="tut-btn-cancelar" style="display:none" onclick="limpiarFormTutorial()">Cancelar</button>
+            <span class="msg" id="msg-tutorial"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h2>Para compradores</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Video</th><th>Bloque</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-tut-compradores"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>Para tiendas</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Video</th><th>Bloque</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-tut-tiendas"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal editar socio -->
     <div id="modal-editar-socio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;padding:24px 16px">
       <div style="background:var(--card);border-radius:16px;max-width:560px;margin:0 auto;padding:28px;position:relative">
@@ -2229,6 +2291,7 @@
     'cambio-datos': { title: 'Corrección de Datos',    sub: 'Solicitudes de cambio de nombre o teléfono de tiendas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
     moderacion:   { title: 'Moderación de Contenido',   sub: 'Revisa los productos publicados por las tiendas y elimina los que no cumplan las normas' },
+    tutoriales:   { title: 'Videos Tutoriales',         sub: 'Bloques de appcashcash.com/tutoriales.html — lo que guardes aquí aparece en la página al recargarla' },
     'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
@@ -2368,6 +2431,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (id === 'cambio-datos') cargarCambioDatos();
     if (id === 'socios')      cargarSocios();
     if (id === 'moderacion')  cargarModeracion();
+    if (id === 'tutoriales')  cargarTutoriales();
     if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
@@ -4889,6 +4953,169 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     }
 
     cargarModeracion();
+  }
+
+  // ── Videos Tutoriales ─────────────────────────────────────────────────────
+  // Bloques de /tutoriales.html (tabla `tutoriales`). Secciones fijas:
+  // compradores / tiendas. youtube vacío = "Próximamente" en la página.
+
+  let _tutoriales = [];
+
+  function idYoutubeTut(valor) {
+    const v = (valor || '').trim();
+    if (!v) return null;
+    const m = v.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([\w-]{11})/);
+    if (m) return m[1];
+    return /^[\w-]{11}$/.test(v) ? v : null;
+  }
+
+  function escTut(t) {
+    return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function previewTutorial() {
+    const v = document.getElementById('tut-youtube').value.trim();
+    const el = document.getElementById('tut-preview');
+    if (!v) { el.innerHTML = ''; return; }
+    const id = idYoutubeTut(v);
+    el.innerHTML = id
+      ? `<img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" style="width:160px;border-radius:8px;border:1px solid var(--border);display:block" alt="" />`
+      : '<span style="color:var(--red)">No reconozco ese link de YouTube.</span>';
+  }
+
+  async function cargarTutoriales() {
+    const { data, error } = await db.from('tutoriales')
+      .select('*')
+      .order('orden', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (error) {
+      ['compradores', 'tiendas'].forEach(g => {
+        document.getElementById('tabla-tut-' + g).innerHTML = `<tr><td colspan="4" class="empty"><p>No se pudo cargar: ${escTut(error.message)}</p></td></tr>`;
+      });
+      return;
+    }
+    _tutoriales = data ?? [];
+    ['compradores', 'tiendas'].forEach(pintarTablaTutoriales);
+  }
+
+  function pintarTablaTutoriales(grupo) {
+    const tbody = document.getElementById('tabla-tut-' + grupo);
+    const filas = _tutoriales.filter(t => t.grupo === grupo);
+    if (!filas.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty"><p>Sin bloques en esta sección (no se muestra en la página)</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = filas.map((t, i) => {
+      const id = idYoutubeTut(t.youtube);
+      const mini = id
+        ? `<a href="https://youtu.be/${id}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" style="width:96px;border-radius:6px;border:1px solid var(--border);display:block" loading="lazy" alt="" /></a>`
+        : '<span class="badge badge-gray">Próximamente</span>';
+      return `
+        <tr style="${t.visible ? '' : 'opacity:.5'}">
+          <td>${mini}</td>
+          <td style="max-width:420px"><b>${escTut(t.titulo)}</b><div style="color:var(--muted);font-size:12px;margin-top:2px">${escTut(t.descripcion)}</div></td>
+          <td>${t.visible ? '<span class="badge badge-green">Visible</span>' : '<span class="badge badge-gray">Oculto</span>'}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-outline btn-sm" title="Subir" ${i === 0 ? 'disabled' : ''} onclick="moverTutorial('${t.id}', -1)">↑</button>
+            <button class="btn btn-outline btn-sm" title="Bajar" ${i === filas.length - 1 ? 'disabled' : ''} onclick="moverTutorial('${t.id}', 1)">↓</button>
+            <button class="btn btn-outline btn-sm" onclick="editarTutorial('${t.id}')">Editar</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleVisibleTutorial('${t.id}')">${t.visible ? 'Ocultar' : 'Mostrar'}</button>
+            <button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444" onclick="eliminarTutorial('${t.id}')">Borrar</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function limpiarFormTutorial() {
+    ['tut-id', 'tut-titulo', 'tut-desc', 'tut-youtube'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('tut-grupo').value = 'compradores';
+    document.getElementById('tut-preview').innerHTML = '';
+    document.getElementById('tut-form-titulo').textContent = 'Agregar bloque';
+    document.getElementById('tut-btn-guardar').textContent = 'Agregar bloque';
+    document.getElementById('tut-btn-cancelar').style.display = 'none';
+  }
+
+  function editarTutorial(id) {
+    const t = _tutoriales.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('tut-id').value = t.id;
+    document.getElementById('tut-grupo').value = t.grupo;
+    document.getElementById('tut-titulo').value = t.titulo;
+    document.getElementById('tut-desc').value = t.descripcion;
+    document.getElementById('tut-youtube').value = t.youtube;
+    previewTutorial();
+    document.getElementById('tut-form-titulo').textContent = 'Editar bloque';
+    document.getElementById('tut-btn-guardar').textContent = 'Guardar cambios';
+    document.getElementById('tut-btn-cancelar').style.display = '';
+    document.getElementById('section-tutoriales').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function guardarTutorial() {
+    const id = document.getElementById('tut-id').value;
+    const grupo = document.getElementById('tut-grupo').value;
+    const titulo = document.getElementById('tut-titulo').value.trim();
+    const descripcion = document.getElementById('tut-desc').value.trim();
+    const youtube = document.getElementById('tut-youtube').value.trim();
+
+    if (!titulo) { showMsg('msg-tutorial', 'Escribe un título.', 'err'); return; }
+    if (youtube && !idYoutubeTut(youtube)) { showMsg('msg-tutorial', 'El link de YouTube no es válido.', 'err'); return; }
+
+    const btn = document.getElementById('tut-btn-guardar');
+    btn.disabled = true;
+    let error;
+    if (id) {
+      const actual = _tutoriales.find(x => x.id === id);
+      const cambios = { grupo, titulo, descripcion, youtube };
+      // Al cambiar de sección, el bloque pasa al final de la nueva.
+      if (actual && actual.grupo !== grupo) cambios.orden = siguienteOrdenTut(grupo);
+      ({ error } = await db.from('tutoriales').update(cambios).eq('id', id));
+    } else {
+      ({ error } = await db.from('tutoriales').insert({ grupo, titulo, descripcion, youtube, orden: siguienteOrdenTut(grupo) }));
+    }
+    btn.disabled = false;
+    if (error) { showMsg('msg-tutorial', 'No se pudo guardar: ' + error.message, 'err'); return; }
+
+    showMsg('msg-tutorial', id ? '¡Cambios guardados!' : '¡Bloque agregado!', 'ok');
+    limpiarFormTutorial();
+    cargarTutoriales();
+  }
+
+  function siguienteOrdenTut(grupo) {
+    const ordenes = _tutoriales.filter(t => t.grupo === grupo).map(t => t.orden);
+    return (ordenes.length ? Math.max(...ordenes) : 0) + 1;
+  }
+
+  async function moverTutorial(id, delta) {
+    const t = _tutoriales.find(x => x.id === id);
+    if (!t) return;
+    const filas = _tutoriales.filter(x => x.grupo === t.grupo);
+    const i = filas.findIndex(x => x.id === id);
+    const j = i + delta;
+    if (j < 0 || j >= filas.length) return;
+    [filas[i], filas[j]] = [filas[j], filas[i]];
+    // Renumera la sección completa (1..n) para que el orden quede limpio
+    // aunque dos bloques tuvieran el mismo número.
+    const res = await Promise.all(filas.map((f, k) => db.from('tutoriales').update({ orden: k + 1 }).eq('id', f.id)));
+    const err = res.find(r => r.error)?.error;
+    if (err) alert('No se pudo cambiar el orden. Intenta de nuevo.\n' + err.message);
+    cargarTutoriales();
+  }
+
+  async function toggleVisibleTutorial(id) {
+    const t = _tutoriales.find(x => x.id === id);
+    if (!t) return;
+    const { error } = await db.from('tutoriales').update({ visible: !t.visible }).eq('id', id);
+    if (error) { alert('No se pudo guardar. Intenta de nuevo.\n' + error.message); return; }
+    cargarTutoriales();
+  }
+
+  async function eliminarTutorial(id) {
+    const t = _tutoriales.find(x => x.id === id);
+    if (!t || !confirm(`¿Borrar el bloque "${t.titulo}"? Si solo quieres quitarlo un tiempo, usa "Ocultar".`)) return;
+    const { error } = await db.from('tutoriales').delete().eq('id', id);
+    if (error) { alert('No se pudo borrar. Intenta de nuevo.\n' + error.message); return; }
+    if (document.getElementById('tut-id').value === id) limpiarFormTutorial();
+    cargarTutoriales();
   }
 
   // ── Métodos de pago ───────────────────────────────────────────────────────
