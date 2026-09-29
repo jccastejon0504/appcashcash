@@ -1,4 +1,8 @@
 {
+  "redirects": [
+    { "source": "/planes-app.html", "destination": "/", "permanent": false },
+    { "source": "/planes-app", "destination": "/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/t/:slug", "destination": "/api/t/:slug" },
     { "source": "/p/:codigo", "destination": "/api/p/:codigo" }
