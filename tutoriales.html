@@ -122,21 +122,11 @@
     <span class="eyebrow">▶ Aprende en minutos</span>
     <h1>Videos tutoriales</h1>
     <p>Aprende a usar CashCash paso a paso, ya sea para comprar en las tiendas del directorio o para vender con tu propia tienda.</p>
-    <div class="saltos">
-      <a class="salto" href="#compradores">Para compradores</a>
-      <a class="salto" href="#tiendas">Para tiendas</a>
-    </div>
+    <div class="saltos" id="saltos"></div>
   </header>
 
-  <section class="grupo" id="compradores">
-    <div class="grupo-titulo"><h2>Para compradores</h2><div class="linea"></div></div>
-    <div class="grilla" data-grupo="compradores"></div>
-  </section>
-
-  <section class="grupo" id="tiendas">
-    <div class="grupo-titulo"><h2>Para tiendas</h2><div class="linea"></div></div>
-    <div class="grilla" data-grupo="tiendas"></div>
-  </section>
+  <!-- Las secciones se arman desde Supabase (ver script al final). -->
+  <div id="secciones"></div>
 
   <section class="descarga">
     <h2>¿Todavía no tienes la app?</h2>
@@ -150,23 +140,28 @@
 <footer>© 2026 Juan Castejón — CashCash · Todos los derechos reservados</footer>
 
 <script>
-  // ── Lista de tutoriales ───────────────────────────────────────────
-  // Los bloques se editan desde el admin (sección "Videos Tutoriales") y
-  // viven en la tabla `tutoriales` de Supabase (solo se leen los visibles).
-  // El link de YouTube sirve en cualquier formato (watch?v=…, youtu.be/…,
-  // shorts/… o solo el id); vacío = "Próximamente".
+  // ── Tutoriales ────────────────────────────────────────────────────
+  // Secciones y bloques se editan desde el admin (sección "Videos Tutoriales")
+  // y viven en Supabase: tutoriales_secciones + tutoriales (solo visibles).
+  // Una sección sin bloques visibles no se muestra. El link de YouTube sirve
+  // en cualquier formato (watch?v=…, youtu.be/…, shorts/… o solo el id);
+  // vacío = "Próximamente".
   const SUPABASE_URL = 'https://mvbkyducdlajoexawbqk.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Ymt5ZHVjZGxham9leGF3YnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjAyNTgsImV4cCI6MjA5MjEzNjI1OH0.-kSTyl1KhfAa9N13PjOObwWz1Gi83KT3_6TeyTY7LlY';
 
   // Respaldo por si Supabase no responde: la página nunca queda vacía.
-  const TUTORIALES_RESPALDO = [
-    { grupo: 'compradores', titulo: 'Cómo buscar tiendas y productos',        desc: 'Encuentra comercios cerca de ti y busca productos en todo el directorio.', youtube: '' },
-    { grupo: 'compradores', titulo: 'Cómo comprar y enviar tu comprobante',   desc: 'Elige el método de pago, paga y envía tu comprobante desde la app.',     youtube: '' },
-    { grupo: 'compradores', titulo: 'Carrito, cupones y giftcards',           desc: 'Junta varios productos, aplica cupones de descuento y usa tus giftcards.', youtube: '' },
-    { grupo: 'tiendas',     titulo: 'Cómo registrar tu tienda',               desc: 'Crea tu tienda en el directorio y elige tu plan.',                        youtube: '' },
-    { grupo: 'tiendas',     titulo: 'Cómo subir tu catálogo',                 desc: 'Agrega tus productos con fotos, precios, tallas, colores y stock.',       youtube: '' },
-    { grupo: 'tiendas',     titulo: 'Pausar catálogo y método de pago',       desc: 'Oculta tus productos mientras cambias precios y elige cómo te pagan.',    youtube: '' },
-    { grupo: 'tiendas',     titulo: 'Cómo gestionar tus pedidos en Cartera',  desc: 'Confirma pagos, actualiza el estado de tus pedidos y revisa tus ventas.', youtube: '' },
+  const SECCIONES_RESPALDO = [
+    { nombre: 'Para compradores', bloques: [
+      { titulo: 'Cómo buscar tiendas y productos',       desc: 'Encuentra comercios cerca de ti y busca productos en todo el directorio.', youtube: '' },
+      { titulo: 'Cómo comprar y enviar tu comprobante',  desc: 'Elige el método de pago, paga y envía tu comprobante desde la app.',      youtube: '' },
+      { titulo: 'Carrito, cupones y giftcards',          desc: 'Junta varios productos, aplica cupones de descuento y usa tus giftcards.', youtube: '' },
+    ]},
+    { nombre: 'Para tiendas', bloques: [
+      { titulo: 'Cómo registrar tu tienda',              desc: 'Crea tu tienda en el directorio y elige tu plan.',                         youtube: '' },
+      { titulo: 'Cómo subir tu catálogo',                desc: 'Agrega tus productos con fotos, precios, tallas, colores y stock.',        youtube: '' },
+      { titulo: 'Pausar catálogo y método de pago',      desc: 'Oculta tus productos mientras cambias precios y elige cómo te pagan.',     youtube: '' },
+      { titulo: 'Cómo gestionar tus pedidos en Cartera', desc: 'Confirma pagos, actualiza el estado de tus pedidos y revisa tus ventas.', youtube: '' },
+    ]},
   ];
 
   function idYoutube(valor) {
@@ -181,6 +176,16 @@
     return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // "Para compradores" -> "para-compradores" (ancla de los botones de salto).
+  function ancla(nombre, usadas) {
+    let base = nombre.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'seccion';
+    let a = base, n = 2;
+    while (usadas.has(a)) a = `${base}-${n++}`;
+    usadas.add(a);
+    return a;
+  }
+
   const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a.5.5 0 0 0 .77.42l10.2-6.5a.5.5 0 0 0 0-.84L8.77 5.08A.5.5 0 0 0 8 5.5z"/></svg>';
 
   // Solo se carga el reproductor de YouTube al tocar ▶ (antes, la miniatura):
@@ -191,49 +196,67 @@
     boton.style.cursor = 'default';
   }
 
-  async function cargarTutoriales() {
+  async function cargarSecciones() {
     try {
-      const url = `${SUPABASE_URL}/rest/v1/tutoriales?select=grupo,titulo,descripcion,youtube&visible=eq.true&order=grupo.asc,orden.asc,created_at.asc`;
+      const url = `${SUPABASE_URL}/rest/v1/tutoriales_secciones`
+        + '?select=nombre,orden,tutoriales(titulo,descripcion,youtube,orden,created_at)'
+        + '&tutoriales.visible=eq.true&order=orden.asc,created_at.asc'
+        + '&tutoriales.order=orden.asc,created_at.asc';
       const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
       if (!r.ok) throw new Error(r.status);
       const filas = await r.json();
-      return filas.map(f => ({ grupo: f.grupo, titulo: f.titulo, desc: f.descripcion, youtube: f.youtube }));
+      return filas.map(s => ({
+        nombre: s.nombre,
+        bloques: (s.tutoriales || []).map(t => ({ titulo: t.titulo, desc: t.descripcion, youtube: t.youtube })),
+      }));
     } catch {
-      return TUTORIALES_RESPALDO;
+      return SECCIONES_RESPALDO;
     }
   }
 
-  function pintarTutoriales(lista) {
-    for (const t of lista) {
-      const grilla = document.querySelector(`.grilla[data-grupo="${t.grupo}"]`);
-      if (!grilla) continue;
-      const id = idYoutube(t.youtube);
-      const tarjeta = document.createElement('article');
-      tarjeta.className = 'video';
-      tarjeta.innerHTML = `
-        ${id
-          ? `<button class="pantalla" type="button" aria-label="Reproducir: ${esc(t.titulo)}">
-               <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy">
-               <span class="play">${PLAY}</span>
-             </button>`
-          : `<div class="pantalla pronto"><span class="pronto-etiqueta">Próximamente</span></div>`}
-        <div class="video-info">
-          <h3>${esc(t.titulo)}</h3>
-          <p>${esc(t.desc)}</p>
-        </div>`;
-      if (id) tarjeta.querySelector('.pantalla').onclick = e => reproducir(e.currentTarget, id);
-      grilla.appendChild(tarjeta);
-    }
-    // Si una sección se queda sin bloques visibles, se oculta junto con su salto.
-    for (const grupo of ['compradores', 'tiendas']) {
-      const vacia = !lista.some(t => t.grupo === grupo);
-      document.getElementById(grupo).hidden = vacia;
-      const salto = document.querySelector(`.salto[href="#${grupo}"]`);
-      if (salto) salto.hidden = vacia;
+  function tarjetaVideo(t) {
+    const id = idYoutube(t.youtube);
+    const tarjeta = document.createElement('article');
+    tarjeta.className = 'video';
+    tarjeta.innerHTML = `
+      ${id
+        ? `<button class="pantalla" type="button" aria-label="Reproducir: ${esc(t.titulo)}">
+             <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy">
+             <span class="play">${PLAY}</span>
+           </button>`
+        : `<div class="pantalla pronto"><span class="pronto-etiqueta">Próximamente</span></div>`}
+      <div class="video-info">
+        <h3>${esc(t.titulo)}</h3>
+        <p>${esc(t.desc)}</p>
+      </div>`;
+    if (id) tarjeta.querySelector('.pantalla').onclick = e => reproducir(e.currentTarget, id);
+    return tarjeta;
+  }
+
+  function pintarSecciones(secciones) {
+    const cont = document.getElementById('secciones');
+    const saltos = document.getElementById('saltos');
+    const usadas = new Set();
+    for (const s of secciones) {
+      if (!s.bloques.length) continue;
+      const a = ancla(s.nombre, usadas);
+      const seccion = document.createElement('section');
+      seccion.className = 'grupo';
+      seccion.id = a;
+      seccion.innerHTML = `<div class="grupo-titulo"><h2>${esc(s.nombre)}</h2><div class="linea"></div></div><div class="grilla"></div>`;
+      const grilla = seccion.querySelector('.grilla');
+      s.bloques.forEach(t => grilla.appendChild(tarjetaVideo(t)));
+      cont.appendChild(seccion);
+
+      const salto = document.createElement('a');
+      salto.className = 'salto';
+      salto.href = '#' + a;
+      salto.textContent = s.nombre;
+      saltos.appendChild(salto);
     }
   }
 
-  cargarTutoriales().then(pintarTutoriales);
+  cargarSecciones().then(pintarSecciones);
 </script>
 </body>
 </html>
