@@ -1409,7 +1409,7 @@
     }
 
     // Info
-    if (s.direccion || s.ciudad) {
+    if (s.direccion || s.rif || s.ciudad) {
       let rowsHtml = '';
       if (s.direccion) {
         // Preferir coordenadas GPS reales (guardadas al registrar la tienda) sobre
@@ -1426,6 +1426,15 @@
           </div>
         </div>
         <a class="btn-maps" href="${mapsUrl}" target="_blank">📍 Ver en Google Maps</a>`;
+      }
+      if (s.rif) {
+        rowsHtml += `<div class="info-sheet-row">
+          <div class="info-row-icon purple">🧾</div>
+          <div class="info-row-txt">
+            <div class="info-sheet-lbl">RIF</div>
+            <div class="info-sheet-val">${s.rif}</div>
+          </div>
+        </div>`;
       }
       if (s.ciudad) {
         rowsHtml += `<div class="info-sheet-row">
