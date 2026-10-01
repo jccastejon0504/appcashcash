@@ -464,6 +464,9 @@
     <div class="nav-item" data-section="tutoriales">
       <span class="icon">🎬</span> Videos Tutoriales
     </div>
+    <div class="nav-item" data-section="version-app">
+      <span class="icon">🔄</span> Versión de la App
+    </div>
     <div class="nav-item" data-section="terminos">
       <span class="icon">📄</span> Términos y Condiciones
     </div>
@@ -1838,6 +1841,41 @@
       </div>
     </div>
 
+    <div class="section" id="section-version-app">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h2>Aviso de nueva versión</h2></div>
+        <div class="card-body">
+          <p style="color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.5">
+            Se usa el <b>número de build</b> (versionCode en Android, build en iOS), no el "1.0.1".
+            Cambia la <b>última versión</b> solo cuando Google/Apple ya la hayan <b>publicado</b>: quien tenga una menor verá el aviso
+            "Nueva versión disponible" (lo puede cerrar, una vez por versión). La <b>versión mínima</b> bloquea la app a quien tenga una menor, sin poder cerrarlo — solo para emergencias; 0 = desactivado.
+            Solo funciona en builds que ya traen el aviso (Android 22+, iOS 26+).
+          </p>
+          <div class="toggle-row" style="margin-bottom:16px">
+            <span>Aviso activo (apagado: la app no muestra ningún aviso de versión, ni el obligatorio)</span>
+            <label class="toggle">
+              <input type="checkbox" id="va-activo" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label>🤖 Android — última versión publicada</label><input id="va-android-ultima" type="number" min="0" /></div>
+            <div class="form-group"><label>🤖 Android — versión mínima (bloquea)</label><input id="va-android-minima" type="number" min="0" /></div>
+            <div class="form-group"><label>🍎 iOS — última versión publicada</label><input id="va-ios-ultima" type="number" min="0" /></div>
+            <div class="form-group"><label>🍎 iOS — versión mínima (bloquea)</label><input id="va-ios-minima" type="number" min="0" /></div>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label>Mensaje del aviso (opcional, para ambas plataformas)</label>
+            <textarea id="va-mensaje" maxlength="200" placeholder="Ej: Mejoramos los pagos y ahora puedes agregar el RIF de tu tienda"></textarea>
+          </div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="guardarVersionApp()">Guardar</button>
+            <span class="msg" id="msg-version-app"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="section" id="section-tutoriales">
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
@@ -2286,6 +2324,7 @@
     'cambio-datos': { title: 'Corrección de Datos',    sub: 'Solicitudes de cambio de nombre o teléfono de tiendas' },
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
     moderacion:   { title: 'Moderación de Contenido',   sub: 'Revisa los productos publicados por las tiendas y elimina los que no cumplan las normas' },
+    'version-app': { title: 'Versión de la App', sub: 'Aviso "Nueva versión disponible" dentro de la app' },
     tutoriales:   { title: 'Videos Tutoriales',         sub: 'Bloques de appcashcash.com/tutoriales.html — lo que guardes aquí aparece en la página al recargarla' },
     'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
@@ -2427,6 +2466,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (id === 'socios')      cargarSocios();
     if (id === 'moderacion')  cargarModeracion();
     if (id === 'tutoriales')  cargarTutoriales();
+    if (id === 'version-app') cargarVersionApp();
     if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
     if (id === 'metodos')     cargarMetodos();
@@ -4953,6 +4993,48 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     }
 
     cargarModeracion();
+  }
+
+  // ── Versión de la App ─────────────────────────────────────────────────────
+  // Tabla version_app (una fila por plataforma). La app compara su número de
+  // build con ultima_version (aviso que se puede cerrar) y version_minima
+  // (aviso obligatorio). Solo los correos de admin_emails pueden guardar.
+
+  async function cargarVersionApp() {
+    const { data, error } = await db.from('version_app').select('*');
+    const msg = document.getElementById('msg-version-app');
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = '';
+    (data ?? []).forEach(r => {
+      document.getElementById('va-' + r.plataforma + '-ultima').value = r.ultima_version;
+      document.getElementById('va-' + r.plataforma + '-minima').value = r.version_minima;
+      if (r.mensaje) document.getElementById('va-mensaje').value = r.mensaje;
+      document.getElementById('va-activo').checked = r.aviso_activo !== false;
+    });
+  }
+
+  async function guardarVersionApp() {
+    const msg = document.getElementById('msg-version-app');
+    const mensaje = document.getElementById('va-mensaje').value.trim() || null;
+    const aviso_activo = document.getElementById('va-activo').checked;
+    const filas = ['android', 'ios'].map(p => ({
+      plataforma: p,
+      ultima_version: parseInt(document.getElementById('va-' + p + '-ultima').value, 10) || 0,
+      version_minima: parseInt(document.getElementById('va-' + p + '-minima').value, 10) || 0,
+    }));
+    const raro = filas.find(f => f.version_minima > f.ultima_version);
+    if (aviso_activo && raro && !confirm('En ' + raro.plataforma + ' la versión mínima es mayor que la última publicada: nadie podrá usar la app hasta que salga esa versión. ¿Guardar igual?')) return;
+    msg.textContent = 'Guardando…'; msg.style.color = 'var(--muted)';
+    const res = await Promise.all(filas.map(f => db.from('version_app')
+      .update({ ultima_version: f.ultima_version, version_minima: f.version_minima, mensaje, aviso_activo, updated_at: new Date().toISOString() })
+      .eq('plataforma', f.plataforma).select('plataforma')));
+    const err = res.find(r => r.error);
+    if (err) { msg.textContent = 'Error: ' + err.error.message; msg.style.color = 'var(--red)'; return; }
+    // Con RLS, un usuario sin permiso no da error: simplemente no actualiza filas.
+    if (res.some(r => !r.data || r.data.length === 0)) {
+      msg.textContent = 'Tu usuario no tiene permiso de administrador para cambiar esto.'; msg.style.color = 'var(--red)'; return;
+    }
+    msg.textContent = '✓ Guardado'; msg.style.color = 'var(--green)';
   }
 
   // ── Videos Tutoriales ─────────────────────────────────────────────────────
