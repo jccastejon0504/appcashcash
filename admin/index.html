@@ -1851,6 +1851,13 @@
             "Nueva versión disponible" (lo puede cerrar, una vez por versión). La <b>versión mínima</b> bloquea la app a quien tenga una menor, sin poder cerrarlo — solo para emergencias; 0 = desactivado.
             Solo funciona en builds que ya traen el aviso (Android 22+, iOS 26+).
           </p>
+          <div class="toggle-row" style="margin-bottom:16px">
+            <span>Aviso activo (apagado: la app no muestra ningún aviso de versión, ni el obligatorio)</span>
+            <label class="toggle">
+              <input type="checkbox" id="va-activo" />
+              <span class="slider"></span>
+            </label>
+          </div>
           <div class="form-grid">
             <div class="form-group"><label>🤖 Android — última versión publicada</label><input id="va-android-ultima" type="number" min="0" /></div>
             <div class="form-group"><label>🤖 Android — versión mínima (bloquea)</label><input id="va-android-minima" type="number" min="0" /></div>
@@ -5002,22 +5009,24 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       document.getElementById('va-' + r.plataforma + '-ultima').value = r.ultima_version;
       document.getElementById('va-' + r.plataforma + '-minima').value = r.version_minima;
       if (r.mensaje) document.getElementById('va-mensaje').value = r.mensaje;
+      document.getElementById('va-activo').checked = r.aviso_activo !== false;
     });
   }
 
   async function guardarVersionApp() {
     const msg = document.getElementById('msg-version-app');
     const mensaje = document.getElementById('va-mensaje').value.trim() || null;
+    const aviso_activo = document.getElementById('va-activo').checked;
     const filas = ['android', 'ios'].map(p => ({
       plataforma: p,
       ultima_version: parseInt(document.getElementById('va-' + p + '-ultima').value, 10) || 0,
       version_minima: parseInt(document.getElementById('va-' + p + '-minima').value, 10) || 0,
     }));
     const raro = filas.find(f => f.version_minima > f.ultima_version);
-    if (raro && !confirm('En ' + raro.plataforma + ' la versión mínima es mayor que la última publicada: nadie podrá usar la app hasta que salga esa versión. ¿Guardar igual?')) return;
+    if (aviso_activo && raro && !confirm('En ' + raro.plataforma + ' la versión mínima es mayor que la última publicada: nadie podrá usar la app hasta que salga esa versión. ¿Guardar igual?')) return;
     msg.textContent = 'Guardando…'; msg.style.color = 'var(--muted)';
     const res = await Promise.all(filas.map(f => db.from('version_app')
-      .update({ ultima_version: f.ultima_version, version_minima: f.version_minima, mensaje, updated_at: new Date().toISOString() })
+      .update({ ultima_version: f.ultima_version, version_minima: f.version_minima, mensaje, aviso_activo, updated_at: new Date().toISOString() })
       .eq('plataforma', f.plataforma).select('plataforma')));
     const err = res.find(r => r.error);
     if (err) { msg.textContent = 'Error: ' + err.error.message; msg.style.color = 'var(--red)'; return; }
