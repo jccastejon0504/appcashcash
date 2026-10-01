@@ -3452,6 +3452,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             ${s.ciudad     ? `<div>📍 <b>Ciudad:</b> ${s.ciudad}</div>` : ''}
             ${s.descripcion ? `<div style="grid-column:1/-1;background:#f8fafc;border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:6px 10px;font-size:12px;color:#334155"><b>ℹ️ Descripción:</b> ${s.descripcion}</div>` : ''}
             ${s.direccion  ? `<div>🏠 <b>Dirección:</b> ${s.direccion}</div>` : ''}
+            ${s.rif        ? `<div>🧾 <b>RIF:</b> ${s.rif}</div>` : ''}
             ${(s.latitud && s.longitud) ? `
               <div style="grid-column:1/-1;background:#fff3ea;border:1.5px solid #FB8C50;border-radius:8px;padding:6px 10px">
                 <div style="font-size:10px;font-weight:700;color:#FB8C50;margin-bottom:3px">📡 COORDENADAS</div>
@@ -3741,6 +3742,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       await db.from('socios_comerciales').update({
         fecha_vencimiento: sol.fecha_vencimiento, plan: sol.plan, activo: true,
         ciudad: sol.ciudad, direccion: sol.direccion, descripcion: sol.descripcion,
+        ...(sol.rif ? { rif: sol.rif } : {}),
         web: sol.redes, subcategoria_id: sol.subcategoria_id,
         email: sol.email ?? null,
       }).eq('id', socioId);
@@ -3752,6 +3754,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       const { data: nuevo, error } = await db.from('socios_comerciales').insert({
         nombre: sol.nombre, telefono: sol.telefono, whatsapp: sol.whatsapp,
         web: sol.redes, ciudad: sol.ciudad, direccion: sol.direccion,
+        rif: sol.rif ?? null,
         descripcion: sol.descripcion, plan: sol.plan,
         imagen: sol.imagen, imagen2: sol.imagen2, imagen3: sol.imagen3,
         imagen4: sol.imagen4, imagen5: sol.imagen5, imagen6: sol.imagen6,
@@ -4105,6 +4108,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
               tipo: tipoSocio,
               web: sol.redes, ciudad: sol.ciudad,
               direccion: sol.direccion, descripcion: sol.descripcion,
+              ...(sol.rif ? { rif: sol.rif } : {}),
               subcategoria_id: sol.subcategoria_id,
               email: sol.email ?? null,
             });
@@ -4119,6 +4123,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             web:               sol.redes,
             ciudad:            sol.ciudad,
             direccion:         sol.direccion,
+            rif:               sol.rif ?? null,
             descripcion:       sol.descripcion,
             plan:              sol.plan,
             tipo:              tipoSocio,
