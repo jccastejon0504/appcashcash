@@ -311,6 +311,13 @@
       border-radius: 14px; background: var(--bg);
       cursor: zoom-in;
     }
+    /* RIF de la tienda sobre la foto del producto (switch "Agregar RIF a los productos" en la app). */
+    .modal-rif {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.45); color: #fff; border-radius: 99px;
+      padding: 4px 12px; font-size: 12px; font-weight: 700; letter-spacing: .3px;
+      white-space: nowrap; pointer-events: none;
+    }
     .modal-cerrar {
       position: absolute; top: 26px; right: 30px;
       background: rgba(0,0,0,.45); border: none;
@@ -745,6 +752,7 @@
     <div class="modal-handle"></div>
     <div class="modal-img-wrap">
       <img id="m-img" class="modal-img-main" src="" alt="" onclick="abrirImgLightbox(this.src)" />
+      <div id="m-rif" class="modal-rif" style="display:none"></div>
       <button class="modal-cerrar" onclick="cerrarModal()">✕</button>
     </div>
     <div id="m-thumbs" class="modal-thumbs" style="display:none"></div>
@@ -1301,6 +1309,12 @@
     // Imagen principal
     const imgEl = document.getElementById('m-img');
     imgEl.src = imgs[0] ?? '';
+
+    // RIF sobre la foto (queda encima de cualquier foto que se elija en las miniaturas)
+    const rifEl = document.getElementById('m-rif');
+    const rif = (_socioData && _socioData.rif_en_productos && (_socioData.rif || '').trim()) || '';
+    rifEl.textContent = rif ? 'RIF: ' + rif : '';
+    rifEl.style.display = rif ? 'block' : 'none';
 
     // Miniaturas
     const thumbs = document.getElementById('m-thumbs');
