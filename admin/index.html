@@ -1687,8 +1687,9 @@
               </div>
               <div class="form-group">
                 <label>Tiempo de caducidad de la tarjeta (días)</label>
-                <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no caduca" min="1" />
+                <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no caduca" min="1" oninput="_previewCaducidadPromo()" />
                 <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no la activa a tiempo, la tarjeta caduca (la puedes renovar después desde "Ver códigos").</span>
+                <span id="promo-vencimiento-preview" style="font-size:12px;font-weight:600;display:block;margin-top:4px;color:#d97706">Sin caducidad: la tarjeta no mostrará fecha.</span>
               </div>
               <button type="submit" class="btn btn-primary" id="promo-btn-generar">Generar códigos</button>
               <span class="msg" id="promo-msg-generar"></span>
@@ -3259,6 +3260,22 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     ctx.closePath();
   }
 
+  // Muestra bajo el campo "Tiempo de caducidad" la fecha que llevará la
+  // tarjeta, para que no se genere un lote sin caducidad por descuido.
+  function _previewCaducidadPromo() {
+    const el = document.getElementById('promo-vencimiento-preview');
+    const dias = parseInt(document.getElementById('promo-vencimiento').value, 10);
+    if (!dias || dias <= 0) {
+      el.textContent = 'Sin caducidad: la tarjeta no mostrará fecha.';
+      el.style.color = '#d97706';
+      return;
+    }
+    const fecha = new Date(Date.now() + dias * 86400000)
+      .toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+    el.textContent = `La tarjeta dirá: "Este código caduca el ${fecha}"`;
+    el.style.color = '#16a34a';
+  }
+
   // Genera y descarga una tarjeta estilo "giftcard" con el código, para
   // repartir por WhatsApp — mismo espíritu visual que la giftcard real de
   // la app (tarjeta naranja, ícono de regalo, código grande).
@@ -3311,7 +3328,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (expiraEn) {
       const fechaLimite = new Date(expiraEn).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
       ctx.font = '700 20px Arial, sans-serif';
-      const textoLimite = `Actívalo antes del ${fechaLimite}`;
+      const textoLimite = `⏳ Este código caduca el ${fechaLimite}`;
       const anchoPill = ctx.measureText(textoLimite).width + 32;
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       _roundRect(ctx, 50, 336, anchoPill, 38, 10);
