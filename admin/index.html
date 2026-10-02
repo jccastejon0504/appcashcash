@@ -1686,7 +1686,7 @@
                 <input type="number" id="promo-cantidad" value="100" min="1" />
               </div>
               <div class="form-group">
-                <label>Tiempo de caducidad de la tarjeta (días)</label>
+                <label>Caducidad del cupón (días para canjearlo)</label>
                 <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no caduca" min="1" oninput="_previewCaducidadPromo()" />
                 <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no la activa a tiempo, la tarjeta caduca (la puedes renovar después desde "Ver códigos").</span>
                 <span id="promo-vencimiento-preview" style="font-size:12px;font-weight:600;display:block;margin-top:4px;color:#d97706">Sin caducidad: la tarjeta no mostrará fecha.</span>
@@ -3272,7 +3272,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     }
     const fecha = new Date(Date.now() + dias * 86400000)
       .toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
-    el.textContent = `La tarjeta dirá: "Este código caduca el ${fecha}"`;
+    el.textContent = `La tarjeta dirá: "Este cupón caduca el ${fecha}" (aparte de los días gratis de membresía)`;
     el.style.color = '#16a34a';
   }
 
@@ -3320,7 +3320,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
     ctx.font = '700 32px Arial, sans-serif';
     ctx.fillStyle = '#fff7ed';
-    ctx.fillText(`GRATIS por ${dias} días`, 50, 320);
+    ctx.fillText(`GRATIS por ${dias} días al activarlo`, 50, 320);
 
     // Aviso de vencimiento para ACTIVAR el código (distinto de los días gratis
     // que regala arriba) — sin esto, quien recibe la tarjeta no tiene forma
@@ -3328,7 +3328,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (expiraEn) {
       const fechaLimite = new Date(expiraEn).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
       ctx.font = '700 20px Arial, sans-serif';
-      const textoLimite = `⏳ Este código caduca el ${fechaLimite}`;
+      const textoLimite = `⏳ Este cupón caduca el ${fechaLimite}`;
       const anchoPill = ctx.measureText(textoLimite).width + 32;
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       _roundRect(ctx, 50, 336, anchoPill, 38, 10);
