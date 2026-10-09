@@ -3108,9 +3108,42 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     renderBannersPublicidad();
   }
 
+  // Comprime una imagen en el navegador antes de subirla a Storage: lado mayor
+  // hasta `maxLado` px y JPEG al 80 %. Igual que la app (imageResize.ts), un
+  // flyer de 2 MB queda en ~200-300 KB. GIF/SVG se suben tal cual (animación,
+  // vectores); si algo falla o el resultado pesa más, se sube el original.
+  async function comprimirImagen(file, maxLado = 1600) {
+    if (!/^image\/(jpeg|png|webp|bmp)$/i.test(file.type)) return file;
+    try {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = url;
+      });
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, maxLado / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.naturalWidth * escala);
+      canvas.height = Math.round(img.naturalHeight * escala);
+      const ctx = canvas.getContext('2d');
+      // Fondo blanco: un PNG con transparencia quedaría negro al pasarlo a JPEG.
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
+      if (!blob || blob.size >= file.size) return file;
+      const nombre = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+      return new File([blob], nombre, { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  }
+
   async function subirBannerPublicidad(i, input) {
-    const file = input.files[0];
-    if (!file) return;
+    if (!input.files[0]) return;
+    const file = await comprimirImagen(input.files[0]);
     const ext  = file.name.split('.').pop() || 'jpg';
     const path = `publicidad/${Date.now()}_${i}.${ext}`;
     const { error } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
@@ -3131,8 +3164,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   }
 
   async function subirPopupPublicidad(input) {
-    const file = input.files[0];
-    if (!file) return;
+    if (!input.files[0]) return;
+    const file = await comprimirImagen(input.files[0]);
     const ext  = file.name.split('.').pop() || 'jpg';
     const path = `publicidad/popup_${Date.now()}.${ext}`;
     const { error } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
@@ -3738,12 +3771,14 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   }
 
   async function subirFotoSol(solId, uid, campo, input) {
-    const file = input.files[0];
+    let file = input.files[0];
     if (!file) return;
     input.disabled = true;
     const label = input.parentElement;
     if (label.childNodes[0]) label.childNodes[0].textContent = '…';
 
+    // 1080 px, igual que las fotos que sube la app (comprobantes, logos).
+    file = await comprimirImagen(file, 1080);
     const ext  = file.name.split('.').pop() || 'jpg';
     const path = `solicitudes/${solId}_${campo}_${Date.now()}.${ext}`;
     const { error: upErr } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
