@@ -97,6 +97,16 @@
   .video-info h3{font-size:17px;line-height:1.3;margin-bottom:4px}
   .video-info p{font-size:13.5px;color:var(--muted)}
 
+  /* ── guías en imágenes (carruseles deslizables) ── */
+  .guia{padding:36px 0 8px;scroll-margin-top:70px}
+  .guia-sub{font-size:14.5px;color:var(--muted);margin:-8px 0 16px}
+  .carrusel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .carrusel img{flex:0 0 min(340px,78vw);aspect-ratio:4/5;width:min(340px,78vw);height:auto;border-radius:18px;scroll-snap-align:start;border:1px solid var(--line);background:var(--cream)}
+  .carrusel-pie{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+  .carrusel-pie span{font-size:13px;color:var(--muted)}
+  .flechas{display:flex;gap:8px}
+  .flechas button{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:18px;cursor:pointer}
+
   /* ── pie ── */
   .descarga{text-align:center;padding:48px 0 24px}
   .descarga h2{font-size:24px;margin-bottom:14px}
@@ -122,8 +132,24 @@
     <span class="eyebrow">▶ Aprende en minutos</span>
     <h1>Videos tutoriales</h1>
     <p>Aprende a usar CashCash paso a paso, ya sea para comprar en las tiendas del directorio o para vender con tu propia tienda.</p>
-    <div class="saltos" id="saltos"></div>
+    <div class="saltos" id="saltos">
+      <a class="salto" href="#guia-compra">Cómo comprar</a>
+      <a class="salto" href="#guia-tienda">Cómo tener tu tienda</a>
+    </div>
   </header>
+
+  <!-- Guías en imágenes: los mismos carruseles de Instagram (guias/compra y
+       guias/tienda, 1080×1350). Para cambiarlas, reemplazar los .jpg. -->
+  <section class="guia" id="guia-compra">
+    <div class="grupo-titulo"><h2>Cómo comprar</h2><div class="linea"></div></div>
+    <p class="guia-sub">Desliza para ver cómo encontrar tiendas, comprar y seguir tus pedidos.</p>
+    <div class="carrusel" data-carpeta="compra" data-alt="Cómo comprar con CashCash"></div>
+  </section>
+  <section class="guia" id="guia-tienda">
+    <div class="grupo-titulo"><h2>Cómo tener tu tienda</h2><div class="linea"></div></div>
+    <p class="guia-sub">Desliza para ver cómo crear tu tienda, cobrar y gestionar tus ventas.</p>
+    <div class="carrusel" data-carpeta="tienda" data-alt="Cómo vender con tu tienda en CashCash"></div>
+  </section>
 
   <!-- Las secciones se arman desde Supabase (ver script al final). -->
   <div id="secciones"></div>
@@ -255,6 +281,29 @@
       saltos.appendChild(salto);
     }
   }
+
+  // Arma cada carrusel con sus 10 láminas y le agrega flechas (en el
+  // teléfono basta con deslizar).
+  const LAMINAS_POR_GUIA = 10;
+  document.querySelectorAll('.carrusel').forEach(c => {
+    for (let i = 1; i <= LAMINAS_POR_GUIA; i++) {
+      const img = document.createElement('img');
+      img.src = `/guias/${c.dataset.carpeta}/${String(i).padStart(2, '0')}.jpg`;
+      img.alt = `${c.dataset.alt} (${i} de ${LAMINAS_POR_GUIA})`;
+      img.width = 1080; img.height = 1350;
+      if (i > 2) img.loading = 'lazy';
+      c.appendChild(img);
+    }
+    const pie = document.createElement('div');
+    pie.className = 'carrusel-pie';
+    pie.innerHTML = `<span>${LAMINAS_POR_GUIA} imágenes · desliza →</span>
+      <div class="flechas"><button type="button" aria-label="Anterior">‹</button><button type="button" aria-label="Siguiente">›</button></div>`;
+    const [ant, sig] = pie.querySelectorAll('button');
+    const paso = () => c.querySelector('img').getBoundingClientRect().width + 14;
+    ant.onclick = () => c.scrollBy({ left: -paso(), behavior: 'smooth' });
+    sig.onclick = () => c.scrollBy({ left: paso(), behavior: 'smooth' });
+    c.after(pie);
+  });
 
   cargarSecciones().then(pintarSecciones);
 </script>
