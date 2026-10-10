@@ -100,6 +100,8 @@
   /* ── guías en imágenes (carruseles deslizables) ── */
   .guia{padding:36px 0 8px;scroll-margin-top:70px}
   .guia-sub{font-size:14.5px;color:var(--muted);margin:-8px 0 16px}
+  .guia-por-que{font-size:16px;line-height:1.6;margin:-6px 0 18px;padding:16px 18px;background:var(--surface);border:1px solid var(--line);border-left:0;border-radius:16px;max-width:760px}
+  .guia-por-que + .guia-sub{margin-top:0}
   .carrusel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
   .carrusel img{flex:0 0 min(340px,78vw);aspect-ratio:4/5;width:min(340px,78vw);height:auto;border-radius:18px;scroll-snap-align:start;border:1px solid var(--line);background:var(--cream)}
   .carrusel-pie{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
@@ -148,6 +150,7 @@
     <h1>Aprende a usar CashCash</h1>
     <p>Paso a paso, con guías en imágenes y videos, para comprar en las tiendas del directorio o vender con tu propia tienda.</p>
     <div class="saltos" id="saltos">
+      <a class="salto" href="#guia-online">Tu tienda online</a>
       <a class="salto" href="#guia-compra">Cómo comprar</a>
       <a class="salto" href="#guia-tienda">Cómo tener tu tienda</a>
     </div>
@@ -157,6 +160,13 @@
        guias/tienda: NN.jpg 1080×1350 para el carrusel y hNN.jpg 1080×1920,
        versión historia, para el visor en el teléfono). Para cambiarlas,
        reemplazar los .jpg. -->
+  <section class="guia" id="guia-online">
+    <div class="grupo-titulo"><h2>Tu catálogo, directo al cliente</h2><div class="linea"></div></div>
+    <p class="guia-por-que">Con tu tienda en CashCash tus clientes ven tu catálogo con fotos y precios en $ y Bs a la tasa BCV del día, eligen talla, color y cantidad, y te mandan el pedido armado por WhatsApp, <b>sin descargar ninguna app</b>. Tú solo compartes un link: menos fotos sueltas, menos "¿precio?" y más ventas, con <b>0% de comisión</b>.</p>
+    <p class="guia-sub">Desliza para ver cómo funciona.</p>
+    <div class="carrusel" data-carpeta="online" data-alt="Tu catálogo, directo al cliente"></div>
+  </section>
+
   <section class="guia" id="guia-compra">
     <div class="grupo-titulo"><h2>Cómo comprar</h2><div class="linea"></div></div>
     <p class="guia-sub">Desliza para ver cómo encontrar tiendas, comprar y seguir tus pedidos.</p>
