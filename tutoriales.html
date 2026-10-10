@@ -106,6 +106,21 @@
   .carrusel-pie span{font-size:13px;color:var(--muted)}
   .flechas{display:flex;gap:8px}
   .flechas button{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:18px;cursor:pointer}
+  .carrusel img{cursor:zoom-in}
+
+  /* ── visor a pantalla completa (al tocar una lámina) ── */
+  .visor{position:fixed;inset:0;z-index:100;background:rgba(12,9,6,.95);display:none}
+  .visor.abierto{display:block}
+  .visor-pista{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .visor-pista::-webkit-scrollbar{display:none}
+  .visor-pista figure{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;padding:56px 12px 24px}
+  .visor-pista img{max-width:100%;max-height:100%;object-fit:contain;border-radius:14px}
+  .visor-cerrar,.visor-ant,.visor-sig{position:absolute;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .visor-cerrar{top:12px;right:12px;width:44px;height:44px;font-size:22px}
+  .visor-ant,.visor-sig{top:50%;transform:translateY(-50%);width:52px;height:52px;font-size:28px}
+  .visor-ant{left:16px}.visor-sig{right:16px}
+  .visor-contador{position:absolute;top:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:700;background:rgba(255,255,255,.14);padding:6px 14px;border-radius:100px}
+  @media (hover:none){.visor-ant,.visor-sig{display:none}}
 
   /* ── pie ── */
   .descarga{text-align:center;padding:48px 0 24px}
@@ -139,7 +154,9 @@
   </header>
 
   <!-- Guías en imágenes: los mismos carruseles de Instagram (guias/compra y
-       guias/tienda, 1080×1350). Para cambiarlas, reemplazar los .jpg. -->
+       guias/tienda: NN.jpg 1080×1350 para el carrusel y hNN.jpg 1080×1920,
+       versión historia, para el visor en el teléfono). Para cambiarlas,
+       reemplazar los .jpg. -->
   <section class="guia" id="guia-compra">
     <div class="grupo-titulo"><h2>Cómo comprar</h2><div class="linea"></div></div>
     <p class="guia-sub">Desliza para ver cómo encontrar tiendas, comprar y seguir tus pedidos.</p>
@@ -303,6 +320,67 @@
     ant.onclick = () => c.scrollBy({ left: -paso(), behavior: 'smooth' });
     sig.onclick = () => c.scrollBy({ left: paso(), behavior: 'smooth' });
     c.after(pie);
+    c.querySelectorAll('img').forEach((img, i) => img.onclick = () => abrirVisor(c.dataset.carpeta, c.dataset.alt, i));
+  });
+
+  // ── Visor a pantalla completa ──────────────────────────────────────
+  // En pantallas verticales (teléfono) usa la versión de historia
+  // (guias/<carpeta>/hNN.jpg, 1080×1920), que llena la pantalla; en las
+  // horizontales, la del carrusel. Se cierra con ✕, Esc o el botón atrás.
+  const visor = document.createElement('div');
+  visor.className = 'visor';
+  visor.setAttribute('role', 'dialog');
+  visor.setAttribute('aria-modal', 'true');
+  visor.innerHTML = `<div class="visor-pista"></div>
+    <span class="visor-contador"></span>
+    <button class="visor-cerrar" type="button" aria-label="Cerrar">✕</button>
+    <button class="visor-ant" type="button" aria-label="Anterior">‹</button>
+    <button class="visor-sig" type="button" aria-label="Siguiente">›</button>`;
+  document.body.appendChild(visor);
+  const pista = visor.querySelector('.visor-pista');
+  const contador = visor.querySelector('.visor-contador');
+
+  const actual = () => Math.round(pista.scrollLeft / pista.clientWidth);
+  const irA = (i, suave) => pista.scrollTo({ left: i * pista.clientWidth, behavior: suave ? 'smooth' : 'auto' });
+  pista.addEventListener('scroll', () => { contador.textContent = `${actual() + 1} / ${LAMINAS_POR_GUIA}`; });
+
+  function abrirVisor(carpeta, alt, inicio) {
+    const vertical = window.innerHeight > window.innerWidth;
+    pista.innerHTML = '';
+    for (let i = 1; i <= LAMINAS_POR_GUIA; i++) {
+      const n = String(i).padStart(2, '0');
+      const fig = document.createElement('figure');
+      const img = document.createElement('img');
+      img.src = `/guias/${carpeta}/${vertical ? 'h' : ''}${n}.jpg`;
+      img.alt = `${alt} (${i} de ${LAMINAS_POR_GUIA})`;
+      fig.appendChild(img);
+      pista.appendChild(fig);
+    }
+    visor.classList.add('abierto');
+    document.body.style.overflow = 'hidden';
+    irA(inicio, false);
+    contador.textContent = `${inicio + 1} / ${LAMINAS_POR_GUIA}`;
+    history.pushState({ visor: true }, '');
+  }
+
+  function cerrarVisor() {
+    if (!visor.classList.contains('abierto')) return;
+    visor.classList.remove('abierto');
+    document.body.style.overflow = '';
+  }
+
+  // Cerrar = volver atrás en el historial, así el botón atrás del teléfono
+  // también cierra el visor en vez de salir de la página.
+  visor.querySelector('.visor-cerrar').onclick = () => history.back();
+  window.addEventListener('popstate', cerrarVisor);
+  pista.addEventListener('click', e => { if (e.target === e.currentTarget || e.target.tagName === 'FIGURE') history.back(); });
+  visor.querySelector('.visor-ant').onclick = () => irA(Math.max(actual() - 1, 0), true);
+  visor.querySelector('.visor-sig').onclick = () => irA(Math.min(actual() + 1, LAMINAS_POR_GUIA - 1), true);
+  document.addEventListener('keydown', e => {
+    if (!visor.classList.contains('abierto')) return;
+    if (e.key === 'Escape') history.back();
+    if (e.key === 'ArrowRight') irA(Math.min(actual() + 1, LAMINAS_POR_GUIA - 1), true);
+    if (e.key === 'ArrowLeft') irA(Math.max(actual() - 1, 0), true);
   });
 
   cargarSecciones().then(pintarSecciones);
