@@ -51,6 +51,7 @@
     .topbar-logo img { width: 100%; height: 100%; object-fit: cover; }
     .topbar-name { font-size: 17px; font-weight: 800; color: var(--text); }
     .topbar-sub  { font-size: 11px; color: var(--muted); }
+    .link-cashcash { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
     .topbar-badge {
       background: #fef3c7; color: #92400e;
       font-size: 11px; font-weight: 700; padding: 4px 10px;
@@ -808,10 +809,10 @@
 
   <!-- Topbar -->
   <div class="topbar" id="topbar">
-    <div class="topbar-logo" id="topbar-logo"><img src="icon.png" alt="CashCash" /></div>
+    <a class="topbar-logo" id="topbar-logo" href="https://appcashcash.com" target="_blank" rel="noopener" aria-label="Ir a CashCash"><img src="icon.png" alt="CashCash" /></a>
     <div>
       <div class="topbar-name" id="top-nombre">—</div>
-      <div class="topbar-sub">CashCash · Directorio de Tiendas</div>
+      <div class="topbar-sub"><a class="link-cashcash" href="https://appcashcash.com" target="_blank" rel="noopener">CashCash</a> · Directorio de Tiendas</div>
     </div>
     <div class="topbar-actions">
       <div id="top-dest" class="topbar-badge" style="display:none">⭐ Destacada</div>
@@ -994,7 +995,7 @@
 
 <!-- Banner Descarga -->
 <div class="banner">
-  <div class="banner-logo"><img src="icon.png" alt="CashCash" /></div>
+  <a class="banner-logo" href="https://appcashcash.com" target="_blank" rel="noopener" aria-label="Ir a CashCash"><img src="icon.png" alt="CashCash" /></a>
   <div class="banner-txt">
     <div class="banner-t1">Descarga CashCash</div>
     <div class="banner-t2">Tasa BCV · Calculadora · Directorio completo</div>
@@ -1368,7 +1369,10 @@
     document.getElementById('top-nombre').textContent = s.nombre;
     if (s.destacado) document.getElementById('top-dest').style.display = 'flex';
     if (s.logo) {
-      document.getElementById('topbar-logo').innerHTML = `<img src="${s.logo}" alt="${s.nombre}" />`;
+      // Con logo propio de la tienda, el logo ya no lleva a CashCash (confundiría).
+      const logoEl = document.getElementById('topbar-logo');
+      logoEl.innerHTML = `<img src="${s.logo}" alt="${s.nombre}" />`;
+      logoEl.removeAttribute('href'); logoEl.removeAttribute('target'); logoEl.removeAttribute('aria-label');
     }
 
     // Hero
