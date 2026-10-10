@@ -708,9 +708,33 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>Tienda</th><th style="text-align:center">iOS</th><th style="text-align:center">Android</th><th style="text-align:center">Total</th></tr>
+                <tr><th>#</th><th>Tienda</th><th style="text-align:center">iOS</th><th style="text-align:center">Android</th><th style="text-align:center">Web</th><th style="text-align:center">Total</th></tr>
               </thead>
-              <tbody id="an-top-tiendas"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+              <tbody id="an-top-tiendas"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tienda web: visitas por envío (mismo mes que "Tiendas más vistas") -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header" onclick="toggleBloque('an-web-wrap','an-web-arrow')" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="an-web-arrow" style="font-size:13px;transition:transform .2s;display:inline-block;transform:rotate(-90deg)">▼</span>
+            <h2>Tienda web: visitas por envío — <span id="an-mes-web-label"></span></h2>
+          </div>
+        </div>
+        <div id="an-web-wrap" style="display:none">
+          <p style="font-size:13px;color:var(--text-muted,#6b7280);margin:0 16px 10px">
+            Visitas desde el link de la tienda (sin app). "Origen" es lo que va después de <b>?ref=</b> en el link, por ejemplo
+            <code>appcashcash.com/t/ecomoda-barquisimeto?ref=difusion1</code>. Sin ref = "directo".
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Tienda</th><th>Origen</th><th style="text-align:center">Visitas</th><th style="text-align:center">Productos vistos</th><th style="text-align:center">Pedidos enviados</th></tr>
+              </thead>
+              <tbody id="an-web"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -5723,12 +5747,13 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const conteo = {};
     (data ?? []).forEach(e => {
       const key = e.socio_id || e.detalle || '?';
-      if (!conteo[key]) conteo[key] = { nombre: e.detalle || key, ios: 0, android: 0 };
-      if (e.plataforma === 'ios') conteo[key].ios++;
-      else                        conteo[key].android++;
+      if (!conteo[key]) conteo[key] = { nombre: e.detalle || key, ios: 0, android: 0, web: 0 };
+      if (e.plataforma === 'ios')      conteo[key].ios++;
+      else if (e.plataforma === 'web') conteo[key].web++;
+      else                             conteo[key].android++;
     });
     const filas = Object.values(conteo)
-      .map(t => ({ ...t, total: t.ios + t.android }))
+      .map(t => ({ ...t, total: t.ios + t.android + t.web }))
       .sort((a,b) => b.total - a.total);
 
     const tbody = document.getElementById('an-top-tiendas');
@@ -5739,9 +5764,44 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
             <td>${t.nombre}</td>
             <td style="text-align:center">${t.ios}</td>
             <td style="text-align:center">${t.android}</td>
+            <td style="text-align:center">${t.web}</td>
             <td style="text-align:center"><b>${t.total}</b></td>
           </tr>`).join('')
-      : '<tr><td colspan="5" class="empty"><p>Sin datos este mes</p></td></tr>';
+      : '<tr><td colspan="6" class="empty"><p>Sin datos este mes</p></td></tr>';
+    cargarTablaWeb(desde, hasta);
+  }
+
+  // Tienda web por origen (?ref=): visitas, productos vistos y pedidos enviados.
+  async function cargarTablaWeb(desde, hasta) {
+    document.getElementById('an-mes-web-label').textContent = `${MESES_ES[_mesTiendas.m]} ${_mesTiendas.y}`;
+    const { data } = await db.from('eventos_analytics')
+      .select('tipo, socio_id, tienda_nombre, origen')
+      .eq('plataforma', 'web')
+      .in('tipo', ['ficha_tienda', 'galeria_producto', 'pedido_web'])
+      .gte('created_at', desde)
+      .lte('created_at', hasta)
+      .limit(10000);
+    const grupos = {};
+    (data ?? []).forEach(e => {
+      const origen = e.origen || 'directo';
+      const key = `${e.socio_id}|${origen}`;
+      if (!grupos[key]) grupos[key] = { tienda: e.tienda_nombre || e.socio_id, origen, visitas: 0, productos: 0, pedidos: 0 };
+      if (e.tipo === 'ficha_tienda')          grupos[key].visitas++;
+      else if (e.tipo === 'galeria_producto') grupos[key].productos++;
+      else                                    grupos[key].pedidos++;
+    });
+    const filas = Object.values(grupos).sort((a, b) => b.visitas - a.visitas || b.productos - a.productos);
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    document.getElementById('an-web').innerHTML = filas.length
+      ? filas.map(f => `
+          <tr>
+            <td>${esc(f.tienda)}</td>
+            <td>${esc(f.origen)}</td>
+            <td style="text-align:center"><b>${f.visitas}</b></td>
+            <td style="text-align:center">${f.productos}</td>
+            <td style="text-align:center">${f.pedidos}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="empty"><p>Sin visitas web este mes</p></td></tr>';
   }
 
   async function cargarTablaGaleria() {

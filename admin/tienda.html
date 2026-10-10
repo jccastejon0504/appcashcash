@@ -1396,6 +1396,7 @@
       galeria = [];
       document.getElementById('main-pausado').style.display = 'block';
     }
+    if (unaVezPorSesion(`cc_visita_${s.id}`)) registrarEventoWeb('ficha_tienda', s.nombre);
     _galeriaTodos = galeria ?? [];
     _galeriaDisponible = _galeriaTodos.filter(item => item.stock == null || item.stock > 0);
     cargarPedidoGuardado();
@@ -1507,6 +1508,7 @@
     const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
     _itemModal = item;
     _selModal = { talla: null, color: null, cant: 1 };
+    if (item.id && unaVezPorSesion(`cc_vista_${item.id}`)) registrarEventoWeb('galeria_producto', item.titulo ?? 'Producto');
 
     // Carrusel de fotos (se desliza; tocar una foto la abre en grande)
     const carrusel = document.getElementById('m-carrusel');
@@ -1880,12 +1882,43 @@
       urlTienda(s),
     ].join('\n');
     window.open(`https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
+    registrarEventoWeb('pedido_web', `${t.cant} producto${t.cant === 1 ? '' : 's'} · ${fmtUsd(t.usd)}`);
     _pedido = [];
     guardarPedido();
     document.getElementById('pedido-nota').value = '';
     cerrarPedido();
     pintarPedido();
     mostrarToast('Abrimos WhatsApp con tu pedido');
+  }
+
+  /* ── VISITAS DE LA TIENDA WEB (eventos_analytics) ──
+     Mismos tipos que registra la app ('ficha_tienda', 'galeria_producto'),
+     así el bloque "Visitas a tu tienda" del Reporte en la app los suma sin
+     cambios en la app. plataforma = 'web'; origen = ?ref= del link (de qué
+     envío viene la visita), que se recuerda durante la sesión. Una visita a
+     la tienda y una vista por producto por sesión, para no inflar con recargas. */
+  function origenVisita() {
+    const ref = (new URLSearchParams(location.search).get('ref') || '')
+      .toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+    try {
+      if (ref) sessionStorage.setItem('cc_ref', ref);
+      return ref || sessionStorage.getItem('cc_ref') || null;
+    } catch { return ref || null; }
+  }
+  function unaVezPorSesion(clave) {
+    try {
+      if (sessionStorage.getItem(clave)) return false;
+      sessionStorage.setItem(clave, '1');
+    } catch {}
+    return true;
+  }
+  function registrarEventoWeb(tipo, detalle) {
+    const s = _socioData;
+    if (!s?.id) return;   // tienda demo
+    db.from('eventos_analytics').insert({
+      tipo, detalle: detalle ?? null, socio_id: s.id, tienda_nombre: s.nombre,
+      plataforma: 'web', origen: origenVisita(),
+    }).then(({ error }) => { if (error) console.warn('[analytics]', tipo, error.message); });
   }
 
   let _toastTimer = null;

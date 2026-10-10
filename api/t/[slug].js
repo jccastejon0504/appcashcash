@@ -5,6 +5,9 @@ const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 module.exports = async function handler(req, res) {
   const { slug, p } = req.query;
+  // ?ref= (de qué envío viene la visita, ej. "difusion1") se pasa tal cual
+  // a la tienda web, que lo guarda en eventos_analytics.origen.
+  const ref = limpiarRef(req.query.ref);
   if (!slug) return res.status(400).send('Slug requerido');
 
   try {
@@ -66,8 +69,8 @@ module.exports = async function handler(req, res) {
     const img      = (producto && producto.imagen) || imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = p ? `https://appcashcash.com/t/${slug}?p=${encodeURIComponent(p)}` : `https://appcashcash.com/t/${slug}`;
     const urlDest  = p
-      ? `https://appcashcash.com/admin/tienda.html?id=${id}&p=${encodeURIComponent(p)}`
-      : `https://appcashcash.com/admin/tienda.html?id=${id}`;
+      ? `https://appcashcash.com/admin/tienda.html?id=${id}&p=${encodeURIComponent(p)}${ref ? `&ref=${ref}` : ''}`
+      : `https://appcashcash.com/admin/tienda.html?id=${id}${ref ? `&ref=${ref}` : ''}`;
 
     // Siempre servir HTML con OG tags.
     // Los crawlers (WhatsApp, Facebook, etc.) no ejecutan JS → leen los meta tags.
@@ -146,4 +149,10 @@ function paginaError() {
   <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f5}.logo{font-size:28px;font-weight:900;color:#FB8C50}p{color:#555}</style>
   </head><body><div class="logo">appcashcash</div><p>Esta tienda no está disponible.</p>
   <a href="https://appcashcash.com" style="color:#FB8C50">Ir al inicio</a></body></html>`;
+}
+
+// Solo letras, números, - y _ (máx. 40): el ref va pegado a una URL y a la BD.
+function limpiarRef(v) {
+  const s = String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  return s || null;
 }

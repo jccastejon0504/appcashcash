@@ -7,6 +7,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // titulo del producto) que ya usa api/t/[slug].js cuando el link trae ?p=.
 module.exports = async function handler(req, res) {
   const { codigo } = req.query;
+  const ref = limpiarRef(req.query.ref);
   if (!codigo) return res.status(400).send('Código requerido');
 
   try {
@@ -49,7 +50,7 @@ module.exports = async function handler(req, res) {
       : [precioTxt, bsTxt, `Disponible en ${tienda.nombre}`].filter(Boolean).join(' · ');
     const img      = producto.imagen || 'https://appcashcash.com/admin/og-default.png';
     const urlCorta = `https://appcashcash.com/p/${codigo}`;
-    const urlDest  = `https://appcashcash.com/admin/tienda.html?id=${tienda.id}&p=${producto.id}`;
+    const urlDest  = `https://appcashcash.com/admin/tienda.html?id=${tienda.id}&p=${producto.id}${ref ? `&ref=${ref}` : ''}`;
 
     // Siempre servir HTML con OG tags.
     // Los crawlers (WhatsApp, Facebook, etc.) no ejecutan JS → leen los meta tags.
@@ -128,4 +129,10 @@ function paginaError() {
   <style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f5}.logo{font-size:28px;font-weight:900;color:#FB8C50}p{color:#555}</style>
   </head><body><div class="logo">appcashcash</div><p>Este producto no está disponible.</p>
   <a href="https://appcashcash.com" style="color:#FB8C50">Ir al inicio</a></body></html>`;
+}
+
+// Solo letras, números, - y _ (máx. 40): el ref va pegado a una URL y a la BD.
+function limpiarRef(v) {
+  const s = String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  return s || null;
 }
