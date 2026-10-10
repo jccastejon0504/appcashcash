@@ -516,6 +516,11 @@
       background: var(--wa); color: #052e16; border: 0; border-radius: 16px;
       padding: 16px; font: 800 16px Inter, sans-serif; cursor: pointer;
     }
+    .btn-cashea-pedido {
+      margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: #fdff00; color: #000; border: 0; border-radius: 16px;
+      padding: 15px; font: 800 16px Inter, sans-serif; cursor: pointer;
+    }
     .btn-vaciar {
       margin-top: 10px; width: 100%; background: none; border: 0; color: var(--muted);
       font: 600 13px Inter, sans-serif; text-decoration: underline; cursor: pointer; padding: 8px;
@@ -968,6 +973,11 @@
       <button type="button" class="btn-enviar-pedido" onclick="enviarPedido()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#052e16" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         Enviar pedido por WhatsApp
+      </button>
+      <!-- Solo si la tienda tiene Cashea activo con su texto (igual que el botón de contacto) -->
+      <button type="button" class="btn-cashea-pedido" id="pedido-cashea" onclick="abrirCasheaPopup(true)" style="display:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#000" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        Comprar con Cashea
       </button>
       <div class="modal-nota" style="margin-top:10px">La tienda te confirma disponibilidad, envío y forma de pago por WhatsApp.</div>
       <button type="button" class="btn-vaciar" onclick="vaciarPedido()">Vaciar pedido</button>
@@ -1482,16 +1492,25 @@
   }
 
   /* ── POPUP COMPRAR CON CASHEA ────────────────── */
-  function abrirCasheaPopup() {
+  // Desde la hoja del pedido (desdePedido = true), "Preguntar al vendedor"
+  // manda el pedido completo pidiendo pagarlo con Cashea.
+  let _casheaDesdePedido = false;
+  function tiendaConCashea() {
+    const s = _socioData;
+    return !!(s?.etiqueta_cashea && s.info_cashea_activo && s.info_cashea_texto);
+  }
+  function abrirCasheaPopup(desdePedido = false) {
     const s = _socioData;
     if (!s?.info_cashea_texto) return;
+    _casheaDesdePedido = desdePedido === true;
     document.getElementById('cashea-sheet-text').textContent = s.info_cashea_texto;
     document.getElementById('cashea-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
   function cerrarCasheaPopup() {
     document.getElementById('cashea-overlay').classList.remove('open');
-    document.body.style.overflow = '';
+    // Si la hoja del pedido sigue abierta debajo, la página sigue bloqueada.
+    if (!document.getElementById('pedido-overlay').classList.contains('open')) document.body.style.overflow = '';
   }
   function cerrarCasheaOverlay(e) {
     if (e.target === document.getElementById('cashea-overlay')) cerrarCasheaPopup();
@@ -1499,6 +1518,7 @@
   function preguntarVendedorCashea() {
     const s = _socioData;
     cerrarCasheaPopup();
+    if (_casheaDesdePedido) { _casheaDesdePedido = false; enviarPedido(true); return; }
     if (!s?.whatsapp) return;
     const msg = `Hola! Quiero comprar con Cashea en *${s.nombre}*. ¿Me ayudas con el proceso?\n${urlTienda(s)}`;
     window.open(`https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -1841,6 +1861,7 @@
   function abrirPedido() {
     if (!_pedido.length) return;
     pintarHojaPedido();
+    document.getElementById('pedido-cashea').style.display = tiendaConCashea() ? 'flex' : 'none';
     document.getElementById('pedido-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
@@ -1856,22 +1877,24 @@
     pintarPedido();
   }
 
-  function enviarPedido() {
+  // Mensaje de WhatsApp con el pedido. `cashea` = el cliente quiere pagarlo
+  // con Cashea (botón "Comprar con Cashea" → "Preguntar al vendedor").
+  function mensajePedido(cashea) {
     const s = _socioData;
-    const lineas = lineasPedido();
-    if (!s?.whatsapp || !lineas.length) return;
     const nombre = document.getElementById('pedido-nombre').value.trim();
     const nota = document.getElementById('pedido-nota').value.trim();
     try { if (nombre) localStorage.setItem('cc_pedido_nombre', nombre); } catch {}
     const t = totalesPedido();
-    const filas = lineas.map(l => {
+    const filas = lineasPedido().map(l => {
       const u = precioUnitario(l.item);
       const v = varianteTxt(l.talla, l.color);
       return `• ${l.cant} × ${l.item.titulo ?? 'Producto'}${v ? ` (${v})` : ''} — ${u != null ? fmtUsd(u * l.cant) : 'precio a consultar'}`;
     });
     const total = `*Total: ${fmtUsd(t.usd)}*${t.bsCompleto && t.bs > 0 ? ` (${fmtBs(t.bs)}, tasa BCV)` : ''}${t.sinPrecio ? ' + productos con precio a consultar' : ''}`;
-    const msg = [
-      `Hola *${s.nombre}*${nombre ? `, soy ${nombre}` : ''}. Quiero hacer este pedido:`,
+    return [
+      cashea
+        ? `Hola *${s.nombre}*${nombre ? `, soy ${nombre}` : ''}. Quiero comprar este pedido con *Cashea*. ¿Me ayudas con el proceso?`
+        : `Hola *${s.nombre}*${nombre ? `, soy ${nombre}` : ''}. Quiero hacer este pedido:`,
       '',
       ...filas,
       '',
@@ -1881,8 +1904,14 @@
       `Pedido hecho desde tu tienda en CashCash:`,
       urlTienda(s),
     ].join('\n');
-    window.open(`https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
-    registrarEventoWeb('pedido_web', `${t.cant} producto${t.cant === 1 ? '' : 's'} · ${fmtUsd(t.usd)}`);
+  }
+
+  function enviarPedido(cashea = false) {
+    const s = _socioData;
+    if (!s?.whatsapp || !lineasPedido().length) return;
+    const t = totalesPedido();
+    window.open(`https://wa.me/${telWa(s.whatsapp)}?text=${encodeURIComponent(mensajePedido(cashea))}`, '_blank');
+    registrarEventoWeb('pedido_web', `${t.cant} producto${t.cant === 1 ? '' : 's'} · ${fmtUsd(t.usd)}${cashea ? ' · Cashea' : ''}`);
     _pedido = [];
     guardarPedido();
     document.getElementById('pedido-nota').value = '';
