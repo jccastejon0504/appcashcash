@@ -3486,7 +3486,19 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     `).join('');
   }
 
+  // Nombre visible del método de pago: solicitudes.metodo_pago guarda el id de
+  // metodos_pago ('pagomovil', 'zelle', 'usdt' o el uuid de los métodos creados
+  // desde el admin, p. ej. Transferencia).
+  let _nombresMetodo = null;
+  async function cargarNombresMetodo() {
+    if (_nombresMetodo) return;
+    const { data } = await db.from('metodos_pago').select('id,label');
+    _nombresMetodo = Object.fromEntries((data ?? []).map(m => [m.id, m.label]));
+  }
+  function nombreMetodo(id) { return (_nombresMetodo && _nombresMetodo[id]) || id; }
+
   async function cargarSolicitudes(append = false) {
+    await cargarNombresMetodo();
     if (!append) { _solicitudesOffset = 0; _solicitudesHayMas = true; }
     const filtro = _filtroSolicitudesActual;
     let q = db.from('solicitudes').select('*').neq('plan', 'galeria_extra').neq('plan', 'destacado').neq('plan', 'cambio_datos')
@@ -3676,7 +3688,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
               <span style="font-family:monospace;color:var(--muted)">${s.codigo_promocional}</span>
             ` : `
               <span class="badge badge-gray">${fmt(s.monto ?? 0)}</span>
-              ${s.metodo_pago ? `<span style="color:var(--muted)">${s.metodo_pago}</span>` : ''}
+              ${s.metodo_pago ? `<span style="color:var(--muted)">${nombreMetodo(s.metodo_pago)}</span>` : ''}
               ${s.referencia  ? `<span style="font-family:monospace;color:var(--muted)">Ref: ${s.referencia}</span>` : ''}
               ${s.comprobante ? `<a href="${s.comprobante}" target="_blank" class="btn btn-sm btn-outline" onclick="event.stopPropagation()">🧾 Comprobante</a>` : ''}
             `}
@@ -5495,6 +5507,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       : await db.from('metodos_pago').insert({ id: crypto.randomUUID(), ...payload });
     if (error) { showMsg('msg-metodo', 'Error: ' + error.message, 'err'); return; }
     showMsg('msg-metodo', '¡Guardado!', 'ok');
+    _nombresMetodo = null;   // que Solicitudes/Reporte tomen el nombre nuevo
     abrirNuevoMetodo();
     cargarMetodos();
   });
@@ -7117,6 +7130,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   async function cargarReporte() {
     const miReqId = ++repReqId;
+    await cargarNombresMetodo();
     const fechaDesde = document.getElementById('rep-fecha-desde').value;
     const fechaHasta = document.getElementById('rep-fecha-hasta').value;
     let desde, hasta;
@@ -7210,7 +7224,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         <div><b>${s.nombre ?? '—'}</b></div>
         <div><span style="background:${color}18;color:${color};font-weight:700;font-size:11px;padding:2px 8px;border-radius:99px">${conceptoLabel(s.plan)}</span></div>
         <div><b style="color:${color}">$${parseFloat(s.monto||0).toFixed(2)}</b></div>
-        <div style="font-size:12px;color:var(--muted)">${s.metodo_pago ?? '—'}</div>
+        <div style="font-size:12px;color:var(--muted)">${s.metodo_pago ? nombreMetodo(s.metodo_pago) : '—'}</div>
         <div style="font-size:12px;color:var(--muted)">${fecha}</div>
         <div style="font-size:12px;color:var(--muted)">${s.referencia ?? '—'}</div>
       `;
