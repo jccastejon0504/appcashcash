@@ -3568,7 +3568,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const precio = t.tipo === 'pro' && precioPro ? ` por $${precioPro} al mes` : '';
     if (!cuando) return `Hola 👋 Te escribimos de CashCash. Tu tienda *${t.nombre}* está pausada porque venció su plan y tus clientes ya no ven tu catálogo. Renueva${precio} desde la app en Mi Tienda → Planes y vuelve a aparecer al instante. ¿Te ayudamos?`;
     if (t.prueba_gratis) return `Hola 👋 Te escribimos de CashCash. La prueba gratis de ${plan} de *${t.nombre}* termina ${cuando}. Para seguir vendiendo con todo${precio}, renueva desde la app en Mi Tienda → Planes. ¿Te ayudamos con el pago?`;
-    return `Hola 👋 Te escribimos de CashCash. El ${plan} de tu tienda *${t.nombre}* vence ${cuando}. Renueva${precio} desde la app en Mi Tienda → Planes para que tus clientes sigan viendo tu catálogo. ¿Te ayudamos?`;
+    return `Hola 👋 Te escribimos de CashCash. ${t.tipo === 'pro' ? 'Tu Tienda Pro' : `El ${plan} de tu tienda`} *${t.nombre}* vence ${cuando}. Renueva${precio} desde la app en Mi Tienda → Planes para que tus clientes sigan viendo tu catálogo. ¿Te ayudamos?`;
   }
 
   async function cargarPorVencer() {
