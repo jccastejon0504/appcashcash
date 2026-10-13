@@ -1697,7 +1697,8 @@
                   <label>Plan a otorgar</label>
                   <select id="promo-plan">
                     <option value="basico">Básico</option>
-                    <option value="pro">Medio / Pro</option>
+                    <option value="medio">Medio</option>
+                    <option value="pro">Pro</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -1755,6 +1756,18 @@
             </thead>
             <tbody id="promo-lotes-body"></tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px">
+        <div class="card-header"><h2>Botón en la app</h2></div>
+        <div class="card-body">
+          <div class="toggle-row">
+            <span>Mostrar "¿Tienes un código de bienvenida?" en Unirse como Socio</span>
+            <label class="toggle"><input type="checkbox" id="promo-boton-activo" checked onchange="guardarBotonPromoApp()" /><span class="slider"></span></label>
+          </div>
+          <span style="font-size:11px;color:var(--muted);display:block;margin-top:8px">Apagado: el botón no aparece en la app y nadie puede canjear códigos. Se guarda al instante. Funciona desde la próxima versión de la app; las versiones anteriores siempre lo muestran.</span>
+          <span class="msg" id="promo-msg-boton"></span>
         </div>
       </div>
     </div>
@@ -3235,6 +3248,26 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   let _planLoteActual = null;
   let _diasLoteActual = null;
 
+  // promo_lotes.plan: 'basico' | 'medio' | 'pro'.
+  function _nombrePlanPromo(plan) {
+    return ({ basico: 'Básico', medio: 'Medio', pro: 'Pro' })[plan] ?? plan;
+  }
+
+  // Switch del botón "¿Tienes un código de bienvenida?" de la app
+  // (config_app.codigo_bienvenida_activo; sin fila = encendido).
+  async function cargarBotonPromoApp() {
+    const { data } = await db.from('config_app').select('valor').eq('clave', 'codigo_bienvenida_activo').maybeSingle();
+    document.getElementById('promo-boton-activo').checked = data?.valor !== 'false';
+  }
+
+  async function guardarBotonPromoApp() {
+    const chk = document.getElementById('promo-boton-activo');
+    const msg = document.getElementById('promo-msg-boton');
+    const { error } = await db.from('config_app').upsert({ clave: 'codigo_bienvenida_activo', valor: chk.checked ? 'true' : 'false' }, { onConflict: 'clave' });
+    if (error) { chk.checked = !chk.checked; msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
+    msg.textContent = chk.checked ? '✓ Botón encendido.' : '✓ Botón apagado.'; msg.style.color = '#16a34a';
+  }
+
   async function generarLotePromo() {
     const campana   = document.getElementById('promo-campana').value.trim();
     const plan      = document.getElementById('promo-plan').value;
@@ -3373,7 +3406,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
     ctx.font = '800 52px Arial, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Plan ${plan === 'basico' ? 'Básico' : 'Medio / Pro'}`, 50, 265);
+    ctx.fillText(`Plan ${_nombrePlanPromo(plan)}`, 50, 265);
 
     ctx.font = '700 32px Arial, sans-serif';
     ctx.fillStyle = '#fff7ed';
@@ -3464,6 +3497,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   }
 
   async function cargarPromoCodigos() {
+    cargarBotonPromoApp();
     const { data, error } = await db.rpc('promo_lotes_resumen');
     const tabla = document.getElementById('promo-lotes-tabla');
     const vacio = document.getElementById('promo-lotes-empty');
@@ -3474,7 +3508,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     body.innerHTML = data.map(l => `
       <tr>
         <td>${l.campana}</td>
-        <td>${l.plan === 'basico' ? 'Básico' : 'Medio/Pro'}</td>
+        <td>${_nombrePlanPromo(l.plan)}</td>
         <td>${l.dias_gratis}</td>
         <td>${l.dias_vencimiento ? l.dias_vencimiento + 'd' : '—'}</td>
         <td>${l.usados} / ${l.cantidad}</td>
@@ -4154,11 +4188,13 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         const hoy = new Date();
         let fechaVenc = null;
         let diasGratisPromo = null;
+        let planPromo = null;
         if (sol.codigo_promocional) {
           // Código de bienvenida/promoción: los días de cortesía vienen del
           // lote, no del ciclo normal de facturación (config_app dias_*).
           const { data: promo } = await db.rpc('promo_codigo_detalle', { p_codigo: sol.codigo_promocional });
           diasGratisPromo = promo?.[0]?.dias_gratis ?? 90;
+          planPromo = promo?.[0]?.plan ?? null;
           fechaVenc = new Date(hoy.getTime() + diasGratisPromo * 24 * 60 * 60 * 1000).toISOString();
         } else if (sol.plan === 'gratis') {
           const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
@@ -4193,9 +4229,12 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         // 'upgrade_pro' = renovación que además sube la tienda a Pro real (viene de planes-app.html,
         // registro de negocio en iOS que no permite renovar a Pro real de otro modo).
         const esRenovacionComoSea = sol.tipo === 'renovacion' || sol.tipo === 'upgrade_pro';
-        // Con código promocional, sol.plan ya trae exactamente lo que el código
-        // otorga ('basico'/'pro') — no aplica la regla de "Medio queda en basico".
-        const tipoSocio = sol.codigo_promocional ? sol.plan : (sol.tipo === 'registro_pro' ? 'pro' : 'basico');
+        // Con código promocional manda el plan del lote: 'pro' crea una tienda
+        // Pro; 'medio' queda como cualquier Medio (tipo 'basico' con plan 'pro').
+        // Si el lote ya no existe, se usa sol.plan como antes.
+        const tipoSocio = sol.codigo_promocional
+          ? (planPromo === 'medio' ? 'basico' : (planPromo ?? sol.plan))
+          : (sol.tipo === 'registro_pro' ? 'pro' : 'basico');
 
         // Buscar socio_comercial: para renovaciones usar socio_id directo; sino buscar por teléfono+nombre
         const tel = telClean;
