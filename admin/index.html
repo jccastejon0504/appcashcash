@@ -4210,6 +4210,9 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           const { data: promo } = await db.rpc('promo_codigo_detalle', { p_codigo: sol.codigo_promocional });
           diasGratisPromo = promo?.[0]?.dias_gratis ?? 90;
           planPromo = promo?.[0]?.plan ?? null;
+          // El código vale solo para su plan: la tienda queda con el plan del
+          // lote aunque la solicitud haya llegado con otro (Medio = plan 'pro').
+          if (planPromo) sol.plan = planPromo === 'medio' ? 'pro' : planPromo;
           fechaVenc = new Date(hoy.getTime() + diasGratisPromo * 24 * 60 * 60 * 1000).toISOString();
         } else if (sol.plan === 'gratis') {
           const { data: cfg } = await db.from('config_app').select('valor').eq('clave','gratis_fecha_fin').single();
