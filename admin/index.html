@@ -3279,8 +3279,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const chk = document.getElementById(`promo-activo-${plan}`);
     const msg = document.getElementById('promo-msg-boton');
     const { error } = await db.from('config_app').upsert({ clave: `codigo_bienvenida_${plan}_activo`, valor: chk.checked ? 'true' : 'false' }, { onConflict: 'clave' });
-    if (error) { chk.checked = !chk.checked; msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
-    msg.textContent = `✓ Códigos de plan ${_nombrePlanPromo(plan)} ${chk.checked ? 'encendidos' : 'apagados'}.`; msg.style.color = '#16a34a';
+    if (error) { chk.checked = !chk.checked; msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
+    msg.textContent = `✓ Códigos de plan ${_nombrePlanPromo(plan)} ${chk.checked ? 'encendidos' : 'apagados'}.`; msg.className = 'msg ok';
   }
 
   async function generarLotePromo() {
@@ -3292,16 +3292,16 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const vence     = venceStr ? parseInt(venceStr, 10) : null;
     const btn = document.getElementById('promo-btn-generar');
     const msg = document.getElementById('promo-msg-generar');
-    if (!campana) { msg.textContent = 'Ponle un nombre a la campaña.'; msg.style.color = '#ef4444'; return; }
-    if (!dias || dias <= 0 || !cantidad || cantidad <= 0) { msg.textContent = 'Días y cantidad deben ser mayores a 0.'; msg.style.color = '#ef4444'; return; }
-    if (vence !== null && (!Number.isInteger(vence) || vence <= 0)) { msg.textContent = 'Los días de vencimiento deben ser mayores a 0 (o déjalo vacío para que no venza).'; msg.style.color = '#ef4444'; return; }
-    btn.disabled = true; msg.textContent = 'Generando…'; msg.style.color = 'var(--muted)';
+    if (!campana) { msg.textContent = 'Ponle un nombre a la campaña.'; msg.className = 'msg err'; return; }
+    if (!dias || dias <= 0 || !cantidad || cantidad <= 0) { msg.textContent = 'Días y cantidad deben ser mayores a 0.'; msg.className = 'msg err'; return; }
+    if (vence !== null && (!Number.isInteger(vence) || vence <= 0)) { msg.textContent = 'Los días de vencimiento deben ser mayores a 0 (o déjalo vacío para que no venza).'; msg.className = 'msg err'; return; }
+    btn.disabled = true; msg.textContent = 'Generando…'; msg.className = 'msg ok';
     const { data, error } = await db.rpc('promo_generar_lote', {
       p_campana: campana, p_plan: plan, p_dias_gratis: dias, p_cantidad: cantidad, p_dias_vencimiento: vence,
     });
     btn.disabled = false;
-    if (error) { msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
-    msg.textContent = `✓ ${data.length} códigos generados.`; msg.style.color = '#16a34a';
+    if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
+    msg.textContent = `✓ ${data.length} códigos generados.`; msg.className = 'msg ok';
     _renderCodigosLista(data, plan, dias);
     await cargarPromoCodigos();
   }
