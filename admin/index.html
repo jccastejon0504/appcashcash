@@ -1774,7 +1774,7 @@
             <span>Códigos de plan Pro</span>
             <label class="toggle"><input type="checkbox" id="promo-activo-pro" checked onchange="guardarBotonPromoApp('pro')" /><span class="slider"></span></label>
           </div>
-          <span style="font-size:11px;color:var(--muted);display:block">Con un plan apagado, sus códigos no se pueden canjear en la app (sale "código no válido"); los de los planes encendidos siguen funcionando. Se guarda al instante. Con los tres apagados, el botón "¿Tienes un código de bienvenida?" desaparece de la app (desde la próxima versión; en las anteriores el botón se ve, pero ningún código funciona).</span>
+          <span style="font-size:11px;color:var(--muted);display:block">Con un plan apagado, sus códigos no se pueden canjear en la app (sale "código no válido"); los de los planes encendidos siguen funcionando. Se guarda al instante. El botón "¿Tienes un código de bienvenida?" desaparece de Unirse como Socio con Básico y Medio apagados, y de Tienda Pro con Pro apagado (desde la próxima versión; en las anteriores el botón se ve, pero el código no funciona).</span>
           <span class="msg" id="promo-msg-boton"></span>
         </div>
       </div>
@@ -4174,7 +4174,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     document.querySelectorAll(`[onclick*="cambiarEstado('${id}'"]`).forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
     try {
     // Obtener datos de la solicitud antes de actualizar
-    const { data: solPrev } = await db.from('solicitudes').select('telefono,whatsapp').eq('id', id).single();
+    const { data: solPrev } = await db.from('solicitudes').select('telefono,whatsapp,estado').eq('id', id).single();
     // Actualizar estado y notas en una sola operación
     const updateData = { estado };
     if (notas !== null) updateData.notas = notas;
@@ -4208,7 +4208,26 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           // Código de bienvenida/promoción: los días de cortesía vienen del
           // lote, no del ciclo normal de facturación (config_app dias_*).
           const { data: promo } = await db.rpc('promo_codigo_detalle', { p_codigo: sol.codigo_promocional });
-          diasGratisPromo = promo?.[0]?.dias_gratis ?? 90;
+          // El código tiene que estar canjeado por ESTA solicitud. Si quedó
+          // libre (p. ej. la solicitud se rechazó y ahora se aprueba), se
+          // canjea aquí; si no existe o lo usó otra, no se regala el plan.
+          const det = promo?.[0];
+          let motivoPromo = null;
+          if (!det) motivoPromo = 'ya no existe (¿se eliminó el lote?)';
+          else if (det.solicitud_id !== id) {
+            if (det.usado) motivoPromo = 'ya fue usado por otra solicitud';
+            else {
+              const { data: canjeado } = await db.rpc('promo_canjear', { p_codigo: sol.codigo_promocional, p_solicitud_id: id });
+              if (!canjeado) motivoPromo = 'está vencido (puedes renovarlo en Códigos Promocionales → Ver códigos)';
+            }
+          }
+          if (motivoPromo) {
+            await db.from('solicitudes').update({ estado: solPrev?.estado ?? 'pendiente' }).eq('id', id);
+            alert(`No se aprobó: el código ${sol.codigo_promocional} ${motivoPromo}.`);
+            cargarSolicitudes();
+            return;
+          }
+          diasGratisPromo = det.dias_gratis ?? 90;
           planPromo = promo?.[0]?.plan ?? null;
           // El código vale solo para su plan: la tienda queda con el plan del
           // lote aunque la solicitud haya llegado con otro (Medio = plan 'pro').
