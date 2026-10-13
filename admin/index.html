@@ -1760,13 +1760,21 @@
       </div>
 
       <div class="card" style="margin-top:24px">
-        <div class="card-header"><h2>Botón en la app</h2></div>
-        <div class="card-body">
+        <div class="card-header"><h2>Códigos activos en la app</h2></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
           <div class="toggle-row">
-            <span>Mostrar "¿Tienes un código de bienvenida?" en Unirse como Socio</span>
-            <label class="toggle"><input type="checkbox" id="promo-boton-activo" checked onchange="guardarBotonPromoApp()" /><span class="slider"></span></label>
+            <span>Códigos de plan Básico</span>
+            <label class="toggle"><input type="checkbox" id="promo-activo-basico" checked onchange="guardarBotonPromoApp('basico')" /><span class="slider"></span></label>
           </div>
-          <span style="font-size:11px;color:var(--muted);display:block;margin-top:8px">Apagado: el botón no aparece en la app y nadie puede canjear códigos. Se guarda al instante. Funciona desde la próxima versión de la app; las versiones anteriores siempre lo muestran.</span>
+          <div class="toggle-row">
+            <span>Códigos de plan Medio</span>
+            <label class="toggle"><input type="checkbox" id="promo-activo-medio" checked onchange="guardarBotonPromoApp('medio')" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Códigos de plan Pro</span>
+            <label class="toggle"><input type="checkbox" id="promo-activo-pro" checked onchange="guardarBotonPromoApp('pro')" /><span class="slider"></span></label>
+          </div>
+          <span style="font-size:11px;color:var(--muted);display:block">Con un plan apagado, sus códigos no se pueden canjear en la app (sale "código no válido"); los de los planes encendidos siguen funcionando. Se guarda al instante. Con los tres apagados, el botón "¿Tienes un código de bienvenida?" desaparece de la app (desde la próxima versión; en las anteriores el botón se ve, pero ningún código funciona).</span>
           <span class="msg" id="promo-msg-boton"></span>
         </div>
       </div>
@@ -3253,19 +3261,26 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     return ({ basico: 'Básico', medio: 'Medio', pro: 'Pro' })[plan] ?? plan;
   }
 
-  // Switch del botón "¿Tienes un código de bienvenida?" de la app
-  // (config_app.codigo_bienvenida_activo; sin fila = encendido).
+  // Un switch por plan (config_app.codigo_bienvenida_{plan}_activo; sin fila =
+  // encendido). Apagado: promo_validar rechaza los códigos de ese plan. Con
+  // los tres apagados la app oculta "¿Tienes un código de bienvenida?".
+  const _PLANES_PROMO = ['basico', 'medio', 'pro'];
+
   async function cargarBotonPromoApp() {
-    const { data } = await db.from('config_app').select('valor').eq('clave', 'codigo_bienvenida_activo').maybeSingle();
-    document.getElementById('promo-boton-activo').checked = data?.valor !== 'false';
+    const { data } = await db.from('config_app').select('clave,valor')
+      .in('clave', _PLANES_PROMO.map(p => `codigo_bienvenida_${p}_activo`));
+    const map = Object.fromEntries((data ?? []).map(r => [r.clave, r.valor]));
+    _PLANES_PROMO.forEach(p => {
+      document.getElementById(`promo-activo-${p}`).checked = map[`codigo_bienvenida_${p}_activo`] !== 'false';
+    });
   }
 
-  async function guardarBotonPromoApp() {
-    const chk = document.getElementById('promo-boton-activo');
+  async function guardarBotonPromoApp(plan) {
+    const chk = document.getElementById(`promo-activo-${plan}`);
     const msg = document.getElementById('promo-msg-boton');
-    const { error } = await db.from('config_app').upsert({ clave: 'codigo_bienvenida_activo', valor: chk.checked ? 'true' : 'false' }, { onConflict: 'clave' });
+    const { error } = await db.from('config_app').upsert({ clave: `codigo_bienvenida_${plan}_activo`, valor: chk.checked ? 'true' : 'false' }, { onConflict: 'clave' });
     if (error) { chk.checked = !chk.checked; msg.textContent = 'Error: ' + error.message; msg.style.color = '#ef4444'; return; }
-    msg.textContent = chk.checked ? '✓ Botón encendido.' : '✓ Botón apagado.'; msg.style.color = '#16a34a';
+    msg.textContent = `✓ Códigos de plan ${_nombrePlanPromo(plan)} ${chk.checked ? 'encendidos' : 'apagados'}.`; msg.style.color = '#16a34a';
   }
 
   async function generarLotePromo() {
