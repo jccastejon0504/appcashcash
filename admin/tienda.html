@@ -1347,7 +1347,11 @@
     }
 
     if (!s) return mostrarError('Tienda no encontrada', 'Este link ya no está disponible.');
-    if (s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date()) {
+    // fecha_vencimiento (AAAA-MM-DD) vale hasta el final de ese día en Venezuela;
+    // new Date('AAAA-MM-DD') es medianoche UTC (20:00 del día anterior) y la
+    // daba por vencida 4 h antes de empezar su último día.
+    const hoyVe = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
+    if (s.fecha_vencimiento && s.fecha_vencimiento.slice(0, 10) < hoyVe) {
       return mostrarError('Tienda no disponible', 'Esta tienda no tiene su membresía activa en este momento.');
     }
 
