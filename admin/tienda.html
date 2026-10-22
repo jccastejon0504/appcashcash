@@ -240,6 +240,11 @@
       font-size: 10px; font-weight: 700;
       padding: 2px 7px; border-radius: 10px;
     }
+    .prod-oferta-col {
+      position: absolute; top: 8px; left: 8px; z-index: 2;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    }
+    .prod-oferta-col .prod-oferta-overlay { position: static; }
     .prod-oferta-overlay {
       position: absolute; top: 8px; left: 8px; z-index: 2;
       display: flex; align-items: center; gap: 3px;
@@ -1138,17 +1143,27 @@
   // habilitado para el descuento de categoría; sin `metodo` alcanza con que
   // al menos un método esté habilitado. Pago Móvil y Transferencia se tratan
   // como un solo método "bs".
+  // % que le toca a Bs en una oferta: las nuevas guardan su propio % en Bs
+  // (pct_bs / oferta_pct_bs); las viejas (null) usan el mismo % si 'bs' está
+  // entre los métodos.
+  function pctBsDeOferta(pct, metodos, pctBs) {
+    if (pctBs != null) return pctBs > 0 ? Number(pctBs) : 0;
+    return metodos.includes('bs') ? pct : 0;
+  }
+
+  // Igual que src/features/tienda/models/promociones.ts de la app nativa.
+  // Sin `metodo` da el % en dólares; el de Bs se pide con 'pago_movil'.
   function descuentoProductoPct(item, promo, metodo) {
     const esBs = metodo === 'pago_movil' || metodo === 'transferencia';
+    const pctDe = (pct, metodosActivos, pctBs) => {
+      if (esBs) return pctBsDeOferta(pct, metodosActivos, pctBs);
+      if (metodo) return metodosActivos.includes(metodo) ? pct : 0;
+      return metodosActivos.some(m => m !== 'bs') ? pct : 0;
+    };
     // Oferta puntual de este producto (Agregar fotos catálogo, app nativa):
     // gana siempre sobre la promo general de la tienda ("todos"/"categoría").
     if (item.oferta_activa && item.oferta_pct) {
-      const metodosActivos = item.oferta_metodos || [];
-      if (metodo) {
-        const clave = esBs ? 'bs' : metodo;
-        return metodosActivos.includes(clave) ? item.oferta_pct : 0;
-      }
-      return metodosActivos.length > 0 ? item.oferta_pct : 0;
+      return pctDe(Number(item.oferta_pct), item.oferta_metodos || [], item.oferta_pct_bs);
     }
     if (!promo) return 0;
     if (promo.tipo_activo === 'todos') {
@@ -1158,14 +1173,22 @@
     if (promo.tipo_activo === 'categoria' && item.categoria_id) {
       const d = (promo.descuentos_categoria || []).find(d => d.categoria_id === item.categoria_id && d.activo);
       if (!d) return 0;
-      const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
-      if (metodo) {
-        const clave = esBs ? 'bs' : metodo;
-        return metodosActivos.includes(clave) ? (d.pct || 0) : 0;
-      }
-      return metodosActivos.length > 0 ? (d.pct || 0) : 0;
+      return pctDe(d.pct || 0, d.metodos ?? ['zelle', 'usdt'], d.pct_bs);
     }
     return 0;
+  }
+
+  // Etiquetas de oferta de la foto: una si $ y Bs tienen el mismo %, si no
+  // una por moneda.
+  function etiquetasOferta(item) {
+    const usd = descuentoProductoPct(item, _promo);
+    const bs = Math.max(metodoBsGlobalPct(), descuentoProductoPct(item, _promo, 'pago_movil'));
+    const tieneBs = !!item.precio_bs || bs > 0;
+    if (usd > 0 && bs > 0 && usd === bs) return ['-' + usd + '%'];
+    const out = [];
+    if (usd > 0) out.push(tieneBs ? '-' + usd + '% en $' : '-' + usd + '%');
+    if (bs > 0) out.push('-' + bs + '% en Bs');
+    return out;
   }
 
   function precioConDescuento(precio, pct) {
@@ -1249,6 +1272,7 @@
     const efectivoElegible = descuentoProductoPct(item, _promo, 'efectivo') > 0;
     const zelleElegible    = descuentoProductoPct(item, _promo, 'zelle') > 0;
     const usdtElegible      = descuentoProductoPct(item, _promo, 'usdt') > 0;
+    const euroElegible      = descuentoProductoPct(item, _promo, 'euro') > 0;
 
     let html = `<div class="${cls.precio}">$${precioDesc ?? item.precio}`;
     if (precioDesc != null) {
@@ -1260,20 +1284,24 @@
     html += `</div>`;
 
     const bsMostrado = precioBs ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
+    const bsOriginalCalc = pctBs > 0 ? bsDesdeUsd(item.precio, item.precio_bs, 0) : null;
+    // Sin tasa BCV no se puede calcular el descuento en Bs: no se tacha nada.
+    const bsOriginal = bsOriginalCalc != null && bsOriginalCalc !== precioBs ? bsOriginalCalc : null;
+    const fmtBsNum = v => v.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (bsMostrado != null) {
-      html += `<div class="${cls.bs}">Bs. ${bsMostrado.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      html += `<div class="${cls.bs}"${bsOriginal != null ? ' style="color:var(--text);font-weight:700"' : ''}>Bs. ${fmtBsNum(bsMostrado)}`;
+      if (bsOriginal != null) {
+        html += ` <span class="${cls.tachado}" style="font-size:.85em">Bs. ${fmtBsNum(bsOriginal)}</span>`;
+        if (tam === 'modal') html += ` <span class="${cls.badge}">-${pctBs}%</span>`;
+      }
       if (precioDesc != null && pctBs <= 0) html += ` &nbsp;<span class="${cls.noAplica}">No aplica oferta${tam === 'modal' ? ' (Bs)' : ''}</span>`;
       html += `</div>`;
     }
 
     const chips = [];
     if (precioDesc != null) {
-      if (pctBs <= 0) {
-        if (tieneMetodo('efectivo') && efectivoElegible) chips.push('$');
-        if (tieneMetodo('euro')) chips.push('€');
-      } else {
-        chips.push('Bs');
-      }
+      if (tieneMetodo('efectivo') && efectivoElegible) chips.push('$');
+      if (tieneMetodo('euro') && euroElegible) chips.push('€');
       if (tieneMetodo('usdt') && usdtElegible) chips.push('USDT');
       if (tieneMetodo('zelle') && zelleElegible) chips.push('Zelle');
     } else {
@@ -1444,7 +1472,7 @@
       : _galeriaDisponible;
     items.forEach(item => {
       const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
-      const descPctGrid = descuentoProductoPct(item, _promo);
+      const etiquetasGrid = etiquetasOferta(item);
       const div = document.createElement('div');
       div.className = 'prod-card';
       div.dataset.id = item.id;
@@ -1454,7 +1482,7 @@
           ${item.imagen
             ? `<img class="prod-img" src="${item.imagen}" alt="${item.titulo ?? ''}" loading="lazy" />`
             : `<div class="prod-placeholder">📦</div>`}
-          ${descPctGrid > 0 ? `<div class="prod-oferta-overlay">🏷️ -${descPctGrid}%</div>` : ''}
+          ${etiquetasGrid.length ? `<div class="prod-oferta-col">${etiquetasGrid.map(t => `<div class="prod-oferta-overlay">🏷️ ${t}</div>`).join('')}</div>` : ''}
           ${imgs.length > 1 ? `<div class="prod-badge-imgs">+${imgs.length} fotos</div>` : ''}
         </div>
         <div class="prod-info">
@@ -1620,7 +1648,7 @@
         : (precioWa ? ` ($${precioWa})` : '');
       const bsMostradoWa = precioBsWa ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
       const bsTxt = bsMostradoWa != null
-        ? `\nBs. ${bsMostradoWa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${descPctWa > 0 && pctBsWa <= 0 ? ' (no aplica oferta)' : ''}`
+        ? `\nBs. ${bsMostradoWa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${pctBsWa > 0 ? ` (-${pctBsWa}% OFERTA)` : (descPctWa > 0 ? ' (no aplica oferta)' : '')}`
         : '';
       // El link va al final del mensaje: es lo unico que hace que WhatsApp
       // muestre una vista previa con la foto del producto al enviarlo.

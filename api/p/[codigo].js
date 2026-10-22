@@ -108,11 +108,12 @@ function descuentoProductoPct(item, promo, metodo) {
     const d = (promo.descuentos_categoria || []).find(d => d.categoria_id === item.categoria_id && d.activo);
     if (!d) return 0;
     const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
-    if (metodo) {
-      const clave = esBs ? 'bs' : metodo;
-      return metodosActivos.includes(clave) ? (d.pct || 0) : 0;
+    if (esBs) {
+      if (d.pct_bs != null) return d.pct_bs > 0 ? d.pct_bs : 0;
+      return metodosActivos.includes('bs') ? (d.pct || 0) : 0;
     }
-    return metodosActivos.length > 0 ? (d.pct || 0) : 0;
+    if (metodo) return metodosActivos.includes(metodo) ? (d.pct || 0) : 0;
+    return metodosActivos.some(m => m !== 'bs') ? (d.pct || 0) : 0;
   }
   return 0;
 }
