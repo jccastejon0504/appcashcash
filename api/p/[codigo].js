@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const rp = await fetch(
-      `${SUPABASE_URL}/rest/v1/galeria_items?codigo=eq.${encodeURIComponent(codigo)}&select=id,titulo,imagen,precio,precio_bs,categoria_id,socio_id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/galeria_items?codigo=eq.${encodeURIComponent(codigo)}&select=id,titulo,imagen,precio,precio_bs,categoria_id,socio_id,oferta_activa,oferta_pct,oferta_metodos,oferta_pct_bs&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const dp = await rp.json();
@@ -34,6 +34,12 @@ module.exports = async function handler(req, res) {
     const dpr = await rpr.json();
     const promo = Array.isArray(dpr) && dpr.length > 0 ? dpr[0] : null;
 
+
+    const rmp = await fetch(
+      `${SUPABASE_URL}/rest/v1/metodos_pago_tienda?tienda_id=eq.${encodeURIComponent(producto.socio_id)}&activo=eq.true&select=tipo,oferta_activa,oferta_pct`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const metodos = await rmp.json().catch(() => []);
     const descPct = descuentoProductoPct(producto, promo);
     const precioDesc = descPct > 0 ? precioConDescuento(producto.precio, descPct) : null;
 
@@ -41,9 +47,7 @@ module.exports = async function handler(req, res) {
     const precioTxt = producto.precio
       ? (precioDesc != null ? `$${precioDesc} (antes $${producto.precio}, -${descPct}%)` : `$${producto.precio}`)
       : null;
-    const bsTxt = producto.precio_bs
-      ? `Bs. ${producto.precio_bs}${precioDesc != null ? ' (no aplica oferta)' : ''}`
-      : null;
+    const bsTxt = textoBs(producto, promo, Array.isArray(metodos) ? metodos : [], precioDesc != null);
     // Catálogo pausado (el dueño está cambiando precios): sin precio viejo.
     const desc     = tienda.catalogo_pausado
       ? `${tienda.nombre} está actualizando su catálogo`
@@ -97,25 +101,51 @@ function e(s) {
 // Misma logica que descuentoProductoPct/precioConDescuento en admin/tienda.html
 // y src/features/tienda/models/promociones.ts de la app nativa — mantener
 // sincronizadas si cambia la regla de promociones.
+function pctBsDeOferta(pct, metodos, pctBs) {
+  if (pctBs != null) { const v = Number(pctBs); return v > 0 ? v : 0; }
+  return metodos.includes('bs') ? pct : 0;
+}
+
 function descuentoProductoPct(item, promo, metodo) {
-  if (!promo) return 0;
   const esBs = metodo === 'pago_movil' || metodo === 'transferencia';
+  const pctDe = (pct, metodosActivos, pctBs) => {
+    if (esBs) return pctBsDeOferta(pct, metodosActivos, pctBs);
+    if (metodo) return metodosActivos.includes(metodo) ? pct : 0;
+    return metodosActivos.some(m => m !== 'bs') ? pct : 0;
+  };
+  // Oferta propia del producto: gana sobre la de la tienda.
+  if (item.oferta_activa && Number(item.oferta_pct)) {
+    return pctDe(Number(item.oferta_pct), item.oferta_metodos || [], item.oferta_pct_bs);
+  }
+  if (!promo) return 0;
   if (promo.tipo_activo === 'todos') {
     if (esBs) return 0;
-    return promo.descuento_todos_pct || 0;
+    return Number(promo.descuento_todos_pct) || 0;
   }
   if (promo.tipo_activo === 'categoria' && item.categoria_id) {
     const d = (promo.descuentos_categoria || []).find(d => d.categoria_id === item.categoria_id && d.activo);
     if (!d) return 0;
-    const metodosActivos = d.metodos ?? ['zelle', 'usdt'];
-    if (esBs) {
-      if (d.pct_bs != null) return d.pct_bs > 0 ? d.pct_bs : 0;
-      return metodosActivos.includes('bs') ? (d.pct || 0) : 0;
-    }
-    if (metodo) return metodosActivos.includes(metodo) ? (d.pct || 0) : 0;
-    return metodosActivos.some(m => m !== 'bs') ? (d.pct || 0) : 0;
+    return pctDe(Number(d.pct) || 0, d.metodos ?? ['zelle', 'usdt'], d.pct_bs);
   }
   return 0;
+}
+
+// % en Bs: el mayor entre la oferta del producto/categoría en Bs y el de
+// Pago Móvil/Transferencia ("Oferta a todos los productos" en Bs).
+function pctBsProducto(item, promo, metodos) {
+  const m = (metodos || []).find(m => (m.tipo === 'pago_movil' || m.tipo === 'transferencia') && m.oferta_activa);
+  return Math.max(m ? Number(m.oferta_pct) || 0 : 0, descuentoProductoPct(item, promo, 'pago_movil'));
+}
+
+// "Bs. 9925.74 (antes Bs. 14179.63, -30%)" o "Bs. 14179.63 (no aplica oferta)".
+function textoBs(item, promo, metodos, hayOfertaUsd) {
+  if (!item.precio_bs) return null;
+  const pct = pctBsProducto(item, promo, metodos);
+  if (pct > 0) {
+    const desc = precioConDescuento(item.precio_bs, pct);
+    return `Bs. ${desc} (antes Bs. ${item.precio_bs}, -${pct}%)`;
+  }
+  return `Bs. ${item.precio_bs}${hayOfertaUsd ? ' (no aplica oferta)' : ''}`;
 }
 
 function precioConDescuento(precio, pct) {
