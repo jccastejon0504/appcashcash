@@ -1647,8 +1647,13 @@
         ? ` ~$${item.precio}~ *$${precioWa}* (-${descPctWa}% OFERTA)`
         : (precioWa ? ` ($${precioWa})` : '');
       const bsMostradoWa = precioBsWa ?? (item.precio_bs ? parseFloat(item.precio_bs) : null);
+      // Con oferta en Bs: igual que el dólar, precio completo tachado + precio de oferta + %.
+      const bsOriginalWa = pctBsWa > 0 ? bsDesdeUsd(item.precio, item.precio_bs, 0) : null;
+      const fmtBsWa = v => v.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const bsTxt = bsMostradoWa != null
-        ? `\nBs. ${bsMostradoWa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${pctBsWa > 0 ? ` (-${pctBsWa}% OFERTA)` : (descPctWa > 0 ? ' (no aplica oferta)' : '')}`
+        ? (pctBsWa > 0 && bsOriginalWa != null && bsOriginalWa !== bsMostradoWa
+            ? `\n~Bs. ${fmtBsWa(bsOriginalWa)}~ *Bs. ${fmtBsWa(bsMostradoWa)}* (-${pctBsWa}% OFERTA)`
+            : `\nBs. ${fmtBsWa(bsMostradoWa)}${pctBsWa > 0 ? ` (-${pctBsWa}% OFERTA)` : (descPctWa > 0 ? ' (no aplica oferta)' : '')}`)
         : '';
       // El link va al final del mensaje: es lo unico que hace que WhatsApp
       // muestre una vista previa con la foto del producto al enviarlo.
