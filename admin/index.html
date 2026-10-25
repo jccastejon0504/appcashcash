@@ -2188,6 +2188,12 @@
                   </div>
                 </div>
                 <div class="form-group">
+                  <label>Teléfono con captura de la app</label>
+                  <div id="cm-ed-capturas" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                  <label for="cm-ed-cap-file" style="font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 0">O sube otra captura (vertical, de la app)</label>
+                  <input type="file" id="cm-ed-cap-file" accept="image/*" onchange="cmSubirCaptura(this)" />
+                </div>
+                <div class="form-group">
                   <div style="display:flex;align-items:center;gap:8px"><label for="cm-ed-texto" style="flex:1;margin:0">Texto para Instagram</label><button type="button" class="btn btn-outline btn-sm" onclick="cmCopiar(cmLeerEditor())">Copiar</button></div>
                   <textarea id="cm-ed-texto" rows="9"></textarea>
                 </div>
@@ -5534,6 +5540,19 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   // ══════════════════════════════════════════════════════════════════════════
 
   const CM_DIM = { '45': { h: 450, px: '1080 × 1350', nombre: 'Feed 4:5' }, '916': { h: 640, px: '1080 × 1920', nombre: 'Historia 9:16' }, '11': { h: 360, px: '1080 × 1080', nombre: 'Cuadrado 1:1' } };
+  // Teléfono con una captura real de la app (archivos en admin/cm/).
+  // cm_publicaciones.captura: null = la de la plantilla, 'no' = sin teléfono,
+  // una clave de esta lista o la URL de una captura subida.
+  const CM_CAPTURAS = { inicio: 'Inicio', tienda: 'Tienda', catalogo: 'Subir productos', producto: 'Producto', web: 'Catálogo web', pedido: 'Pedido WhatsApp', cupones: 'Cupones', promociones: 'Promociones' };
+  const CM_CAP_DEFECTO = { oferta: 'web', pasos: 'catalogo', tip: 'tienda', fundadoras: 'inicio', producto: 'producto', tienda: 'tienda' };
+  // Medidas del teléfono por formato (en la escala de 360 px) y ancho que le queda al texto.
+  const CM_TEL = { '45': { w: 138, top: 96, r: -14, txt: 192 }, '916': { w: 160, top: 170, r: -16, txt: 180 }, '11': { w: 104, top: 60, r: -8, txt: 218 } };
+  function cmCapEfectiva(p) { return p.captura ?? CM_CAP_DEFECTO[p.tipo] ?? 'no'; }
+  function cmCapturaURL(p) {
+    const c = cmCapEfectiva(p);
+    if (/^https?:\/\//.test(c)) return c;
+    return CM_CAPTURAS[c] ? `/admin/cm/${c}.jpg` : null;
+  }
   const CM_TIPOS = {
     oferta:     { nombre: 'Oferta',               uso: 'Que pidan su código · 1 por semana',       etiqueta: 'Tienda Pro gratis 90 días', titulo: '¿Vendes por WhatsApp?', sub: 'Sube tu catálogo una vez y compártelo con un enlace. Tu cliente lo ve al toque, tenga o no la app.',
                   texto: '¿Vendes por WhatsApp o Instagram? 📲\n\nCon CashCash abres tu tienda online en minutos: subes tus productos una sola vez y compartes tu catálogo con un solo enlace.\n\n🎁 Las primeras 100 tiendas reciben su Tienda Pro gratis por 90 días.\n\n👉 Escríbenos por WhatsApp (enlace en la bio) y pide tu código.', hashtags: '#emprendimientovenezuela #emprendedoresvenezolanos #tiendaonline #ventasonline #negociolocal #cashcash' },
@@ -5700,33 +5719,44 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const px = n => `${Math.round(n * k * 10) / 10}px`;
     const alto = p.formato === '916';
     const largo = (p.titulo || '').length;
-    const tam = (largo > 32 ? 27 : largo > 22 ? 32 : 39) + (alto ? 4 : 0) - (p.formato === '11' ? 4 : 0);
+    const capUrl = cmCapturaURL(p);
+    const g = capUrl ? CM_TEL[p.formato] || CM_TEL['45'] : null;
+    const tamBase = (largo > 32 ? 27 : largo > 22 ? 32 : 39) + (alto ? 4 : 0) - (p.formato === '11' ? 4 : 0);
+    const sq = g && p.formato === '11'; // cuadrado con teléfono: todo un poco más compacto
+    const tam = g ? Math.round(tamBase * (sq ? 0.72 : 0.8)) : tamBase;
     const lineas = (p.subtitulo || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const telefono = g ? `
+        <div data-cm="tel" style="position:absolute;box-sizing:border-box;width:${px(g.w)};height:${px(g.w * 2.22)};top:${px(g.top)};right:${px(g.r)};transform:rotate(6deg);border-radius:${px(g.w * 0.135)};background:#1d1d1f;padding:${px(g.w * 0.033)};box-shadow:0 ${px(14)} ${px(28)} rgba(80,25,0,.45)">
+          <img src="${escTut(capUrl)}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;object-position:top;border-radius:${px(g.w * 0.105)};display:block" alt="">
+        </div>` : '';
+    const fotoTam = g ? 64 : 92;
     let cuerpo = '';
     if (t.foto) {
       const foto = p.imagen_url
-        ? `<img src="${escTut(p.imagen_url)}" crossorigin="anonymous" style="width:${px(92)};height:${px(92)};object-fit:cover;border-radius:${px(14)};flex-shrink:0;display:block" alt="">`
-        : `<div style="width:${px(92)};height:${px(92)};border-radius:${px(14)};background:#FFE3CC;flex-shrink:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${px(10)};font-weight:700;color:#8a3700">Foto</div>`;
+        ? `<img src="${escTut(p.imagen_url)}" crossorigin="anonymous" style="width:${px(fotoTam)};height:${px(fotoTam)};object-fit:cover;border-radius:${px(14)};flex-shrink:0;display:block" alt="">`
+        : `<div style="width:${px(fotoTam)};height:${px(fotoTam)};border-radius:${px(14)};background:#FFE3CC;flex-shrink:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${px(10)};font-weight:700;color:#8a3700">Foto</div>`;
       cuerpo = `<div data-cm="caja" style="background:#fff;border-radius:${px(18)};padding:${px(10)};display:flex;gap:${px(12)};align-items:center">${foto}
         <div style="display:flex;flex-direction:column;gap:${px(4)};min-width:0"><b style="font-size:${px(16)};color:#2B1606;line-height:1.2">${escTut(p.linea1)}</b><span style="font-size:${px(13)};color:#6B4A33">${escTut(p.linea2)}</span></div></div>`;
     } else if (p.tipo === 'pasos') {
-      cuerpo = `<div style="display:flex;flex-direction:column;gap:${px(8)}">${lineas.slice(0, 4).map((l, i) => `
-        <div data-cm="caja" style="background:#fff;border-radius:${px(16)};padding:${px(10)} ${px(12)};display:flex;gap:${px(10)};align-items:center">
-          <span style="width:${px(28)};height:${px(28)};border-radius:${px(14)};background:#E2621B;color:#fff;font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(15)};display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
-          <span style="font-size:${px(14)};font-weight:700;color:#2B1606;line-height:1.25">${escTut(l.replace(/^\d+[.)]\s*/, ''))}</span></div>`).join('')}</div>`;
+      const c = sq ? { gap: 5, pv: 5, ph: 9, n: 22, f: 12 } : g ? { gap: 6, pv: 7, ph: 10, n: 24, f: 12.5 } : { gap: 8, pv: 10, ph: 12, n: 28, f: 14 };
+      cuerpo = `<div style="display:flex;flex-direction:column;gap:${px(c.gap)}">${lineas.slice(0, 4).map((l, i) => `
+        <div data-cm="caja" style="background:#fff;border-radius:${px(16)};padding:${px(c.pv)} ${px(c.ph)};display:flex;gap:${px(c.ph - 2)};align-items:center">
+          <span style="width:${px(c.n)};height:${px(c.n)};border-radius:${px(c.n / 2)};background:#E2621B;color:#fff;font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(c.n * 0.54)};display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
+          <span style="font-size:${px(c.f)};font-weight:700;color:#2B1606;line-height:1.25">${escTut(l.replace(/^\d+[.)]\s*/, ''))}</span></div>`).join('')}</div>`;
     } else if (lineas.length) {
-      cuerpo = `<div data-cm="caja" style="background:#fff;border-radius:${px(18)};padding:${px(14)} ${px(16)};font-size:${px(15)};line-height:1.45;font-weight:600;color:#2B1606">${lineas.map(escTut).join('<br>')}</div>`;
+      cuerpo = `<div data-cm="caja" style="background:#fff;border-radius:${px(18)};padding:${px(sq ? 9 : g ? 12 : 14)} ${px(g ? 14 : 16)};font-size:${px(sq ? 13 : g ? 14 : 15)};line-height:${sq ? 1.35 : 1.45};font-weight:600;color:#2B1606">${lineas.map(escTut).join('<br>')}</div>`;
     }
     return `
-      <div style="position:relative;overflow:hidden;box-sizing:border-box;width:${px(360)};height:${px(dim.h)};padding:${px(22)};display:flex;flex-direction:column;gap:${px(12)};background:linear-gradient(160deg,#F9A96B 0%,#F08A3C 52%,#E2621B 100%);font-family:Inter,system-ui,sans-serif;${mini ? 'pointer-events:none;' : ''}">
+      <div style="position:relative;overflow:hidden;box-sizing:border-box;width:${px(360)};height:${px(dim.h)};padding:${px(sq ? 18 : 22)};display:flex;flex-direction:column;gap:${px(sq ? 6 : 12)};background:linear-gradient(160deg,#F9A96B 0%,#F08A3C 52%,#E2621B 100%);font-family:Inter,system-ui,sans-serif;${mini ? 'pointer-events:none;' : ''}">
         <div data-cm="b" data-a=".14" style="position:absolute;width:${px(230)};height:${px(230)};border-radius:50%;background:rgba(255,255,255,.14);top:${px(-70)};right:${px(-70)}"></div>
         <div data-cm="b" data-a=".12" style="position:absolute;width:${px(140)};height:${px(140)};border-radius:50%;background:rgba(255,255,255,.12);bottom:${px(110)};left:${px(-55)}"></div>
         <div data-cm="b" data-a=".16" style="position:absolute;width:${px(56)};height:${px(56)};border-radius:50%;background:rgba(255,255,255,.16);top:46%;right:${px(26)}"></div>
+        ${telefono}
         <div data-cm="logo" style="position:relative;display:flex;align-items:center;gap:${px(8)}">
           <img src="/admin/icon.png" style="width:${px(36)};height:${px(36)};border-radius:${px(10)};border:${px(2)} solid #fff;display:block" alt="">
           <div style="display:flex;flex-direction:column;line-height:1"><span style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(19)};color:#fff">CashCash</span><span style="font-size:${px(8)};font-weight:800;letter-spacing:${px(2)};color:#fff">VENEZUELA</span></div>
         </div>
-        <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:${px(14)}">
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:${px(sq ? 9 : 14)};${g ? `max-width:${px(g.txt)};` : ''}">
           ${p.etiqueta ? `<span data-cm="etq" style="align-self:flex-start;transform:rotate(-3deg);background:#FFB71B;color:#2B1606;font-weight:800;font-size:${px(13)};padding:${px(6)} ${px(14)};border-radius:999px">${escTut(p.etiqueta)}</span>` : ''}
           <div style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(tam)};line-height:1.03;color:#fff;text-shadow:0 ${px(2)} ${px(10)} rgba(120,40,0,.25)">${anim ? (p.titulo || '').split(/\s+/).filter(Boolean).map(w => `<span data-cm="w">${escTut(w)}</span>`).join(' ') : escTut(p.titulo)}</div>
           ${cuerpo}
@@ -5840,7 +5870,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       const lista = [...nodo.querySelectorAll('[data-cm]:not([data-cm="b"])')];
       const piezas = [];
       for (const [i, el] of lista.entries()) {
-        const r = rel(el), pad = 60;
+        const r = rel(el), pad = el.dataset.cm === 'tel' ? 140 : 60; // el teléfono lleva sombra grande
         const full = await foto(el, false);
         const sx = Math.max(0, Math.floor(r.x - pad)), sy = Math.max(0, Math.floor(r.y - pad));
         const sw = Math.min(W, Math.ceil(r.x + r.w + pad)) - sx, sh = Math.min(H, Math.ceil(r.y + r.h + pad)) - sy;
@@ -5862,6 +5892,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         let q;
         switch (x.tipo) {
           case 'logo': q = cmProg(t, 0.1 * f, 0.7 * f); return { a: q, dy: -30 * U * (1 - cmEaseOut(q)) };
+          case 'tel': q = cmProg(t, 1.4 * f, 1.0 * f); return { a: Math.min(1, q * 2), dx: 140 * U * (1 - cmEaseOut(q)) };
           case 'etq': q = cmProg(t, 1.0 * f, 0.8 * f); return { a: Math.min(1, q * 3), s: 0.2 + 0.8 * cmEaseBack(q), rot: -22 * (1 - cmEaseBack(q)) };
           case 'w': {
             const i = palabras.indexOf(x), n = palabras.length, ult = i === n - 1;
@@ -5896,7 +5927,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
           if (a <= 0.001) continue;
           const s = e.s ?? 1;
           ctx.globalAlpha = Math.min(1, a);
-          ctx.setTransform(1, 0, 0, 1, 0, e.dy || 0);
+          ctx.setTransform(1, 0, 0, 1, e.dx || 0, e.dy || 0);
           ctx.translate(x.cx, x.cy); ctx.rotate((e.rot || 0) * Math.PI / 180); ctx.scale(s, s); ctx.translate(-x.cx, -x.cy);
           ctx.drawImage(x.c, x.sx, x.sy);
         }
@@ -5956,7 +5987,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   // ── Editor ──
   function cmAbrirEditor(p) {
-    _cmEd = { id: p.id || '', tipo: p.tipo || 'oferta', formato: p.formato || '45', estado: p.estado || 'borrador' };
+    _cmEd = { id: p.id || '', tipo: p.tipo || 'oferta', formato: p.formato || '45', estado: p.estado || 'borrador', captura: p.captura ?? null };
+    document.getElementById('cm-ed-cap-file').value = '';
     document.getElementById('cm-vid-msg').style.display = 'none';
     document.getElementById('cm-ed-titulo-card').textContent = p.id ? 'Editar publicación' : 'Nueva publicación';
     document.getElementById('cm-ed-id').value = p.id || '';
@@ -5985,6 +6017,11 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     document.getElementById('cm-ed-formatos').innerHTML = Object.entries(CM_DIM).map(([k, d]) =>
       `<button type="button" class="cm-chip ${_cmEd.formato === k ? 'on' : ''}" aria-pressed="${_cmEd.formato === k}" onclick="cmElegirFormato('${k}')">${d.nombre}</button>`).join('');
     const t = CM_TIPOS[_cmEd.tipo];
+    const cap = cmCapEfectiva(_cmEd);
+    const subida = /^https?:///.test(cap);
+    document.getElementById('cm-ed-capturas').innerHTML = [...Object.entries(CM_CAPTURAS), ['no', 'Sin teléfono']].map(([k, n]) =>
+      `<button type="button" class="cm-chip ${cap === k ? 'on' : ''}" aria-pressed="${cap === k}" onclick="cmElegirCaptura('${k}')">${escTut(n)}</button>`).join('')
+      + (subida ? '<button type="button" class="cm-chip on" aria-pressed="true">Captura subida</button>' : '');
     document.getElementById('cm-ed-foto-box').style.display = t.foto ? 'flex' : 'none';
     document.getElementById('cm-ed-sub-box').style.display = t.foto ? 'none' : '';
     document.getElementById('cm-ed-sub-label').textContent = t.subLabel || 'Texto de apoyo (cada línea va en su renglón)';
@@ -6001,9 +6038,11 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     poner('cm-ed-linea2', antes.linea2, ahora.linea2);
     poner('cm-ed-texto', antes.texto, ahora.texto);
     poner('cm-ed-hashtags', antes.hashtags, ahora.hashtags);
+    if (_cmEd.captura === CM_CAP_DEFECTO[_cmEd.tipo]) _cmEd.captura = null;
     _cmEd.tipo = k;
     cmPintarChips(); cmPreview();
   }
+  function cmElegirCaptura(k) { _cmEd.captura = k === CM_CAP_DEFECTO[_cmEd.tipo] ? null : k; cmPintarChips(); cmPreview(); }
   function cmElegirFormato(k) { _cmEd.formato = k; cmPintarChips(); cmPreview(); }
 
   function cmLeerEditor() {
@@ -6012,7 +6051,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       fecha: v('cm-ed-fecha'), hora: v('cm-ed-hora') || '12:30', tipo: _cmEd.tipo, formato: _cmEd.formato,
       etiqueta: v('cm-ed-etiqueta').trim(), titulo: v('cm-ed-titulo').trim(), subtitulo: v('cm-ed-sub'),
       linea1: v('cm-ed-linea1').trim(), linea2: v('cm-ed-linea2').trim(), imagen_url: v('cm-ed-imagen') || null,
-      texto_ig: v('cm-ed-texto'), hashtags: v('cm-ed-hashtags').trim(),
+      texto_ig: v('cm-ed-texto'), hashtags: v('cm-ed-hashtags').trim(), captura: _cmEd.captura ?? null,
     };
   }
 
@@ -6035,6 +6074,20 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     document.getElementById('cm-ed-imagen').value = publicUrl;
     showMsg('cm-ed-msg', 'Foto lista', 'ok');
     cmPreview();
+  }
+
+  async function cmSubirCaptura(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `community/captura-${Date.now()}.${ext}`;
+    showMsg('cm-ed-msg', 'Subiendo captura…', 'ok');
+    const { error } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { showMsg('cm-ed-msg', 'Error al subir: ' + error.message, 'err'); return; }
+    const { data: { publicUrl } } = db.storage.from('socios comerciales').getPublicUrl(path);
+    _cmEd.captura = publicUrl;
+    showMsg('cm-ed-msg', 'Captura lista', 'ok');
+    cmPintarChips(); cmPreview();
   }
 
   async function cmGuardar(estado) {
