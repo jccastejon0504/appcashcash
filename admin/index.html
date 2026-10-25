@@ -15,6 +15,7 @@
   <!-- Community Manager: fuente de las publicaciones y exportar a PNG -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@500;600;700;800&display=swap">
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -159,6 +160,11 @@
     .cm-mini > div { transform: scale(.2); transform-origin: 0 0; }
     .cm-chip { min-height: 34px; padding: 0 12px; border-radius: 9px; border: 1.5px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--text); }
     .cm-chip.on { border-color: #E65E02; background: #FFF1E6; color: #8a3700; }
+    .cm-vid { width: 100%; max-width: 360px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+    .cm-vid-msg { font-size: 12px; font-weight: 700; color: #b84a00; }
+    .cm-vid-msg.ok { color: #166534; background: #dcfce7; border-radius: 8px; padding: 8px 10px; }
+    .cm-vid-bar { height: 8px; border-radius: 4px; background: #FFE3CC; overflow: hidden; margin-top: 6px; }
+    .cm-vid-bar > div { height: 100%; background: #E65E02; }
     .cm-dia-vacio { border: 1.5px dashed var(--border); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 
     /* ── Cards genéricas ──────────────────────────────────── */
@@ -2112,25 +2118,26 @@
           <div class="card">
             <div class="card-header"><h2>Nuevo lote de códigos</h2></div>
             <div class="card-body">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="cm-lote-canal">Canal</label>
-                  <select id="cm-lote-canal">
-                    <option value="IG">IG- Instagram</option>
-                    <option value="VISITA">VISITA- Visitas</option>
-                    <option value="FERIA">FERIA- Ferias</option>
-                    <option value="ADS">ADS- Anuncios</option>
-                  </select>
-                </div>
+              <div class="form-group">
+                <label for="cm-lote-canal">Canal</label>
+                <select id="cm-lote-canal" style="width:100%">
+                  <option value="IG">Instagram · IG-</option>
+                  <option value="VISITA">Visitas · VISITA-</option>
+                  <option value="FERIA">Ferias · FERIA-</option>
+                  <option value="ADS">Anuncios · ADS-</option>
+                </select>
+              </div>
+              <div class="form-grid" style="margin-top:12px">
                 <div class="form-group">
                   <label for="cm-lote-cantidad">Cantidad</label>
                   <input type="number" id="cm-lote-cantidad" value="10" min="1" max="100" />
                 </div>
+                <div class="form-group">
+                  <label for="cm-lote-vence">Días para canjear</label>
+                  <input type="number" id="cm-lote-vence" value="30" min="1" placeholder="No caduca" />
+                </div>
               </div>
-              <div class="form-group" style="margin-top:12px">
-                <label for="cm-lote-vence">Días para canjearlo (vacío = no caduca)</label>
-                <input type="number" id="cm-lote-vence" value="30" min="1" />
-              </div>
+              <div style="margin-top:4px;font-size:11px;color:var(--muted)">Días para canjear vacío = el código no caduca.</div>
               <div style="margin-top:12px;font-size:12px;color:#6B4A33;background:#FFF1E6;border-radius:8px;padding:8px 10px">Tienda Pro · 90 días gratis · campaña "Tiendas Fundadoras"</div>
               <div id="cm-lote-aviso" style="display:none;margin-top:10px;font-size:12px;color:#b45309;background:#fef3c7;border-radius:8px;padding:8px 10px">Los códigos Pro están <b>apagados</b> en Códigos Promocionales: la app los rechazará hasta que los enciendas.</div>
               <div class="btn-row">
@@ -2197,8 +2204,20 @@
           <div class="cm-col-side" style="flex-basis:420px;display:flex;flex-direction:column;align-items:center;gap:10px">
             <div style="font-size:12px;font-weight:700;color:var(--muted)" id="cm-ed-tam">Vista previa</div>
             <div id="cm-ed-preview"></div>
-            <button type="button" class="btn btn-primary" id="cm-ed-descargar" onclick="cmDescargar(cmLeerEditor(), this)">Descargar PNG</button>
-            <div style="font-size:11px;color:var(--muted);text-align:center;max-width:360px">Se descarga en tamaño real de Instagram con los colores y fuentes de la marca.</div>
+            <div class="cm-vid">
+              <div style="display:flex;gap:8px;width:100%">
+                <button type="button" class="btn btn-outline" id="cm-ed-descargar" style="flex:1" onclick="cmDescargar(cmLeerEditor(), this)">Descargar PNG</button>
+                <button type="button" class="btn btn-primary" id="cm-ed-video" style="flex:1" onclick="cmDescargarVideo(cmLeerEditor(), this)">Descargar video</button>
+              </div>
+              <div id="cm-vid-dur" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;color:var(--muted)">Duración del video</span>
+                <button type="button" class="cm-chip" data-d="8" aria-pressed="false" onclick="cmElegirDuracion(8)">8 s</button>
+                <button type="button" class="cm-chip on" data-d="10" aria-pressed="true" onclick="cmElegirDuracion(10)">10 s</button>
+                <button type="button" class="cm-chip" data-d="15" aria-pressed="false" onclick="cmElegirDuracion(15)">15 s</button>
+              </div>
+              <div id="cm-vid-msg" class="cm-vid-msg" role="status" style="display:none"></div>
+              <div style="font-size:11px;line-height:16px;color:var(--muted)">Se descarga en tamaño real de Instagram con los colores y fuentes de la marca. El video es MP4 sin sonido: la música la agregas en Instagram al subirlo.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -5522,7 +5541,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
                   texto: 'Abrir tu tienda online es así de fácil 👇\n\n1️⃣ Pide tu código por WhatsApp\n2️⃣ Sube tus productos con foto y precio\n3️⃣ Comparte tu catálogo y recibe pedidos\n\nVende al toque. 🚀 Pide tu código: enlace en la bio.', hashtags: '#catalogodigital #tiendaonline #emprendedorvenezolano #ventasonline #cashcashvenezuela #cashcash' },
     tip:        { nombre: 'Tip para emprendedores', uso: 'Ganar seguidores · 1 por semana',        etiqueta: 'Tip para emprendedores', titulo: '3 errores que te hacen perder ventas', sub: '❌ No poner precios\n❌ Catálogo desordenado\n❌ Responder tarde',
                   texto: '', hashtags: '#emprendimientovenezuela #consejosparaemprendedores #ventasonline #negociolocal #cashcash' },
-    fundadoras: { nombre: 'Tiendas Fundadoras',   uso: 'Urgencia de los 100 cupos',                etiqueta: 'Solo 100 cupos', titulo: '100 Tiendas Fundadoras', sub: '🎁 Tienda Pro gratis 90 días\n💰 Precio de fundador para siempre\n⭐ Sello en tu perfil\n📸 Te ayudamos con tu catálogo',
+    fundadoras: { nombre: 'Tiendas Fundadoras',   uso: 'Urgencia de los 100 cupos',                etiqueta: 'Solo 100 cupos', titulo: '100 Tiendas Fundadoras', sub: '🎁 Tienda Pro gratis 90 días\n⭐ Sello en tu perfil\n📸 Te ayudamos con tu catálogo',
                   texto: '', hashtags: '#emprendimientovenezuela #negociolocal #tiendaonline #emprendedorescaracas #cashcash' },
     producto:   { nombre: 'Producto destacado',   uso: 'Desde la semana 3 · con permiso de la tienda', etiqueta: 'Oferta en CashCash', titulo: 'Lo encuentras al toque', linea1: '[Nombre del producto]', linea2: '[Precio] · [Tienda]', foto: true,
                   texto: '', hashtags: '#tiendaonline #compralocal #ofertas #cashcash #cashcashvenezuela' },
@@ -5673,7 +5692,9 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   // ── La imagen ──
   // k = escala: 1 para la vista previa (360 px de ancho), 3 para el PNG (1080 px).
-  function cmPostHTML(p, k, mini) {
+  // data-cm marca las piezas que se animan en el video (no cambian el PNG).
+  // Con anim=true el título se parte en palabras para que entren una por una.
+  function cmPostHTML(p, k, mini, anim) {
     const t = CM_TIPOS[p.tipo] || CM_TIPOS.oferta;
     const dim = CM_DIM[p.formato] || CM_DIM['45'];
     const px = n => `${Math.round(n * k * 10) / 10}px`;
@@ -5686,35 +5707,60 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       const foto = p.imagen_url
         ? `<img src="${escTut(p.imagen_url)}" crossorigin="anonymous" style="width:${px(92)};height:${px(92)};object-fit:cover;border-radius:${px(14)};flex-shrink:0;display:block" alt="">`
         : `<div style="width:${px(92)};height:${px(92)};border-radius:${px(14)};background:#FFE3CC;flex-shrink:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${px(10)};font-weight:700;color:#8a3700">Foto</div>`;
-      cuerpo = `<div style="background:#fff;border-radius:${px(18)};padding:${px(10)};display:flex;gap:${px(12)};align-items:center">${foto}
+      cuerpo = `<div data-cm="caja" style="background:#fff;border-radius:${px(18)};padding:${px(10)};display:flex;gap:${px(12)};align-items:center">${foto}
         <div style="display:flex;flex-direction:column;gap:${px(4)};min-width:0"><b style="font-size:${px(16)};color:#2B1606;line-height:1.2">${escTut(p.linea1)}</b><span style="font-size:${px(13)};color:#6B4A33">${escTut(p.linea2)}</span></div></div>`;
     } else if (p.tipo === 'pasos') {
       cuerpo = `<div style="display:flex;flex-direction:column;gap:${px(8)}">${lineas.slice(0, 4).map((l, i) => `
-        <div style="background:#fff;border-radius:${px(16)};padding:${px(10)} ${px(12)};display:flex;gap:${px(10)};align-items:center">
+        <div data-cm="caja" style="background:#fff;border-radius:${px(16)};padding:${px(10)} ${px(12)};display:flex;gap:${px(10)};align-items:center">
           <span style="width:${px(28)};height:${px(28)};border-radius:${px(14)};background:#E2621B;color:#fff;font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(15)};display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
           <span style="font-size:${px(14)};font-weight:700;color:#2B1606;line-height:1.25">${escTut(l.replace(/^\d+[.)]\s*/, ''))}</span></div>`).join('')}</div>`;
     } else if (lineas.length) {
-      cuerpo = `<div style="background:#fff;border-radius:${px(18)};padding:${px(14)} ${px(16)};font-size:${px(15)};line-height:1.45;font-weight:600;color:#2B1606">${lineas.map(escTut).join('<br>')}</div>`;
+      cuerpo = `<div data-cm="caja" style="background:#fff;border-radius:${px(18)};padding:${px(14)} ${px(16)};font-size:${px(15)};line-height:1.45;font-weight:600;color:#2B1606">${lineas.map(escTut).join('<br>')}</div>`;
     }
     return `
       <div style="position:relative;overflow:hidden;box-sizing:border-box;width:${px(360)};height:${px(dim.h)};padding:${px(22)};display:flex;flex-direction:column;gap:${px(12)};background:linear-gradient(160deg,#F9A96B 0%,#F08A3C 52%,#E2621B 100%);font-family:Inter,system-ui,sans-serif;${mini ? 'pointer-events:none;' : ''}">
-        <div style="position:absolute;width:${px(230)};height:${px(230)};border-radius:50%;background:rgba(255,255,255,.14);top:${px(-70)};right:${px(-70)}"></div>
-        <div style="position:absolute;width:${px(140)};height:${px(140)};border-radius:50%;background:rgba(255,255,255,.12);bottom:${px(110)};left:${px(-55)}"></div>
-        <div style="position:absolute;width:${px(56)};height:${px(56)};border-radius:50%;background:rgba(255,255,255,.16);top:46%;right:${px(26)}"></div>
-        <div style="position:relative;display:flex;align-items:center;gap:${px(8)}">
+        <div data-cm="b" data-a=".14" style="position:absolute;width:${px(230)};height:${px(230)};border-radius:50%;background:rgba(255,255,255,.14);top:${px(-70)};right:${px(-70)}"></div>
+        <div data-cm="b" data-a=".12" style="position:absolute;width:${px(140)};height:${px(140)};border-radius:50%;background:rgba(255,255,255,.12);bottom:${px(110)};left:${px(-55)}"></div>
+        <div data-cm="b" data-a=".16" style="position:absolute;width:${px(56)};height:${px(56)};border-radius:50%;background:rgba(255,255,255,.16);top:46%;right:${px(26)}"></div>
+        <div data-cm="logo" style="position:relative;display:flex;align-items:center;gap:${px(8)}">
           <img src="/admin/icon.png" style="width:${px(36)};height:${px(36)};border-radius:${px(10)};border:${px(2)} solid #fff;display:block" alt="">
           <div style="display:flex;flex-direction:column;line-height:1"><span style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(19)};color:#fff">CashCash</span><span style="font-size:${px(8)};font-weight:800;letter-spacing:${px(2)};color:#fff">VENEZUELA</span></div>
         </div>
         <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:${px(14)}">
-          ${p.etiqueta ? `<span style="align-self:flex-start;transform:rotate(-3deg);background:#FFB71B;color:#2B1606;font-weight:800;font-size:${px(13)};padding:${px(6)} ${px(14)};border-radius:999px">${escTut(p.etiqueta)}</span>` : ''}
-          <div style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(tam)};line-height:1.03;color:#fff;text-shadow:0 ${px(2)} ${px(10)} rgba(120,40,0,.25)">${escTut(p.titulo)}</div>
+          ${p.etiqueta ? `<span data-cm="etq" style="align-self:flex-start;transform:rotate(-3deg);background:#FFB71B;color:#2B1606;font-weight:800;font-size:${px(13)};padding:${px(6)} ${px(14)};border-radius:999px">${escTut(p.etiqueta)}</span>` : ''}
+          <div style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(tam)};line-height:1.03;color:#fff;text-shadow:0 ${px(2)} ${px(10)} rgba(120,40,0,.25)">${anim ? (p.titulo || '').split(/\s+/).filter(Boolean).map(w => `<span data-cm="w">${escTut(w)}</span>`).join(' ') : escTut(p.titulo)}</div>
           ${cuerpo}
         </div>
-        <div style="position:relative;background:#fff;border-radius:${px(18)};padding:${px(10)} ${px(12)};display:flex;align-items:center;gap:${px(8)}">
+        <div data-cm="pie" style="position:relative;background:#fff;border-radius:${px(18)};padding:${px(10)} ${px(12)};display:flex;align-items:center;gap:${px(8)}">
           <span style="flex:1;font-size:${px(13)};font-weight:800;color:#2B1606">Pide tu código por WhatsApp</span>
-          <span style="background:#157A38;color:#fff;font-size:${px(12)};font-weight:800;padding:${px(5)} ${px(10)};border-radius:999px">Vende al toque</span>
+          <span data-cm="pill" style="white-space:nowrap;flex-shrink:0;background:#157A38;color:#fff;font-size:${px(12)};font-weight:800;padding:${px(5)} ${px(10)};border-radius:999px">Vende al toque</span>
         </div>
       </div>`;
+  }
+
+  // html-to-image no puede leer la hoja de Google Fonts (otro dominio) y la
+  // imagen salía en Arial. Aquí se baja esa hoja y sus archivos (solo latín)
+  // y se meten como data: URL para que el PNG/video lleve Fredoka e Inter.
+  let _cmFuentes = null;
+  function cmFuentesCSS() {
+    if (!_cmFuentes) {
+      _cmFuentes = (async () => {
+        const link = document.querySelector('link[href*="fonts.googleapis.com/css2?family=Fredoka"]');
+        const css = await (await fetch(link.href)).text();
+        const bloques = css.split('/*').slice(1).map(b => '/*' + b).filter(b => /^\/\* latin(-ext)? \*\//.test(b));
+        const listos = await Promise.all(bloques.map(async b => {
+          const m = b.match(/url\(([^)]+)\)/);
+          if (!m) return b;
+          const blob = await (await fetch(m[1].replace(/['"]/g, ''))).blob();
+          const data = await new Promise((ok, mal) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = mal; fr.readAsDataURL(blob); });
+          return b.replace(m[1], data);
+        }));
+        if (!listos.length) throw new Error('no se pudieron cargar las fuentes de la marca');
+        return listos.join('\n');
+      })();
+      _cmFuentes.catch(() => { _cmFuentes = null; }); // si falla, reintenta la próxima vez
+    }
+    return _cmFuentes;
   }
 
   async function cmDescargar(p, btn) {
@@ -5727,7 +5773,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       const nodo = cont.firstElementChild;
       await document.fonts.ready;
       await Promise.all([...nodo.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
-      const url = await htmlToImage.toPng(nodo, { pixelRatio: 1, cacheBust: true });
+      const url = await htmlToImage.toPng(nodo, { pixelRatio: 1, cacheBust: true, fontEmbedCSS: await cmFuentesCSS() });
       const a = document.createElement('a');
       a.href = url;
       a.download = `cashcash-${p.fecha || 'publicacion'}-${p.tipo}-${p.formato}.png`;
@@ -5741,6 +5787,166 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   }
   function cmDescargarId(id, btn) { const p = _cmPubs.find(x => x.id === id); if (p) cmDescargar(p, btn); }
 
+  // ── Video animado (MP4) ──
+  // Cada pieza (logo, etiqueta, palabras, caja, pie) se fotografía una vez a
+  // tamaño real con html-to-image y luego se anima cuadro a cuadro en un canvas.
+  // WebCodecs codifica H.264 y mp4-muxer arma el MP4. No graba en tiempo real,
+  // así que el video sale fluido aunque la PC esté lenta.
+  let _cmVidDur = 10;
+  function cmElegirDuracion(n) {
+    _cmVidDur = n;
+    document.querySelectorAll('#cm-vid-dur .cm-chip').forEach(b => {
+      const on = Number(b.dataset.d) === n;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  const cmEaseOut = x => 1 - Math.pow(1 - x, 3);
+  const cmEaseBack = x => 1 + 2.9 * Math.pow(x - 1, 3) + 1.9 * Math.pow(x - 1, 2);
+  const cmProg = (t, t0, d) => Math.min(1, Math.max(0, (t - t0) / d));
+
+  async function cmDescargarVideo(p, btn) {
+    const msg = document.getElementById('cm-vid-msg');
+    const aviso = (html, ok, pct) => {
+      msg.style.display = 'block';
+      msg.className = 'cm-vid-msg' + (ok ? ' ok' : '');
+      msg.innerHTML = html + (pct != null ? `<div class="cm-vid-bar"><div style="width:${pct}%"></div></div>` : '');
+    };
+    if (!window.htmlToImage || !window.Mp4Muxer) { alert('No cargaron las herramientas de video. Recarga la página.'); return; }
+    if (!('VideoEncoder' in window)) { alert('Este navegador no puede crear videos. Usa Google Chrome actualizado.'); return; }
+    const D = _cmVidDur, FPS = 30, total = D * FPS, U = 3; // U: la imagen se arma a 3× (1080 px de ancho)
+    const txt = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Preparando…';
+    const cont = document.getElementById('cm-render');
+    try {
+      aviso('Preparando las piezas del video…', false, 0);
+      cont.innerHTML = cmPostHTML(p, U, false, true);
+      const nodo = cont.firstElementChild;
+      await document.fonts.ready;
+      await Promise.all([...nodo.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+      const W = nodo.offsetWidth, H = nodo.offsetHeight;
+      const base = nodo.getBoundingClientRect();
+      const rel = el => { const r = el.getBoundingClientRect(); return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height }; };
+      const fontEmbedCSS = await cmFuentesCSS();
+      const fondoOrig = nodo.style.background;
+      // Foto de una sola pieza (las demás ocultas, fondo transparente) o solo del fondo.
+      const foto = (solo, conFondo) => {
+        nodo.querySelectorAll('[data-cm]').forEach(el => { el.style.visibility = el === solo ? 'visible' : 'hidden'; });
+        nodo.style.background = conFondo ? fondoOrig : 'transparent';
+        return htmlToImage.toCanvas(nodo, { pixelRatio: 1, fontEmbedCSS, width: W, height: H });
+      };
+      const fondo = await foto(null, true);
+      const burbujas = [...nodo.querySelectorAll('[data-cm="b"]')].map(el => { const r = rel(el); return { cx: r.x + r.w / 2, cy: r.y + r.h / 2, r: r.w / 2, a: el.dataset.a }; });
+      const lista = [...nodo.querySelectorAll('[data-cm]:not([data-cm="b"])')];
+      const piezas = [];
+      for (const [i, el] of lista.entries()) {
+        const r = rel(el), pad = 60;
+        const full = await foto(el, false);
+        const sx = Math.max(0, Math.floor(r.x - pad)), sy = Math.max(0, Math.floor(r.y - pad));
+        const sw = Math.min(W, Math.ceil(r.x + r.w + pad)) - sx, sh = Math.min(H, Math.ceil(r.y + r.h + pad)) - sy;
+        const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+        c.getContext('2d').drawImage(full, sx, sy, sw, sh, 0, 0, sw, sh);
+        piezas.push({ tipo: el.dataset.cm, c, sx, sy, cx: r.x + r.w / 2, cy: r.y + r.h / 2 });
+        aviso('Preparando las piezas del video…', false, Math.round((i + 1) / lista.length * 20));
+      }
+      cont.innerHTML = '';
+
+      // Línea de tiempo de la maqueta (pensada en 10 s). En 8 s se comprime;
+      // en 15 s las entradas van igual y el final queda más tiempo en pantalla.
+      const f = Math.min(1, D / 10);
+      const palabras = piezas.filter(x => x.tipo === 'w'), cajas = piezas.filter(x => x.tipo === 'caja');
+      const tPie = 5.5 * f;
+      const latidos = [tPie + 1.1 * f, tPie + 1.5 * f];
+      if (D >= 12) latidos.push(D - 2.6, D - 2.2);
+      const estado = (x, t) => {
+        let q;
+        switch (x.tipo) {
+          case 'logo': q = cmProg(t, 0.1 * f, 0.7 * f); return { a: q, dy: -30 * U * (1 - cmEaseOut(q)) };
+          case 'etq': q = cmProg(t, 1.0 * f, 0.8 * f); return { a: Math.min(1, q * 3), s: 0.2 + 0.8 * cmEaseBack(q), rot: -22 * (1 - cmEaseBack(q)) };
+          case 'w': {
+            const i = palabras.indexOf(x), n = palabras.length, ult = i === n - 1;
+            q = cmProg(t, (1.9 + i * 1.6 / n) * f, 0.5 * f);
+            return { a: Math.min(1, q * 2), dy: 26 * U * (1 - cmEaseOut(q)), s: ult ? 0.9 + 0.1 * cmEaseBack(q) : 1 };
+          }
+          case 'caja': q = cmProg(t, (4.0 + cajas.indexOf(x) * 0.35) * f, 0.8 * f); return { a: Math.min(1, q * 2), dy: 60 * U * (1 - cmEaseOut(q)) };
+          case 'pie':
+          case 'pill': {
+            q = cmProg(t, tPie, 0.8 * f);
+            const e = { a: Math.min(1, q * 2), dy: 80 * U * (1 - cmEaseOut(q)) };
+            if (x.tipo === 'pill') e.s = 1 + 0.14 * Math.max(0, ...latidos.map(c => 1 - Math.abs(t - c) / (0.2 * f)));
+            return e;
+          }
+        }
+        return {};
+      };
+      const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      const periodos = [6, 7, 5], sentido = [1, -1, 1];
+      const dibujar = t => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+        ctx.drawImage(fondo, 0, 0);
+        burbujas.forEach((b, i) => {
+          const m = (1 - Math.cos(2 * Math.PI * t / periodos[i % 3])) / 2 * sentido[i % 3];
+          ctx.fillStyle = `rgba(255,255,255,${b.a})`;
+          ctx.beginPath(); ctx.arc(b.cx - 14 * U * m, b.cy + 18 * U * m, b.r, 0, 2 * Math.PI); ctx.fill();
+        });
+        const salida = 1 - cmProg(t, D - 0.6, 0.5); // fundido al final
+        for (const x of piezas) {
+          const e = estado(x, t), a = (e.a ?? 1) * salida;
+          if (a <= 0.001) continue;
+          const s = e.s ?? 1;
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.setTransform(1, 0, 0, 1, 0, e.dy || 0);
+          ctx.translate(x.cx, x.cy); ctx.rotate((e.rot || 0) * Math.PI / 180); ctx.scale(s, s); ctx.translate(-x.cx, -x.cy);
+          ctx.drawImage(x.c, x.sx, x.sy);
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+      };
+
+      let cfg = null;
+      for (const codec of ['avc1.640033', 'avc1.640028', 'avc1.4d0033', 'avc1.42e033']) {
+        const c = { codec, width: W, height: H, bitrate: 8_000_000, framerate: FPS };
+        try { if ((await VideoEncoder.isConfigSupported(c)).supported) { cfg = c; break; } } catch { /* probar el siguiente */ }
+      }
+      if (!cfg) throw new Error('este navegador no puede crear MP4. Usa Google Chrome actualizado.');
+      const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H, frameRate: FPS }, fastStart: 'in-memory' });
+      let fallo = null;
+      const enc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { fallo = e; } });
+      enc.configure(cfg);
+      btn.textContent = 'Creando video…';
+      for (let i = 0; i < total; i++) {
+        if (fallo) throw fallo;
+        dibujar(i / FPS);
+        const fr = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+        enc.encode(fr, { keyFrame: i % (FPS * 2) === 0 });
+        fr.close();
+        if (i % 10 === 0) {
+          aviso(`Creando video… ${Math.floor(i / FPS)} de ${D} s · no cambies de pestaña`, false, 20 + Math.round(i / total * 80));
+          await new Promise(r => setTimeout(r, 0)); // deja que la página se repinte
+        }
+        while (enc.encodeQueueSize > 8 && !fallo) await new Promise(r => setTimeout(r, 5));
+      }
+      await enc.flush();
+      enc.close();
+      if (fallo) throw fallo;
+      muxer.finalize();
+      const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+      const nombre = `cashcash-${p.fecha || 'publicacion'}-${p.tipo}-${p.formato}-${D}s.mp4`;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = nombre;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      aviso(`✓ Descargado: ${escTut(nombre)} (${(blob.size / 1048576).toFixed(1)} MB)`, true);
+    } catch (e) {
+      const motivo = e instanceof Event ? 'no cargó una imagen o fuente. Revisa la conexión e intenta otra vez.' : (e?.message || String(e));
+      aviso('No se pudo crear el video: ' + escTut(motivo));
+    } finally {
+      cont.innerHTML = '';
+      btn.disabled = false; btn.textContent = txt;
+    }
+  }
+
   async function cmCopiar(p) {
     const texto = [p.texto_ig, p.hashtags].filter(Boolean).join('\n\n');
     try { await navigator.clipboard.writeText(texto); alert('Texto copiado. Pégalo en Instagram.'); }
@@ -5751,6 +5957,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
   // ── Editor ──
   function cmAbrirEditor(p) {
     _cmEd = { id: p.id || '', tipo: p.tipo || 'oferta', formato: p.formato || '45', estado: p.estado || 'borrador' };
+    document.getElementById('cm-vid-msg').style.display = 'none';
     document.getElementById('cm-ed-titulo-card').textContent = p.id ? 'Editar publicación' : 'Nueva publicación';
     document.getElementById('cm-ed-id').value = p.id || '';
     document.getElementById('cm-ed-fecha').value = p.fecha || cmISO(new Date());
