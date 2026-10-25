@@ -318,22 +318,22 @@
         <div class="plan-row">
           <div class="p-name">Básico</div>
           <div class="p-prices">
-            <div class="p-price-item"><span class="p-price">$15</span><span class="p-period">/mes</span></div>
-            <div class="p-price-item"><span class="p-price">$20</span><span class="p-period">/año</span></div>
+            <div class="p-price-item"><span class="p-price">$4.99</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$49.99</span><span class="p-period">/año</span></div>
           </div>
         </div>
         <div class="plan-row">
           <div class="p-name">Medio</div>
           <div class="p-prices">
-            <div class="p-price-item"><span class="p-price">$45</span><span class="p-period">/mes</span></div>
-            <div class="p-price-item"><span class="p-price">$40</span><span class="p-period">/año</span></div>
+            <div class="p-price-item"><span class="p-price">$9.99</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$99.99</span><span class="p-period">/año</span></div>
           </div>
         </div>
         <div class="plan-row">
           <div class="p-name">Pro</div>
           <div class="p-prices">
-            <div class="p-price-item"><span class="p-price">$50</span><span class="p-period">/mes</span></div>
-            <div class="p-price-item"><span class="p-price">$60</span><span class="p-period">/año</span></div>
+            <div class="p-price-item"><span class="p-price">$16.99</span><span class="p-period">/mes</span></div>
+            <div class="p-price-item"><span class="p-price">$179.99</span><span class="p-period">/año</span></div>
           </div>
         </div>
       </div>
@@ -351,7 +351,7 @@
       <div class="faq">
         <details class="faq-item" open>
           <summary>¿CashCash es gratis? <span class="plus">+</span></summary>
-          <p>Sí, descargar y usar la calculadora de tasas y Mi Cartera es completamente gratis. Registrar una tienda en el directorio tiene planes de membresía desde $10/mes.</p>
+          <p>Sí, descargar y usar la calculadora de tasas y Mi Cartera es completamente gratis. Registrar una tienda en el directorio tiene planes de membresía desde $4.99/mes.</p>
         </details>
         <details class="faq-item">
           <summary>¿Qué monedas soporta la calculadora? <span class="plus">+</span></summary>
@@ -492,9 +492,9 @@
         const medioVisible   = on(map.plan_pro_visible);
 
         const html = [
-          fila('Básico', num(map.precio_base_basico_mensual, 15), num(map.precio_base_basico_anual, 150), basicoVisible, basicoVisible),
-          fila('Medio',  num(map.precio_base_pro_mensual, 30),    num(map.precio_base_pro_anual, 300),    medioVisible, medioVisible),
-          fila('Pro',    num(map.pro_precio_mensual, 50),         num(map.pro_precio_anual, 60),          on(map.pro_mensual_activo), on(map.pro_anual_activo)),
+          fila('Básico', num(map.precio_base_basico_mensual, 4.99), num(map.precio_base_basico_anual, 49.99), basicoVisible, basicoVisible),
+          fila('Medio',  num(map.precio_base_pro_mensual, 9.99),  num(map.precio_base_pro_anual, 99.99),    medioVisible, medioVisible),
+          fila('Pro',    num(map.pro_precio_mensual, 16.99),      num(map.pro_precio_anual, 179.99),          on(map.pro_mensual_activo), on(map.pro_anual_activo)),
         ].join('');
 
         if (html.trim()) document.getElementById('plans-precios').innerHTML = html;
