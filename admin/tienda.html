@@ -1464,12 +1464,26 @@
     }
   }
 
+  // "Productos en oferta" (Pro, se elige en la app): los productos con oferta
+  // propia ($ o Bs) salen arriba o abajo. Solo cambia cómo se muestran; cada
+  // grupo mantiene su orden. La promo general de la tienda no cuenta.
+  function ordenarPorOfertas(items) {
+    const pos = _socioData?.ofertas_posicion;
+    if (_socioData?.tipo !== 'pro' || (pos !== 'arriba' && pos !== 'abajo')) return items;
+    const enOferta = item => descuentoProductoPct(item, null) > 0 || descuentoProductoPct(item, null, 'pago_movil') > 0;
+    const con = items.filter(enOferta);
+    if (con.length === 0 || con.length === items.length) return items;
+    const sin = items.filter(item => !enOferta(item));
+    return pos === 'arriba' ? [...con, ...sin] : [...sin, ...con];
+  }
+
   function renderGaleriaGrid() {
     const grid = document.getElementById('galeria-grid');
     grid.innerHTML = '';
-    const items = _catFiltro
+    const filtrados = _catFiltro
       ? _galeriaDisponible.filter(item => item.categoria_id === _catFiltro)
       : _galeriaDisponible;
+    const items = ordenarPorOfertas(filtrados);
     items.forEach(item => {
       const imgs = [item.imagen, item.imagen2, item.imagen3].filter(Boolean);
       const etiquetasGrid = etiquetasOferta(item);
