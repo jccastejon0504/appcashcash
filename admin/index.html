@@ -12,6 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Community Manager: fuente de las publicaciones y exportar a PNG -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@500;600;700;800&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -145,6 +148,18 @@
     /* ── Secciones ────────────────────────────────────────── */
     .section { display: none; }
     .section.active { display: block; }
+
+    /* ── Community Manager ── */
+    .cm-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+    .cm-col-main { flex: 999 1 520px; min-width: 0; }
+    .cm-col-side { flex: 1 1 280px; min-width: 0; }
+    .cm-grid-plantillas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 20px; }
+    .cm-pub { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .cm-mini { width: 72px; height: 90px; border-radius: 10px; overflow: hidden; flex-shrink: 0; position: relative; }
+    .cm-mini > div { transform: scale(.2); transform-origin: 0 0; }
+    .cm-chip { min-height: 34px; padding: 0 12px; border-radius: 9px; border: 1.5px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--text); }
+    .cm-chip.on { border-color: #E65E02; background: #FFF1E6; color: #8a3700; }
+    .cm-dia-vacio { border: 1.5px dashed var(--border); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 
     /* ── Cards genéricas ──────────────────────────────────── */
     .card {
@@ -452,6 +467,11 @@
     </div>
     <div class="nav-item" data-section="moderacion">
       <span class="icon">🛡️</span> Moderación de Contenido
+    </div>
+
+    <div class="nav-section">Marketing</div>
+    <div class="nav-item" data-section="community">
+      <span class="icon">📸</span> Community Manager
     </div>
 
     <div class="nav-section">Configuración</div>
@@ -1714,6 +1734,17 @@
                 <input type="number" id="promo-cantidad" value="100" min="1" />
               </div>
               <div class="form-group">
+                <label>Canal (prefijo del código)</label>
+                <select id="promo-prefijo">
+                  <option value="PROMO">PROMO- (general)</option>
+                  <option value="IG">IG- (Instagram)</option>
+                  <option value="VISITA">VISITA- (visitas)</option>
+                  <option value="FERIA">FERIA- (ferias y bazares)</option>
+                  <option value="ADS">ADS- (anuncios)</option>
+                </select>
+                <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Así se sabe qué canal trae más tiendas (Community Manager → Textos y códigos).</span>
+              </div>
+              <div class="form-group">
                 <label>Caducidad del cupón (días para canjearlo)</label>
                 <input type="number" id="promo-vencimiento" placeholder="Opcional — vacío = no caduca" min="1" oninput="_previewCaducidadPromo()" />
                 <span style="font-size:11px;color:var(--muted);display:block;margin-top:4px">Si el dueño no la activa a tiempo, la tarjeta caduca (la puedes renovar después desde "Ver códigos").</span>
@@ -1994,6 +2025,186 @@
 
       <!-- Una tarjeta con su tabla por sección (se arma en pintarTutorialesAdmin) -->
       <div id="tut-tablas"><div class="card"><div class="loading" style="padding:30px">Cargando…</div></div></div>
+    </div>
+
+    <!-- ═══ Community Manager (campaña de Instagram) ═══ -->
+    <div class="section" id="section-community">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+        <button type="button" class="tab-filtro active" id="cm-tab-calendario" onclick="cmTab('calendario')">Calendario</button>
+        <button type="button" class="tab-filtro" id="cm-tab-plantillas" onclick="cmTab('plantillas')">Plantillas</button>
+        <button type="button" class="tab-filtro" id="cm-tab-textos" onclick="cmTab('textos')">Textos y códigos</button>
+        <span style="flex:1"></span>
+        <button type="button" class="btn btn-primary" onclick="cmNueva()">+ Nueva publicación</button>
+      </div>
+
+      <!-- Calendario -->
+      <div id="cm-vista-calendario" class="cm-cols">
+        <div class="cm-col-main">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button type="button" class="btn btn-outline btn-sm" aria-label="Semanas anteriores" onclick="cmMoverSemana(-1)">‹</button>
+            <b id="cm-rango" style="font-size:15px">—</b>
+            <button type="button" class="btn btn-outline btn-sm" aria-label="Semanas siguientes" onclick="cmMoverSemana(1)">›</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="cmHoy()">Hoy</button>
+            <span style="flex:1"></span>
+            <span id="cm-conteo" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+          </div>
+          <div id="cm-lista"><div class="card"><div class="loading">Cargando…</div></div></div>
+        </div>
+        <div class="cm-col-side">
+          <div class="card">
+            <div class="card-header"><h2>Historia del día</h2></div>
+            <div class="card-body" id="cm-historias" style="padding-top:8px"></div>
+          </div>
+          <div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#FFF1E6;font-size:12px;color:#6B4A33;line-height:1.6">
+            <b>Rutina de 30 min:</b> responder mensajes, interactuar con 10 emprendedores, enviar 5 mensajes de prospección y subir la historia.<br>
+            <b>Horario:</b> 12–1 p. m. o 7–8 p. m.
+          </div>
+        </div>
+      </div>
+
+      <!-- Plantillas -->
+      <div id="cm-vista-plantillas" style="display:none">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Toca "Usar" y se abre el editor con los textos ya puestos. Producto destacado y Tienda de la semana solo con permiso de la tienda.</p>
+        <div id="cm-plantillas" class="cm-grid-plantillas"></div>
+      </div>
+
+      <!-- Textos y códigos -->
+      <div id="cm-vista-textos" class="cm-cols" style="display:none">
+        <div class="cm-col-main">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><h2 id="cm-txt-form-titulo">Agregar texto</h2></div>
+            <div class="card-body">
+              <input type="hidden" id="cm-txt-id" />
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="cm-txt-tipo">Tipo</label>
+                  <select id="cm-txt-tipo"><option>WhatsApp</option><option>Anuncio</option><option>Instagram</option><option>Otro</option></select>
+                </div>
+                <div class="form-group">
+                  <label for="cm-txt-nombre">Nombre</label>
+                  <input id="cm-txt-nombre" maxlength="80" placeholder="Ej: Seguimiento a la semana" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-top:12px">
+                <label for="cm-txt-texto">Texto</label>
+                <textarea id="cm-txt-texto" rows="4"></textarea>
+              </div>
+              <div class="btn-row">
+                <button type="button" class="btn btn-primary" id="cm-txt-btn" onclick="cmGuardarTexto()">Agregar texto</button>
+                <button type="button" class="btn btn-outline" id="cm-txt-cancelar" style="display:none" onclick="cmLimpiarTexto()">Cancelar</button>
+                <span class="msg" id="cm-txt-msg"></span>
+              </div>
+            </div>
+          </div>
+          <div id="cm-textos"></div>
+        </div>
+        <div class="cm-col-side">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><h2>Códigos por canal</h2></div>
+            <div class="card-body">
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada canal reparte códigos con su prefijo. "Tiendas" = códigos que ya tienen tienda aprobada.</p>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Canal</th><th>Repartidos</th><th>Usados</th><th>Tiendas</th></tr></thead>
+                <tbody id="cm-canales"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+              </table></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>Nuevo lote de códigos</h2></div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="cm-lote-canal">Canal</label>
+                  <select id="cm-lote-canal">
+                    <option value="IG">IG- Instagram</option>
+                    <option value="VISITA">VISITA- Visitas</option>
+                    <option value="FERIA">FERIA- Ferias</option>
+                    <option value="ADS">ADS- Anuncios</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="cm-lote-cantidad">Cantidad</label>
+                  <input type="number" id="cm-lote-cantidad" value="10" min="1" max="100" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-top:12px">
+                <label for="cm-lote-vence">Días para canjearlo (vacío = no caduca)</label>
+                <input type="number" id="cm-lote-vence" value="30" min="1" />
+              </div>
+              <div style="margin-top:12px;font-size:12px;color:#6B4A33;background:#FFF1E6;border-radius:8px;padding:8px 10px">Tienda Pro · 90 días gratis · campaña "Tiendas Fundadoras"</div>
+              <div id="cm-lote-aviso" style="display:none;margin-top:10px;font-size:12px;color:#b45309;background:#fef3c7;border-radius:8px;padding:8px 10px">Los códigos Pro están <b>apagados</b> en Códigos Promocionales: la app los rechazará hasta que los enciendas.</div>
+              <div class="btn-row">
+                <button type="button" class="btn btn-primary" id="cm-lote-btn" onclick="cmGenerarLote()">Generar lote</button>
+                <span class="msg" id="cm-lote-msg"></span>
+              </div>
+              <div id="cm-lote-codigos" style="margin-top:12px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div id="cm-vista-editor" style="display:none">
+        <div class="cm-cols">
+          <div class="cm-col-main" style="flex-basis:380px;max-width:520px">
+            <div class="card">
+              <div class="card-header">
+                <h2 id="cm-ed-titulo-card">Nueva publicación</h2>
+                <span id="cm-ed-estado" class="badge badge-gray">Borrador</span>
+              </div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                <input type="hidden" id="cm-ed-id" />
+                <div class="form-grid">
+                  <div class="form-group"><label for="cm-ed-fecha">Fecha</label><input type="date" id="cm-ed-fecha" /></div>
+                  <div class="form-group"><label for="cm-ed-hora">Hora</label><input type="time" id="cm-ed-hora" value="12:30" /></div>
+                </div>
+                <div class="form-group">
+                  <label>Plantilla</label>
+                  <div id="cm-ed-tipos" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                </div>
+                <div class="form-group">
+                  <label>Formato</label>
+                  <div id="cm-ed-formatos" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                </div>
+                <div class="form-group"><label for="cm-ed-etiqueta">Etiqueta</label><input id="cm-ed-etiqueta" maxlength="40" oninput="cmPreview()" /></div>
+                <div class="form-group"><label for="cm-ed-titulo">Título de la imagen</label><input id="cm-ed-titulo" maxlength="60" oninput="cmPreview()" /></div>
+                <div class="form-group" id="cm-ed-sub-box"><label for="cm-ed-sub" id="cm-ed-sub-label">Texto de apoyo</label><textarea id="cm-ed-sub" rows="3" maxlength="220" oninput="cmPreview()"></textarea></div>
+                <div id="cm-ed-foto-box" style="display:none;flex-direction:column;gap:12px">
+                  <div class="form-grid">
+                    <div class="form-group"><label for="cm-ed-linea1">Línea 1</label><input id="cm-ed-linea1" maxlength="40" oninput="cmPreview()" /></div>
+                    <div class="form-group"><label for="cm-ed-linea2">Línea 2</label><input id="cm-ed-linea2" maxlength="50" oninput="cmPreview()" /></div>
+                  </div>
+                  <div class="form-group">
+                    <label for="cm-ed-foto">Foto (con permiso de la tienda)</label>
+                    <input type="file" id="cm-ed-foto" accept="image/*" onchange="cmSubirFoto(this)" />
+                    <input type="hidden" id="cm-ed-imagen" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <div style="display:flex;align-items:center;gap:8px"><label for="cm-ed-texto" style="flex:1;margin:0">Texto para Instagram</label><button type="button" class="btn btn-outline btn-sm" onclick="cmCopiar(cmLeerEditor())">Copiar</button></div>
+                  <textarea id="cm-ed-texto" rows="9"></textarea>
+                </div>
+                <div class="form-group"><label for="cm-ed-hashtags">Hashtags (5 a 8)</label><input id="cm-ed-hashtags" /></div>
+                <div class="btn-row" style="flex-wrap:wrap">
+                  <button type="button" class="btn btn-primary" onclick="cmGuardar()">Guardar</button>
+                  <button type="button" class="btn btn-outline" id="cm-ed-aprobar" onclick="cmGuardar('aprobada')">Guardar y aprobar</button>
+                  <button type="button" class="btn btn-outline" onclick="cmCerrarEditor()">Volver</button>
+                  <span class="msg" id="cm-ed-msg"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cm-col-side" style="flex-basis:420px;display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--muted)" id="cm-ed-tam">Vista previa</div>
+            <div id="cm-ed-preview"></div>
+            <button type="button" class="btn btn-primary" id="cm-ed-descargar" onclick="cmDescargar(cmLeerEditor(), this)">Descargar PNG</button>
+            <div style="font-size:11px;color:var(--muted);text-align:center;max-width:360px">Se descarga en tamaño real de Instagram con los colores y fuentes de la marca.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aquí se arma la imagen en tamaño real para descargarla (fuera de la vista) -->
+      <div id="cm-render" style="position:fixed;left:-20000px;top:0;pointer-events:none" aria-hidden="true"></div>
     </div>
 
     <!-- Modal editar socio -->
@@ -2392,7 +2603,8 @@
     socios:       { title: 'Socios Activos',           sub: 'Listado de socios comerciales' },
     moderacion:   { title: 'Moderación de Contenido',   sub: 'Revisa los productos publicados por las tiendas y elimina los que no cumplan las normas' },
     'version-app': { title: 'Versión de la App', sub: 'Aviso "Nueva versión disponible" dentro de la app' },
-    tutoriales:   { title: 'Videos Tutoriales',         sub: 'Bloques de appcashcash.com/tutoriales.html — lo que guardes aquí aparece en la página al recargarla' },
+    community:    { title: 'Community Manager',         sub: 'Publicaciones de Instagram de la campaña Tiendas Fundadoras · tú apruebas cada una' },
+    tutoriales:   { title: 'Videos Tutoriales',        sub: 'Bloques de appcashcash.com/tutoriales.html — lo que guardes aquí aparece en la página al recargarla' },
     'paquete-destacado': { title: 'Paquete y Destacado', sub: 'Paquetes de galería extra y tiendas destacadas' },
     ubicaciones:  { title: 'Ciudades y Categorías',      sub: 'Gestiona las ciudades y sus categorías' },
     metodos:      { title: 'Métodos de Pago',          sub: 'Configura los métodos de cobro' },
@@ -2534,6 +2746,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     if (id === 'socios')      cargarSocios();
     if (id === 'moderacion')  cargarModeracion();
     if (id === 'tutoriales')  cargarTutoriales();
+    if (id === 'community')   cargarCommunity();
     if (id === 'version-app') cargarVersionApp();
     if (id === 'paquete-destacado') { cargarGaleriaExtra(); cargarDestacados(); }
     if (id === 'ubicaciones') cargarEstados();
@@ -3320,6 +3533,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     btn.disabled = true; msg.textContent = 'Generando…'; msg.className = 'msg ok';
     const { data, error } = await db.rpc('promo_generar_lote', {
       p_campana: campana, p_plan: plan, p_dias_gratis: dias, p_cantidad: cantidad, p_dias_vencimiento: vence,
+      p_prefijo: document.getElementById('promo-prefijo').value,
     });
     btn.disabled = false;
     if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'msg err'; return; }
@@ -5291,6 +5505,476 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
     const m = v.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([\w-]{11})/);
     if (m) return m[1];
     return /^[\w-]{11}$/.test(v) ? v : null;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Community Manager: calendario de Instagram, editor de imágenes, textos y
+  // códigos por canal. Tablas cm_publicaciones / cm_textos / cm_historias
+  // (solo admin por RLS). Las imágenes se arman aquí y se exportan a PNG con
+  // html-to-image; no hay IA ni costo por uso.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const CM_DIM = { '45': { h: 450, px: '1080 × 1350', nombre: 'Feed 4:5' }, '916': { h: 640, px: '1080 × 1920', nombre: 'Historia 9:16' }, '11': { h: 360, px: '1080 × 1080', nombre: 'Cuadrado 1:1' } };
+  const CM_TIPOS = {
+    oferta:     { nombre: 'Oferta',               uso: 'Que pidan su código · 1 por semana',       etiqueta: 'Tienda Pro gratis 90 días', titulo: '¿Vendes por WhatsApp?', sub: 'Sube tu catálogo una vez y compártelo con un enlace. Tu cliente lo ve al toque, tenga o no la app.',
+                  texto: '¿Vendes por WhatsApp o Instagram? 📲\n\nCon CashCash abres tu tienda online en minutos: subes tus productos una sola vez y compartes tu catálogo con un solo enlace.\n\n🎁 Las primeras 100 tiendas reciben su Tienda Pro gratis por 90 días.\n\n👉 Escríbenos por WhatsApp (enlace en la bio) y pide tu código.', hashtags: '#emprendimientovenezuela #emprendedoresvenezolanos #tiendaonline #ventasonline #negociolocal #cashcash' },
+    pasos:      { nombre: 'Cómo funciona',        uso: 'Mostrar lo fácil que es · 1 por semana',   etiqueta: 'Así de fácil', titulo: 'Tu tienda en 3 pasos', sub: 'Pide tu código por WhatsApp\nSube tus productos con foto y precio\nComparte tu catálogo y recibe pedidos', subLabel: 'Pasos (uno por línea, máximo 4)',
+                  texto: 'Abrir tu tienda online es así de fácil 👇\n\n1️⃣ Pide tu código por WhatsApp\n2️⃣ Sube tus productos con foto y precio\n3️⃣ Comparte tu catálogo y recibe pedidos\n\nVende al toque. 🚀 Pide tu código: enlace en la bio.', hashtags: '#catalogodigital #tiendaonline #emprendedorvenezolano #ventasonline #cashcashvenezuela #cashcash' },
+    tip:        { nombre: 'Tip para emprendedores', uso: 'Ganar seguidores · 1 por semana',        etiqueta: 'Tip para emprendedores', titulo: '3 errores que te hacen perder ventas', sub: '❌ No poner precios\n❌ Catálogo desordenado\n❌ Responder tarde',
+                  texto: '', hashtags: '#emprendimientovenezuela #consejosparaemprendedores #ventasonline #negociolocal #cashcash' },
+    fundadoras: { nombre: 'Tiendas Fundadoras',   uso: 'Urgencia de los 100 cupos',                etiqueta: 'Solo 100 cupos', titulo: '100 Tiendas Fundadoras', sub: '🎁 Tienda Pro gratis 90 días\n💰 Precio de fundador para siempre\n⭐ Sello en tu perfil\n📸 Te ayudamos con tu catálogo',
+                  texto: '', hashtags: '#emprendimientovenezuela #negociolocal #tiendaonline #emprendedorescaracas #cashcash' },
+    producto:   { nombre: 'Producto destacado',   uso: 'Desde la semana 3 · con permiso de la tienda', etiqueta: 'Oferta en CashCash', titulo: 'Lo encuentras al toque', linea1: '[Nombre del producto]', linea2: '[Precio] · [Tienda]', foto: true,
+                  texto: '', hashtags: '#tiendaonline #compralocal #ofertas #cashcash #cashcashvenezuela' },
+    tienda:     { nombre: 'Tienda de la semana',  uso: 'Vitrina de tiendas reales · con permiso',  etiqueta: 'Tienda de la semana', titulo: 'Conoce [Tienda]', linea1: '[Nombre de la tienda]', linea2: '[Ciudad] · [Categoría]', foto: true,
+                  texto: '', hashtags: '#tiendadelasemana #compralocal #emprendimientovenezuela #cashcash #cashcashvenezuela' },
+  };
+  const CM_HISTORIA_DEFECTO = ['', 'Compartir la publicación del día', 'Encuesta: ¿Vendes por WhatsApp? Sí / Todavía no', 'Compartir la publicación del día', 'Caja de preguntas: ¿Qué te frena para vender online?', 'Compartir la publicación del día', 'Quedan pocos cupos + sticker de enlace a WhatsApp', 'Responder 2 o 3 preguntas de la caja del jueves'];
+  const CM_DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const CM_MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+
+  let _cmPubs = [], _cmHist = [], _cmTextos = [], _cmInicio = null, _cmEd = { tipo: 'oferta', formato: '45', estado: 'borrador' };
+
+  // Fechas en hora local (Caracas), nunca toISOString (UTC adelanta un día de noche).
+  function cmISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  function cmFecha(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); }
+  function cmMas(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function cmFmtDia(iso) { const d = cmFecha(iso); return `${CM_DIAS[d.getDay()]} ${d.getDate()} ${CM_MESES[d.getMonth()]}`; }
+  function cmFmtHora(h) { if (!h) return ''; const [H, M] = h.split(':').map(Number); const ap = H >= 12 ? 'p. m.' : 'a. m.'; return `${((H + 11) % 12) + 1}:${String(M).padStart(2, '0')} ${ap}`; }
+  function cmLunes(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const dow = x.getDay(); return dow === 0 ? cmMas(x, 1) : cmMas(x, 1 - dow); } // domingo → planifica la semana que viene
+
+  function cmTab(t) {
+    ['calendario', 'plantillas', 'textos'].forEach(x => {
+      document.getElementById(`cm-tab-${x}`).classList.toggle('active', x === t);
+      document.getElementById(`cm-vista-${x}`).style.display = x === t ? '' : 'none';
+    });
+    document.getElementById('cm-vista-editor').style.display = 'none';
+    if (t === 'plantillas') cmPintarPlantillas();
+    if (t === 'textos') cmCargarTextos();
+  }
+
+  async function cargarCommunity() {
+    if (!_cmInicio) _cmInicio = cmLunes(new Date());
+    await cmCargarCalendario();
+  }
+
+  function cmMoverSemana(n) { _cmInicio = cmMas(_cmInicio, 7 * n); cmCargarCalendario(); }
+  function cmHoy() { _cmInicio = cmLunes(new Date()); cmCargarCalendario(); }
+
+  async function cmCargarCalendario() {
+    const desde = cmISO(_cmInicio), hasta = cmISO(cmMas(_cmInicio, 13));
+    document.getElementById('cm-rango').textContent = `${cmFmtDia(desde)} – ${cmFmtDia(hasta)}`;
+    const [p, h] = await Promise.all([
+      db.from('cm_publicaciones').select('*').gte('fecha', desde).lte('fecha', hasta).order('fecha').order('hora'),
+      db.from('cm_historias').select('*').gte('fecha', desde).lte('fecha', hasta),
+    ]);
+    if (p.error || h.error) {
+      document.getElementById('cm-lista').innerHTML = `<div class="card"><div class="empty"><p>No se pudo cargar: ${escTut((p.error || h.error).message)}</p></div></div>`;
+      return;
+    }
+    _cmPubs = p.data ?? []; _cmHist = h.data ?? [];
+    cmPintarCalendario();
+  }
+
+  function cmBadgeEstado(e) {
+    return e === 'publicada' ? '<span class="badge badge-blue">Publicada</span>'
+      : e === 'aprobada' ? '<span class="badge badge-green">Aprobada</span>'
+      : '<span class="badge badge-gray">Borrador</span>';
+  }
+
+  function cmPintarCalendario() {
+    const n = e => _cmPubs.filter(x => x.estado === e).length;
+    document.getElementById('cm-conteo').innerHTML = `<span class="badge badge-gray">${n('borrador')} borradores</span><span class="badge badge-green">${n('aprobada')} aprobadas</span><span class="badge badge-blue">${n('publicada')} publicadas</span>`;
+
+    let html = '';
+    for (let i = 0; i < 14; i++) {
+      const iso = cmISO(cmMas(_cmInicio, i));
+      const dow = cmFecha(iso).getDay();
+      const delDia = _cmPubs.filter(x => x.fecha === iso);
+      if (i === 7) html += '<div style="font-size:12px;font-weight:800;color:var(--muted);margin:16px 0 8px">SEMANA SIGUIENTE</div>';
+      delDia.forEach(x => {
+        const t = CM_TIPOS[x.tipo] || CM_TIPOS.oferta;
+        html += `
+          <div class="cm-pub">
+            <div class="cm-mini">${cmPostHTML(x, 1, true)}</div>
+            <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <b style="font-size:12px;color:var(--muted)">${cmFmtDia(x.fecha)} · ${cmFmtHora(x.hora)}</b>
+                <span class="badge badge-purple">${escTut(t.nombre)}</span>${cmBadgeEstado(x.estado)}
+              </div>
+              <div style="font-size:15px;font-weight:700">${escTut(x.titulo)}</div>
+              <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escTut((x.texto_ig || '').replace(/\s+/g, ' '))}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <select aria-label="Estado" style="width:auto;padding:6px 8px" onchange="cmCambiarEstado('${x.id}', this.value)">
+                <option value="borrador" ${x.estado === 'borrador' ? 'selected' : ''}>Borrador</option>
+                <option value="aprobada" ${x.estado === 'aprobada' ? 'selected' : ''}>Aprobada</option>
+                <option value="publicada" ${x.estado === 'publicada' ? 'selected' : ''}>Publicada</option>
+              </select>
+              <button type="button" class="btn btn-outline btn-sm" onclick="cmEditar('${x.id}')">Editar</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="cmDescargarId('${x.id}', this)">PNG</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="cmCopiarId('${x.id}')">Copiar texto</button>
+              <button type="button" class="btn btn-danger btn-sm" aria-label="Borrar" onclick="cmBorrar('${x.id}')">✕</button>
+            </div>
+          </div>`;
+      });
+      if (!delDia.length && (dow === 1 || dow === 3 || dow === 5)) {
+        html += `<div class="cm-dia-vacio"><span style="flex:1">${cmFmtDia(iso)} · sin publicación</span><button type="button" class="btn btn-outline btn-sm" onclick="cmNueva('${iso}')">+ Crear</button></div>`;
+      }
+    }
+    document.getElementById('cm-lista').innerHTML = html || '<div class="card"><div class="empty"><p>Sin publicaciones</p></div></div>';
+
+    // Historias: una por día; si el día no tiene fila se usa la idea por defecto.
+    const hoy = cmISO(new Date());
+    document.getElementById('cm-historias').innerHTML = Array.from({ length: 14 }, (_, i) => {
+      const iso = cmISO(cmMas(_cmInicio, i));
+      const r = _cmHist.find(x => x.fecha === iso);
+      const idea = r?.idea || CM_HISTORIA_DEFECTO[cmFecha(iso).getDay() || 7];
+      return `
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:500;color:var(--text);margin:0;${iso === hoy ? 'background:#FFF7F0;' : ''}">
+          <input type="checkbox" style="width:18px;height:18px;margin-top:1px;accent-color:#E65E02;flex-shrink:0" ${r?.hecha ? 'checked' : ''} onchange="cmHistoria('${iso}', this.checked)">
+          <span style="flex:1;${r?.hecha ? 'text-decoration:line-through;color:var(--muted)' : ''}"><b style="font-size:11px;color:var(--muted);display:block">${cmFmtDia(iso)}${iso === hoy ? ' · hoy' : ''}</b>${escTut(idea)}</span>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px" aria-label="Cambiar idea" onclick="event.preventDefault();cmIdeaHistoria('${iso}')">✎</button>
+        </label>`;
+    }).join('');
+  }
+
+  async function cmHistoria(iso, hecha) {
+    const r = _cmHist.find(x => x.fecha === iso);
+    const idea = r?.idea || CM_HISTORIA_DEFECTO[cmFecha(iso).getDay() || 7];
+    const { error } = await db.from('cm_historias').upsert({ fecha: iso, idea, hecha }, { onConflict: 'fecha' });
+    if (error) { alert('No se pudo guardar: ' + error.message); }
+    cmCargarCalendario();
+  }
+
+  async function cmIdeaHistoria(iso) {
+    const r = _cmHist.find(x => x.fecha === iso);
+    const actual = r?.idea || CM_HISTORIA_DEFECTO[cmFecha(iso).getDay() || 7];
+    const idea = (prompt('Idea de la historia de ' + cmFmtDia(iso) + ':', actual) || '').trim();
+    if (!idea || idea === actual) return;
+    const { error } = await db.from('cm_historias').upsert({ fecha: iso, idea, hecha: r?.hecha ?? false }, { onConflict: 'fecha' });
+    if (error) { alert('No se pudo guardar: ' + error.message); return; }
+    cmCargarCalendario();
+  }
+
+  async function cmCambiarEstado(id, estado) {
+    const { error } = await db.from('cm_publicaciones').update({ estado }).eq('id', id);
+    if (error) alert('No se pudo cambiar: ' + error.message);
+    cmCargarCalendario();
+  }
+
+  async function cmBorrar(id) {
+    const x = _cmPubs.find(p => p.id === id);
+    if (!confirm(`¿Borrar la publicación "${x?.titulo || ''}"?`)) return;
+    const { error } = await db.from('cm_publicaciones').delete().eq('id', id);
+    if (error) { alert('No se pudo borrar: ' + error.message); return; }
+    cmCargarCalendario();
+  }
+
+  // ── La imagen ──
+  // k = escala: 1 para la vista previa (360 px de ancho), 3 para el PNG (1080 px).
+  function cmPostHTML(p, k, mini) {
+    const t = CM_TIPOS[p.tipo] || CM_TIPOS.oferta;
+    const dim = CM_DIM[p.formato] || CM_DIM['45'];
+    const px = n => `${Math.round(n * k * 10) / 10}px`;
+    const alto = p.formato === '916';
+    const largo = (p.titulo || '').length;
+    const tam = (largo > 32 ? 27 : largo > 22 ? 32 : 39) + (alto ? 4 : 0) - (p.formato === '11' ? 4 : 0);
+    const lineas = (p.subtitulo || '').split('\n').map(s => s.trim()).filter(Boolean);
+    let cuerpo = '';
+    if (t.foto) {
+      const foto = p.imagen_url
+        ? `<img src="${escTut(p.imagen_url)}" crossorigin="anonymous" style="width:${px(92)};height:${px(92)};object-fit:cover;border-radius:${px(14)};flex-shrink:0;display:block" alt="">`
+        : `<div style="width:${px(92)};height:${px(92)};border-radius:${px(14)};background:#FFE3CC;flex-shrink:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:${px(10)};font-weight:700;color:#8a3700">Foto</div>`;
+      cuerpo = `<div style="background:#fff;border-radius:${px(18)};padding:${px(10)};display:flex;gap:${px(12)};align-items:center">${foto}
+        <div style="display:flex;flex-direction:column;gap:${px(4)};min-width:0"><b style="font-size:${px(16)};color:#2B1606;line-height:1.2">${escTut(p.linea1)}</b><span style="font-size:${px(13)};color:#6B4A33">${escTut(p.linea2)}</span></div></div>`;
+    } else if (p.tipo === 'pasos') {
+      cuerpo = `<div style="display:flex;flex-direction:column;gap:${px(8)}">${lineas.slice(0, 4).map((l, i) => `
+        <div style="background:#fff;border-radius:${px(16)};padding:${px(10)} ${px(12)};display:flex;gap:${px(10)};align-items:center">
+          <span style="width:${px(28)};height:${px(28)};border-radius:${px(14)};background:#E2621B;color:#fff;font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(15)};display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
+          <span style="font-size:${px(14)};font-weight:700;color:#2B1606;line-height:1.25">${escTut(l.replace(/^\d+[.)]\s*/, ''))}</span></div>`).join('')}</div>`;
+    } else if (lineas.length) {
+      cuerpo = `<div style="background:#fff;border-radius:${px(18)};padding:${px(14)} ${px(16)};font-size:${px(15)};line-height:1.45;font-weight:600;color:#2B1606">${lineas.map(escTut).join('<br>')}</div>`;
+    }
+    return `
+      <div style="position:relative;overflow:hidden;box-sizing:border-box;width:${px(360)};height:${px(dim.h)};padding:${px(22)};display:flex;flex-direction:column;gap:${px(12)};background:linear-gradient(160deg,#F9A96B 0%,#F08A3C 52%,#E2621B 100%);font-family:Inter,system-ui,sans-serif;${mini ? 'pointer-events:none;' : ''}">
+        <div style="position:absolute;width:${px(230)};height:${px(230)};border-radius:50%;background:rgba(255,255,255,.14);top:${px(-70)};right:${px(-70)}"></div>
+        <div style="position:absolute;width:${px(140)};height:${px(140)};border-radius:50%;background:rgba(255,255,255,.12);bottom:${px(110)};left:${px(-55)}"></div>
+        <div style="position:absolute;width:${px(56)};height:${px(56)};border-radius:50%;background:rgba(255,255,255,.16);top:46%;right:${px(26)}"></div>
+        <div style="position:relative;display:flex;align-items:center;gap:${px(8)}">
+          <img src="/admin/icon.png" style="width:${px(36)};height:${px(36)};border-radius:${px(10)};border:${px(2)} solid #fff;display:block" alt="">
+          <div style="display:flex;flex-direction:column;line-height:1"><span style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(19)};color:#fff">CashCash</span><span style="font-size:${px(8)};font-weight:800;letter-spacing:${px(2)};color:#fff">VENEZUELA</span></div>
+        </div>
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:${px(14)}">
+          ${p.etiqueta ? `<span style="align-self:flex-start;transform:rotate(-3deg);background:#FFB71B;color:#2B1606;font-weight:800;font-size:${px(13)};padding:${px(6)} ${px(14)};border-radius:999px">${escTut(p.etiqueta)}</span>` : ''}
+          <div style="font-family:Fredoka,sans-serif;font-weight:700;font-size:${px(tam)};line-height:1.03;color:#fff;text-shadow:0 ${px(2)} ${px(10)} rgba(120,40,0,.25)">${escTut(p.titulo)}</div>
+          ${cuerpo}
+        </div>
+        <div style="position:relative;background:#fff;border-radius:${px(18)};padding:${px(10)} ${px(12)};display:flex;align-items:center;gap:${px(8)}">
+          <span style="flex:1;font-size:${px(13)};font-weight:800;color:#2B1606">Pide tu código por WhatsApp</span>
+          <span style="background:#157A38;color:#fff;font-size:${px(12)};font-weight:800;padding:${px(5)} ${px(10)};border-radius:999px">Vende al toque</span>
+        </div>
+      </div>`;
+  }
+
+  async function cmDescargar(p, btn) {
+    if (!window.htmlToImage) { alert('No cargó la herramienta de imágenes. Recarga la página.'); return; }
+    const txt = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+    try {
+      const cont = document.getElementById('cm-render');
+      cont.innerHTML = cmPostHTML(p, 3);
+      const nodo = cont.firstElementChild;
+      await document.fonts.ready;
+      await Promise.all([...nodo.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+      const url = await htmlToImage.toPng(nodo, { pixelRatio: 1, cacheBust: true });
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cashcash-${p.fecha || 'publicacion'}-${p.tipo}-${p.formato}.png`;
+      a.click();
+      cont.innerHTML = '';
+    } catch (e) {
+      alert('No se pudo generar la imagen: ' + (e?.message || e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = txt; }
+    }
+  }
+  function cmDescargarId(id, btn) { const p = _cmPubs.find(x => x.id === id); if (p) cmDescargar(p, btn); }
+
+  async function cmCopiar(p) {
+    const texto = [p.texto_ig, p.hashtags].filter(Boolean).join('\n\n');
+    try { await navigator.clipboard.writeText(texto); alert('Texto copiado. Pégalo en Instagram.'); }
+    catch { prompt('Copia el texto:', texto); }
+  }
+  function cmCopiarId(id) { const p = _cmPubs.find(x => x.id === id); if (p) cmCopiar(p); }
+
+  // ── Editor ──
+  function cmAbrirEditor(p) {
+    _cmEd = { id: p.id || '', tipo: p.tipo || 'oferta', formato: p.formato || '45', estado: p.estado || 'borrador' };
+    document.getElementById('cm-ed-titulo-card').textContent = p.id ? 'Editar publicación' : 'Nueva publicación';
+    document.getElementById('cm-ed-id').value = p.id || '';
+    document.getElementById('cm-ed-fecha').value = p.fecha || cmISO(new Date());
+    document.getElementById('cm-ed-hora').value = (p.hora || '12:30').slice(0, 5);
+    document.getElementById('cm-ed-etiqueta').value = p.etiqueta ?? '';
+    document.getElementById('cm-ed-titulo').value = p.titulo ?? '';
+    document.getElementById('cm-ed-sub').value = p.subtitulo ?? '';
+    document.getElementById('cm-ed-linea1').value = p.linea1 ?? '';
+    document.getElementById('cm-ed-linea2').value = p.linea2 ?? '';
+    document.getElementById('cm-ed-imagen').value = p.imagen_url ?? '';
+    document.getElementById('cm-ed-foto').value = '';
+    document.getElementById('cm-ed-texto').value = p.texto_ig ?? '';
+    document.getElementById('cm-ed-hashtags').value = p.hashtags ?? '';
+    document.getElementById('cm-ed-estado').outerHTML = cmBadgeEstado(_cmEd.estado).replace('<span ', '<span id="cm-ed-estado" ');
+    ['calendario', 'plantillas', 'textos'].forEach(x => { document.getElementById(`cm-vista-${x}`).style.display = 'none'; document.getElementById(`cm-tab-${x}`).classList.remove('active'); });
+    document.getElementById('cm-vista-editor').style.display = '';
+    cmPintarChips();
+    cmPreview();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cmPintarChips() {
+    document.getElementById('cm-ed-tipos').innerHTML = Object.entries(CM_TIPOS).map(([k, t]) =>
+      `<button type="button" class="cm-chip ${_cmEd.tipo === k ? 'on' : ''}" aria-pressed="${_cmEd.tipo === k}" onclick="cmElegirTipo('${k}')">${escTut(t.nombre)}</button>`).join('');
+    document.getElementById('cm-ed-formatos').innerHTML = Object.entries(CM_DIM).map(([k, d]) =>
+      `<button type="button" class="cm-chip ${_cmEd.formato === k ? 'on' : ''}" aria-pressed="${_cmEd.formato === k}" onclick="cmElegirFormato('${k}')">${d.nombre}</button>`).join('');
+    const t = CM_TIPOS[_cmEd.tipo];
+    document.getElementById('cm-ed-foto-box').style.display = t.foto ? 'flex' : 'none';
+    document.getElementById('cm-ed-sub-box').style.display = t.foto ? 'none' : '';
+    document.getElementById('cm-ed-sub-label').textContent = t.subLabel || 'Texto de apoyo (cada línea va en su renglón)';
+  }
+
+  // Cambiar de plantilla rellena los campos solo si están vacíos o con el texto de la plantilla anterior.
+  function cmElegirTipo(k) {
+    const antes = CM_TIPOS[_cmEd.tipo], ahora = CM_TIPOS[k];
+    const poner = (id, viejo, nuevo) => { const el = document.getElementById(id); if (!el.value.trim() || el.value === (viejo ?? '')) el.value = nuevo ?? ''; };
+    poner('cm-ed-etiqueta', antes.etiqueta, ahora.etiqueta);
+    poner('cm-ed-titulo', antes.titulo, ahora.titulo);
+    poner('cm-ed-sub', antes.sub, ahora.sub);
+    poner('cm-ed-linea1', antes.linea1, ahora.linea1);
+    poner('cm-ed-linea2', antes.linea2, ahora.linea2);
+    poner('cm-ed-texto', antes.texto, ahora.texto);
+    poner('cm-ed-hashtags', antes.hashtags, ahora.hashtags);
+    _cmEd.tipo = k;
+    cmPintarChips(); cmPreview();
+  }
+  function cmElegirFormato(k) { _cmEd.formato = k; cmPintarChips(); cmPreview(); }
+
+  function cmLeerEditor() {
+    const v = id => document.getElementById(id).value;
+    return {
+      fecha: v('cm-ed-fecha'), hora: v('cm-ed-hora') || '12:30', tipo: _cmEd.tipo, formato: _cmEd.formato,
+      etiqueta: v('cm-ed-etiqueta').trim(), titulo: v('cm-ed-titulo').trim(), subtitulo: v('cm-ed-sub'),
+      linea1: v('cm-ed-linea1').trim(), linea2: v('cm-ed-linea2').trim(), imagen_url: v('cm-ed-imagen') || null,
+      texto_ig: v('cm-ed-texto'), hashtags: v('cm-ed-hashtags').trim(),
+    };
+  }
+
+  function cmPreview() {
+    const p = cmLeerEditor();
+    document.getElementById('cm-ed-preview').innerHTML = `<div style="border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(180,70,0,.25)">${cmPostHTML(p, 1)}</div>`;
+    const d = CM_DIM[p.formato];
+    document.getElementById('cm-ed-tam').textContent = `Vista previa · ${d.nombre} · se descarga en ${d.px} px`;
+  }
+
+  async function cmSubirFoto(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `community/${Date.now()}.${ext}`;
+    showMsg('cm-ed-msg', 'Subiendo foto…', 'ok');
+    const { error } = await db.storage.from('socios comerciales').upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { showMsg('cm-ed-msg', 'Error al subir: ' + error.message, 'err'); return; }
+    const { data: { publicUrl } } = db.storage.from('socios comerciales').getPublicUrl(path);
+    document.getElementById('cm-ed-imagen').value = publicUrl;
+    showMsg('cm-ed-msg', 'Foto lista', 'ok');
+    cmPreview();
+  }
+
+  async function cmGuardar(estado) {
+    const p = cmLeerEditor();
+    if (!p.fecha) { showMsg('cm-ed-msg', 'Elige la fecha.', 'err'); return; }
+    if (!p.titulo) { showMsg('cm-ed-msg', 'Escribe el título de la imagen.', 'err'); return; }
+    p.estado = estado || _cmEd.estado || 'borrador';
+    const id = document.getElementById('cm-ed-id').value;
+    const r = id
+      ? await db.from('cm_publicaciones').update(p).eq('id', id).select().single()
+      : await db.from('cm_publicaciones').insert(p).select().single();
+    if (r.error) { showMsg('cm-ed-msg', 'No se pudo guardar: ' + r.error.message, 'err'); return; }
+    document.getElementById('cm-ed-id').value = r.data.id;
+    _cmEd.id = r.data.id; _cmEd.estado = r.data.estado;
+    document.getElementById('cm-ed-titulo-card').textContent = 'Editar publicación';
+    document.getElementById('cm-ed-estado').outerHTML = cmBadgeEstado(_cmEd.estado).replace('<span ', '<span id="cm-ed-estado" ');
+    showMsg('cm-ed-msg', estado === 'aprobada' ? '✓ Guardada y aprobada' : '✓ Guardada', 'ok');
+  }
+
+  function cmCerrarEditor() {
+    const f = document.getElementById('cm-ed-fecha').value;
+    if (f) { const d = cmFecha(f); if (d < _cmInicio || d > cmMas(_cmInicio, 13)) _cmInicio = cmLunes(d); }
+    cmTab('calendario');
+    cmCargarCalendario();
+  }
+
+  function cmEditar(id) { const p = _cmPubs.find(x => x.id === id); if (p) cmAbrirEditor(p); }
+
+  function cmNueva(fecha, tipo) {
+    const k = tipo || 'oferta', t = CM_TIPOS[k];
+    cmAbrirEditor({ fecha: fecha || cmISO(new Date()), tipo: k, formato: '45', etiqueta: t.etiqueta, titulo: t.titulo, subtitulo: t.sub || '', linea1: t.linea1 || '', linea2: t.linea2 || '', texto_ig: t.texto, hashtags: t.hashtags });
+  }
+
+  // ── Plantillas ──
+  function cmPintarPlantillas() {
+    document.getElementById('cm-plantillas').innerHTML = Object.entries(CM_TIPOS).map(([k, t]) => {
+      const muestra = { tipo: k, formato: '45', etiqueta: t.etiqueta, titulo: t.titulo, subtitulo: t.sub || '', linea1: t.linea1, linea2: t.linea2 };
+      return `
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="width:270px;max-width:100%;height:337.5px;border-radius:16px;overflow:hidden"><div style="transform:scale(.75);transform-origin:0 0">${cmPostHTML(muestra, 1, true)}</div></div>
+          <div style="display:flex;align-items:center;gap:8px;max-width:270px">
+            <div style="flex:1;display:flex;flex-direction:column"><b style="font-size:14px">${escTut(t.nombre)}</b><span style="font-size:12px;color:var(--muted)">${escTut(t.uso)}</span></div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="cmNueva(null, '${k}')">Usar</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Textos y códigos ──
+  async function cmCargarTextos() {
+    const [t, c, cfg] = await Promise.all([
+      db.from('cm_textos').select('*').order('orden').order('created_at'),
+      db.rpc('cm_codigos_por_canal'),
+      db.from('config_app').select('valor').eq('clave', 'codigo_bienvenida_pro_activo').maybeSingle(),
+    ]);
+    _cmTextos = t.data ?? [];
+    document.getElementById('cm-textos').innerHTML = t.error
+      ? `<div class="card"><div class="empty"><p>No se pudo cargar: ${escTut(t.error.message)}</p></div></div>`
+      : (_cmTextos.length ? _cmTextos.map(x => `
+          <div class="card" style="margin-bottom:10px"><div class="card-body" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+              <span class="badge badge-purple">${escTut(x.tipo)}</span>
+              <b style="flex:1;font-size:14px">${escTut(x.nombre)}</b>
+              <button type="button" class="btn btn-primary btn-sm" onclick="cmCopiarTexto('${x.id}')">Copiar</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="cmEditarTexto('${x.id}')">Editar</button>
+              <button type="button" class="btn btn-danger btn-sm" aria-label="Borrar" onclick="cmBorrarTexto('${x.id}')">✕</button>
+            </div>
+            <div style="font-size:13px;line-height:1.55;white-space:pre-line">${escTut(x.texto)}</div>
+          </div></div>`).join('') : '<div class="card"><div class="empty"><p>Sin textos todavía</p></div></div>');
+
+    const filas = c.data ?? [];
+    document.getElementById('cm-canales').innerHTML = c.error
+      ? `<tr><td colspan="4">No se pudo cargar: ${escTut(c.error.message)}</td></tr>`
+      : ['IG', 'VISITA', 'FERIA', 'ADS', 'PROMO'].map(pre => {
+          const r = filas.find(f => f.prefijo === pre) || { repartidos: 0, usados: 0, tiendas: 0 };
+          return `<tr><td><b style="font-family:monospace">${pre}-</b></td><td>${r.repartidos}</td><td>${r.usados}</td><td>${r.tiendas}</td></tr>`;
+        }).join('');
+    document.getElementById('cm-lote-aviso').style.display = cfg.data?.valor === 'false' ? '' : 'none';
+  }
+
+  async function cmCopiarTexto(id) {
+    const x = _cmTextos.find(t => t.id === id);
+    if (!x) return;
+    try { await navigator.clipboard.writeText(x.texto); alert('Texto copiado.'); } catch { prompt('Copia el texto:', x.texto); }
+  }
+
+  function cmEditarTexto(id) {
+    const x = _cmTextos.find(t => t.id === id);
+    if (!x) return;
+    document.getElementById('cm-txt-id').value = x.id;
+    document.getElementById('cm-txt-tipo').value = x.tipo;
+    document.getElementById('cm-txt-nombre').value = x.nombre;
+    document.getElementById('cm-txt-texto').value = x.texto;
+    document.getElementById('cm-txt-form-titulo').textContent = 'Editar texto';
+    document.getElementById('cm-txt-btn').textContent = 'Guardar cambios';
+    document.getElementById('cm-txt-cancelar').style.display = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cmLimpiarTexto() {
+    ['cm-txt-id', 'cm-txt-nombre', 'cm-txt-texto'].forEach(i => { document.getElementById(i).value = ''; });
+    document.getElementById('cm-txt-form-titulo').textContent = 'Agregar texto';
+    document.getElementById('cm-txt-btn').textContent = 'Agregar texto';
+    document.getElementById('cm-txt-cancelar').style.display = 'none';
+  }
+
+  async function cmGuardarTexto() {
+    const id = document.getElementById('cm-txt-id').value;
+    const fila = { tipo: document.getElementById('cm-txt-tipo').value, nombre: document.getElementById('cm-txt-nombre').value.trim(), texto: document.getElementById('cm-txt-texto').value.trim() };
+    if (!fila.nombre || !fila.texto) { showMsg('cm-txt-msg', 'Escribe el nombre y el texto.', 'err'); return; }
+    if (!id) fila.orden = (_cmTextos.length ? Math.max(..._cmTextos.map(t => t.orden)) : 0) + 1;
+    const { error } = id ? await db.from('cm_textos').update(fila).eq('id', id) : await db.from('cm_textos').insert(fila);
+    if (error) { showMsg('cm-txt-msg', 'No se pudo guardar: ' + error.message, 'err'); return; }
+    showMsg('cm-txt-msg', '✓ Guardado', 'ok');
+    cmLimpiarTexto();
+    cmCargarTextos();
+  }
+
+  async function cmBorrarTexto(id) {
+    const x = _cmTextos.find(t => t.id === id);
+    if (!confirm(`¿Borrar el texto "${x?.nombre || ''}"?`)) return;
+    const { error } = await db.from('cm_textos').delete().eq('id', id);
+    if (error) { alert('No se pudo borrar: ' + error.message); return; }
+    cmCargarTextos();
+  }
+
+  async function cmGenerarLote() {
+    const canal = document.getElementById('cm-lote-canal').value;
+    const cantidad = parseInt(document.getElementById('cm-lote-cantidad').value, 10);
+    const venceStr = document.getElementById('cm-lote-vence').value.trim();
+    const vence = venceStr ? parseInt(venceStr, 10) : null;
+    if (!cantidad || cantidad < 1 || cantidad > 100) { showMsg('cm-lote-msg', 'La cantidad va de 1 a 100.', 'err'); return; }
+    if (vence !== null && (!Number.isInteger(vence) || vence < 1)) { showMsg('cm-lote-msg', 'Los días deben ser mayores a 0.', 'err'); return; }
+    const btn = document.getElementById('cm-lote-btn');
+    btn.disabled = true;
+    const { data, error } = await db.rpc('promo_generar_lote', {
+      p_campana: `Tiendas Fundadoras · ${canal}`, p_plan: 'pro', p_dias_gratis: 90, p_cantidad: cantidad, p_dias_vencimiento: vence, p_prefijo: canal,
+    });
+    btn.disabled = false;
+    if (error) { showMsg('cm-lote-msg', 'Error: ' + error.message, 'err'); return; }
+    showMsg('cm-lote-msg', `✓ ${data.length} códigos generados`, 'ok');
+    const lista = data.map(c => c.codigo).join('\n');
+    document.getElementById('cm-lote-codigos').innerHTML = `
+      <textarea readonly rows="${Math.min(data.length, 8)}" style="font-family:monospace">${escTut(lista)}</textarea>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:6px" onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(() => alert('Códigos copiados.'))">Copiar todos</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:6px">Las tarjetas para descargar están en Códigos Promocionales → Ver códigos.</span>`;
+    cmCargarTextos();
   }
 
   function escTut(t) {
