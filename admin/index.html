@@ -1933,12 +1933,19 @@
         <p style="padding:0 20px 12px;color:var(--muted);font-size:13px">
           Últimos productos publicados por las tiendas. Revisa las imágenes y elimina lo que no cumpla las normas (contenido explícito, armas, drogas, etc.).
         </p>
+        <div id="mod-barra-lote" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;margin:0 20px 12px;padding:10px 14px;background:#FFF4EC;border:1px solid #FFD9C2;border-radius:10px">
+          <b id="mod-lote-cuenta" style="font-size:13px">0 seleccionados</b>
+          <span style="flex:1"></span>
+          <button class="btn btn-outline btn-sm" style="color:var(--green);border-color:var(--green)" onclick="aprobarModeracionLote()">✓ Están bien</button>
+          <button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444" onclick="eliminarModeracionLote()">Eliminar seleccionados</button>
+          <button class="btn btn-outline btn-sm" onclick="seleccionarTodosModeracion(false)">Quitar selección</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Publicado</th><th></th></tr>
+              <tr><th style="width:36px"><input type="checkbox" id="mod-check-todos" title="Seleccionar todos" onchange="seleccionarTodosModeracion(this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer" /></th><th>Producto</th><th>Tienda</th><th>Precio</th><th>Publicado</th><th></th></tr>
             </thead>
-            <tbody id="tabla-moderacion"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+            <tbody id="tabla-moderacion"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -5409,7 +5416,8 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   async function cargarModeracion() {
     const tbody = document.getElementById('tabla-moderacion');
-    tbody.innerHTML = '<tr><td colspan="5" class="loading">Cargando…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">Cargando…</td></tr>';
+    actualizarSeleccionModeracion();
 
     const { data: productos } = await db.from('galeria_items')
       .select('id,socio_id,titulo,precio,imagen,imagen2,imagen3,created_at')
@@ -5418,7 +5426,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
       .limit(200);
 
     if (!productos?.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>No hay productos pendientes de revisión</p></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty"><p>No hay productos pendientes de revisión</p></td></tr>';
       return;
     }
 
@@ -5435,6 +5443,7 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
         </a>`).join('');
       return `
         <tr>
+          <td><input type="checkbox" class="mod-check" value="${p.id}" onchange="actualizarSeleccionModeracion()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer" /></td>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               <div style="display:flex;gap:4px">${thumbs || '—'}</div>
@@ -5462,19 +5471,59 @@ Para consultas o solicitudes relacionadas con tus datos personales, contáctanos
 
   async function eliminarProductoModeracion(id) {
     if (!confirm('¿Eliminar este producto? Se borrará de la tienda y sus imágenes del almacenamiento. No se puede deshacer.')) return;
+    await _borrarProductosModeracion([id]);
+    cargarModeracion();
+  }
 
-    const { data: item } = await db.from('galeria_items').select('imagen,imagen2,imagen3').eq('id', id).single();
-    const { error } = await db.from('galeria_items').delete().eq('id', id);
-    if (error) { alert('No se pudo eliminar. Intenta de nuevo.\n' + error.message); return; }
+  // Borra productos de galeria_items y sus imágenes del bucket.
+  async function _borrarProductosModeracion(ids) {
+    const { data: items } = await db.from('galeria_items').select('imagen,imagen2,imagen3').in('id', ids);
+    const { error } = await db.from('galeria_items').delete().in('id', ids);
+    if (error) { alert('No se pudo eliminar. Intenta de nuevo.\n' + error.message); return false; }
 
-    if (item) {
-      const PREFIX = `${SUPABASE_URL}/storage/v1/object/public/socios%20comerciales/`;
-      const rutas = [item.imagen, item.imagen2, item.imagen3]
-        .filter(u => u && u.startsWith(PREFIX))
-        .map(u => decodeURIComponent(u.slice(PREFIX.length)));
-      if (rutas.length) await db.storage.from('socios comerciales').remove(rutas);
-    }
+    const PREFIX = `${SUPABASE_URL}/storage/v1/object/public/socios%20comerciales/`;
+    const rutas = (items ?? [])
+      .flatMap(it => [it.imagen, it.imagen2, it.imagen3])
+      .filter(u => u && u.startsWith(PREFIX))
+      .map(u => decodeURIComponent(u.slice(PREFIX.length)));
+    if (rutas.length) await db.storage.from('socios comerciales').remove(rutas);
+    return true;
+  }
 
+  // ── Selección en lote (casillas) ──
+  function _idsSeleccionModeracion() {
+    return [...document.querySelectorAll('#tabla-moderacion .mod-check:checked')].map(c => c.value);
+  }
+
+  function actualizarSeleccionModeracion() {
+    const todas = document.querySelectorAll('#tabla-moderacion .mod-check');
+    const n = _idsSeleccionModeracion().length;
+    const cabecera = document.getElementById('mod-check-todos');
+    cabecera.checked = todas.length > 0 && n === todas.length;
+    cabecera.indeterminate = n > 0 && n < todas.length;
+    document.getElementById('mod-barra-lote').style.display = n ? 'flex' : 'none';
+    document.getElementById('mod-lote-cuenta').textContent = n === 1 ? '1 seleccionado' : `${n} seleccionados`;
+  }
+
+  function seleccionarTodosModeracion(marcar) {
+    document.querySelectorAll('#tabla-moderacion .mod-check').forEach(c => { c.checked = marcar; });
+    actualizarSeleccionModeracion();
+  }
+
+  async function aprobarModeracionLote() {
+    const ids = _idsSeleccionModeracion();
+    if (!ids.length) return;
+    const { error } = await db.from('galeria_items').update({ revisado: true }).in('id', ids);
+    if (error) { alert('No se pudo guardar. Intenta de nuevo.\n' + error.message); return; }
+    cargarModeracion();
+  }
+
+  async function eliminarModeracionLote() {
+    const ids = _idsSeleccionModeracion();
+    if (!ids.length) return;
+    const txt = ids.length === 1 ? 'este producto' : `estos ${ids.length} productos`;
+    if (!confirm(`¿Eliminar ${txt}? Se borrarán de las tiendas junto con sus imágenes. No se puede deshacer.`)) return;
+    await _borrarProductosModeracion(ids);
     cargarModeracion();
   }
 
